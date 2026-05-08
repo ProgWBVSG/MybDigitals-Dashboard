@@ -268,7 +268,8 @@ export function useClients() {
     
     const { error } = await supabase.from('clients').insert([payload]);
     if (error) {
-      console.error('Error creating client:', error);
+      console.error('Full DB Error:', error);
+      alert('Error de Base de Datos: ' + error.message + '\nDetalle: ' + error.details);
       toast('Error al crear cliente', 'error');
     } else {
       toast('Cliente creado');
