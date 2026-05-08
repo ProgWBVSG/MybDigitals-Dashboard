@@ -258,7 +258,9 @@ export function useClients() {
   }, [load]);
 
   const create = async (data: Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'projects' | 'notes'>) => {
-    const { contact, ...rest } = data;
+    // IMPORTANTE: Quitamos proyectos y notas porque son tablas aparte
+    const { contact, projects, notes, ...rest } = data as any;
+    
     const payload = mapToSnake({
       ...rest,
       email: contact.email,
