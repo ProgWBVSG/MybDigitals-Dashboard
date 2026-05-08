@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   CheckCircle2, Clock, AlertTriangle, CalendarDays, TrendingUp, 
-  Users, Wallet, MinusCircle, Target, Plus, Trash2, TrendingDown 
+  Users, Wallet, MinusCircle, Target, Plus, Trash2, TrendingDown, Receipt, Calendar 
 } from 'lucide-react';
 import { useTasks, useCalendar, useClients, useFinance, useExchangeRate } from './hooks';
 import { fmt, isOverdue, fmtMoney, fmtUSD, type Board } from './utils';
@@ -128,7 +128,7 @@ export default function Metrics() {
       {/* Charts row */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 28 }}>
         {/* Completion Donut */}
-        <div className="card" style={{ padding: 24 }}>
+        <div className="card card-3d" style={{ padding: 24 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Progreso General</h3>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
             <ResponsiveContainer width="100%" height={220}>
@@ -146,7 +146,7 @@ export default function Metrics() {
         </div>
 
         {/* Tasks by Column */}
-        <div className="card" style={{ padding: 24 }}>
+        <div className="card card-3d" style={{ padding: 24 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>
             Tareas por Columna {activeBoard && <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 13 }}>— {activeBoard.name}</span>}
           </h3>
@@ -166,9 +166,11 @@ export default function Metrics() {
       {/* Finance Goals & Expenses */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 20, marginBottom: 28 }}>
         {/* Goals Section */}
-        <div className="card" style={{ padding: 24 }}>
+        <div className="card card-3d" style={{ padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700 }}>🎯 Objetivos Financieros</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Target size={18} color="var(--primary)" /> Objetivos Financieros
+            </h3>
             <button className="btn btn-primary btn-sm" onClick={() => setShowGoalModal(true)}><Plus size={14} /> Nuevo Objetivo</button>
           </div>
           {goals.length === 0 ? (
@@ -202,8 +204,10 @@ export default function Metrics() {
         </div>
 
         {/* Recent Expenses */}
-        <div className="card" style={{ padding: 24 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>💸 Gastos Recientes</h3>
+        <div className="card card-3d" style={{ padding: 24 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Receipt size={18} color="var(--danger)" /> Gastos Recientes
+          </h3>
           <div style={{ maxHeight: 300, overflow: 'auto' }}>
             {expenses.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Sin gastos registrados.</p>
@@ -228,7 +232,7 @@ export default function Metrics() {
       {/* Priority and Upcoming */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         {/* Priority breakdown */}
-        <div className="card" style={{ padding: 24 }}>
+        <div className="card card-3d" style={{ padding: 24 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Prioridades</h3>
           {priorityData.map(p => (
             <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
@@ -243,9 +247,13 @@ export default function Metrics() {
         </div>
 
         {/* Upcoming / Overdue */}
-        <div className="card" style={{ padding: 24 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>
-            {overdueTasks.length > 0 ? '⚠️ Tareas Atrasadas' : '📅 Próximos Eventos'}
+        <div className="card card-3d" style={{ padding: 24 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            {overdueTasks.length > 0 ? (
+              <><AlertTriangle size={18} color="var(--warning)" /> Tareas Atrasadas</>
+            ) : (
+              <><Calendar size={18} color="var(--info)" /> Próximos Eventos</>
+            )}
           </h3>
           {overdueTasks.length > 0 ? (
             overdueTasks.map(t => (
@@ -336,7 +344,7 @@ export default function Metrics() {
 
 function FinanceKPI({ icon, label, ars, usd, color, sub, action }: any) {
   return (
-    <div className="card" style={{ padding: 20 }}>
+    <div className="card card-3d" style={{ padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ color }}>{icon}</div>
@@ -353,7 +361,7 @@ function FinanceKPI({ icon, label, ars, usd, color, sub, action }: any) {
 
 function KPI({ icon, label, value, sub, color }: any) {
   return (
-    <div className="card" style={{ padding: 20 }}>
+    <div className="card card-3d" style={{ padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
         <div style={{ color }}>{icon}</div>
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{label}</span>
