@@ -312,3 +312,65 @@ export function useClients() {
 
   return { clients, loading, create, update, remove, refresh: load };
 }
+
+// ─── FINANCE HOOK (Expenses & Goals) ───
+export function useFinance() {
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    const { data: expData } = await supabase.from('expenses').select('*');
+    const { data: goalData } = await supabase.from('goals').select('*');
+    if (expData) setExpenses(expData.map(mapToCamel));
+    if (goalData) setGoals(goalData.map(mapToCamel));
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+    const subE = supabase.channel('exp_ch').on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, load).subscribe();
+    const subG = supabase.channel('goal_ch').on('postgres_changes', { event: '*', schema: 'public', table: 'goals' }, load).subscribe();
+    return () => { supabase.removeChannel(subE); supabase.removeChannel(subG); };
+  }, [load]);
+
+  const addExpense = async (data: Omit<Expense, 'id' | 'date'>) => {
+    const { error } = await supabase.from('expenses').insert([mapToSnake(data)]);
+    if (error) toast('Error al agregar gasto', 'error');
+    else toast('Gasto registrado');
+  };
+
+  const removeExpense = async (id: string) => {
+    await supabase.from('expenses').delete().eq('id', id);
+    toast('Gasto eliminado');
+  };
+
+  const addGoal = async (data: Omit<Goal, 'id' | 'createdAt'>) => {
+    const { error } = await supabase.from('goals').insert([mapToSnake(data)]);
+    if (error) toast('Error al crear objetivo', 'error');
+    else toast('Objetivo creado');
+  };
+
+  const updateGoal = async (id: string, updates: Partial<Goal>) => {
+    await supabase.from('goals').update(mapToSnake(updates)).eq('id', id);
+  };
+
+  const removeGoal = async (id: string) => {
+    await supabase.from('goals').delete().eq('id', id);
+    toast('Objetivo eliminado');
+  };
+
+  return { expenses, goals, loading, addExpense, removeExpense, addGoal, updateGoal, removeGoal, refresh: load };
+}
+
+// ─── EXCHANGE RATE HOOK ───
+export function useExchangeRate() {
+  const [rate, setRate] = useState<number>(1400); // Fallback
+  useEffect(() => {
+    fetch('https://dolarapi.com/v1/dolares/blue')
+      .then(res => res.json())
+      .then(data => { if (data.venta) setRate(data.venta); })
+      .catch(() => console.log('Usando cotización por defecto'));
+  }, []);
+  return rate;
+}

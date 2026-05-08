@@ -75,6 +75,7 @@ export const PROJECT_STATUS_LABELS: Record<string, string> = { pending: 'Pendien
 
 // ─── CURRENCY ───
 export const fmtMoney = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
+export const fmtUSD = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 
 // ─── TYPES ───
 export interface Skill {
@@ -114,6 +115,17 @@ export interface ClientProject {
 
 export interface ClientNote {
   id: string; content: string; createdAt: number;
+}
+
+export interface Expense {
+  id: string; amount: number; description: string;
+  category: string; date: number;
+}
+
+export interface Goal {
+  id: string; name: string; targetAmount: number;
+  currentAmount: number; deadline: string | null;
+  createdAt: number;
 }
 
 export interface Client {
