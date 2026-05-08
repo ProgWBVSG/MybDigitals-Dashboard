@@ -148,8 +148,19 @@ export default function Clients() {
                       {CLIENT_STATUS_LABELS[c.status]}
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                    {c.projects.length} proyecto{c.projects.length !== 1 ? 's' : ''} · {fmtMoney(c.totalRevenue)}
+                  <div style={{ fontSize: 12, marginTop: 6, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: 12 }}>
+                      {fmtMoney(c.totalRevenue)}
+                    </span>
+                    {c.projects.length > 0 && (
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {c.projects.map(p => (
+                          <span key={p.id} className="tag" style={{ fontSize: 10, padding: '2px 6px', background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                            {p.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 {/* Contact icons */}
@@ -210,8 +221,8 @@ export default function Clients() {
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>desde {fmt(detail.createdAt)}</div>
             </Section>
 
-            {/* Projects */}
-            <Section title="Proyectos" action={<button className="btn btn-ghost btn-sm" onClick={openProjNew}><FolderPlus size={14} /> Agregar</button>}>
+            {/* Projects / Services */}
+            <Section title="Servicios Vendidos" action={<button className="btn btn-ghost btn-sm" onClick={openProjNew}><FolderPlus size={14} /> Agregar</button>}>
               {detail.projects.length === 0 ? (
                 <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Sin proyectos</p>
               ) : detail.projects.map(p => (
@@ -296,8 +307,17 @@ export default function Clients() {
             <h2>{editingProj ? 'Editar Proyecto' : 'Nuevo Proyecto'}</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div className="input-group">
-                <label>Nombre *</label>
-                <input className="input" value={projForm.name} onChange={e => setProjForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej: E-commerce, Landing Page..." />
+                <label>Servicio Vendido *</label>
+                <select className="select" value={projForm.name} onChange={e => setProjForm(f => ({ ...f, name: e.target.value }))}>
+                  <option value="" disabled>Seleccionar servicio...</option>
+                  <option value="Landing Page">Landing Page</option>
+                  <option value="Página Web">Página Web</option>
+                  <option value="Automatización">Automatización</option>
+                  <option value="Invitación Digital">Invitación Digital</option>
+                  <option value="E-commerce">E-commerce</option>
+                  <option value="Diseño UI/UX">Diseño UI/UX</option>
+                  <option value="Otro">Otro servicio...</option>
+                </select>
               </div>
               <div className="input-group">
                 <label>Descripción</label>
@@ -322,7 +342,7 @@ export default function Clients() {
             </div>
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setProjModal(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={saveProj}>{editingProj ? 'Guardar' : 'Agregar Proyecto'}</button>
+              <button className="btn btn-primary" onClick={saveProj}>{editingProj ? 'Guardar' : 'Agregar Servicio'}</button>
             </div>
           </div>
         </div>
