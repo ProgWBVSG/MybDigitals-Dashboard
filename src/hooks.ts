@@ -236,11 +236,7 @@ export function useClients() {
         const camel = mapToCamel(c);
         return {
           ...camel,
-          contact: {
-            email: c.email || '',
-            whatsapp: c.whatsapp || '',
-            instagram: c.instagram || ''
-          },
+          contact: c.contact || { email: '', whatsapp: '', instagram: '' },
           projects: projectsData ? projectsData.filter(p => p.client_id === c.id).map(mapToCamel) : [],
           notes: notesData ? notesData.filter(n => n.client_id === c.id).map(mapToCamel).sort((a: any, b: any) => b.createdAt - a.createdAt) : []
         };
@@ -259,14 +255,10 @@ export function useClients() {
 
   const create = async (data: Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'projects' | 'notes'>) => {
     // IMPORTANTE: Quitamos proyectos y notas porque son tablas aparte
-    const { contact, projects, notes, ...rest } = data as any;
+    const { projects, notes, ...rest } = data as any;
     
-    const payload = mapToSnake({
-      ...rest,
-      email: contact.email,
-      whatsapp: contact.whatsapp,
-      instagram: contact.instagram
-    });
+    // Manda el objeto 'contact' entero tal como está
+    const payload = mapToSnake(rest);
     
     const { error } = await supabase.from('clients').insert([payload]);
     if (error) {
@@ -279,18 +271,11 @@ export function useClients() {
   };
 
   const update = async (id: string, updates: Partial<Client>) => {
-    const { projects, notes, contact, ...clientFields } = updates;
+    // Quitamos proyectos y notas
+    const { projects, notes, ...clientFields } = updates;
     
-    let payload = mapToSnake(clientFields);
-    
-    if (contact) {
-      payload = {
-        ...payload,
-        email: contact.email,
-        whatsapp: contact.whatsapp,
-        instagram: contact.instagram
-      };
-    }
+    // Mapeamos a snake_case, el contact pasará directo como JSON
+    const payload = mapToSnake(clientFields);
 
     if (Object.keys(payload).length > 0) {
       const { error } = await supabase.from('clients').update({
