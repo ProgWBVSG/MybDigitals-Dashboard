@@ -232,13 +232,19 @@ export function useClients() {
     const { data: notesData } = await supabase.from('client_notes').select('*');
 
     if (!errC && clientsData) {
-      const fullClients = clientsData.map(c => {
-        const camelC = mapToCamel(c);
-        camelC.projects = projectsData ? projectsData.filter(p => p.client_id === c.id).map(mapToCamel) : [];
-        camelC.notes = notesData ? notesData.filter(n => n.client_id === c.id).map(mapToCamel).sort((a, b) => b.createdAt - a.createdAt) : [];
-        return camelC;
-      });
-      setClients(fullClients);
+      setClients(clientsData.map(c => {
+        const camel = mapToCamel(c);
+        return {
+          ...camel,
+          contact: {
+            email: c.email || '',
+            whatsapp: c.whatsapp || '',
+            instagram: c.instagram || ''
+          },
+          projects: projectsData ? projectsData.filter(p => p.client_id === c.id).map(mapToCamel) : [],
+          notes: notesData ? notesData.filter(n => n.client_id === c.id).map(mapToCamel).sort((a: any, b: any) => b.createdAt - a.createdAt) : []
+        };
+      }));
     }
     setLoading(false);
   }, []);
@@ -252,19 +258,43 @@ export function useClients() {
   }, [load]);
 
   const create = async (data: Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'projects' | 'notes'>) => {
-    const { error } = await supabase.from('clients').insert([mapToSnake(data)]);
-    if (error) toast('Error al crear cliente', 'error');
-    else toast('Cliente creado');
+    const { contact, ...rest } = data;
+    const payload = mapToSnake({
+      ...rest,
+      email: contact.email,
+      whatsapp: contact.whatsapp,
+      instagram: contact.instagram
+    });
+    
+    const { error } = await supabase.from('clients').insert([payload]);
+    if (error) {
+      console.error('Error creating client:', error);
+      toast('Error al crear cliente', 'error');
+    } else {
+      toast('Cliente creado');
+    }
   };
 
   const update = async (id: string, updates: Partial<Client>) => {
-    // Solo actualizar tabla clients, los proyectos/notas se manejan aparte en BD, aunque el frontend pasa todo a veces.
-    // Separamos los fields
-    const { projects, notes, ...clientFields } = updates;
+    const { projects, notes, contact, ...clientFields } = updates;
     
-    // Si hay updates de campos basicos del cliente:
-    if (Object.keys(clientFields).length > 0) {
-      await supabase.from('clients').update(mapToSnake({ ...clientFields, updatedAt: Date.now() })).eq('id', id);
+    let payload = mapToSnake(clientFields);
+    
+    if (contact) {
+      payload = {
+        ...payload,
+        email: contact.email,
+        whatsapp: contact.whatsapp,
+        instagram: contact.instagram
+      };
+    }
+
+    if (Object.keys(payload).length > 0) {
+      const { error } = await supabase.from('clients').update({
+        ...payload,
+        updated_at: new Date().toISOString()
+      }).eq('id', id);
+      if (error) toast('Error al actualizar cliente', 'error');
     }
 
     // Proyectos (Add/Update/Delete)
