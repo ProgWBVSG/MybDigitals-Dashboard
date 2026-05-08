@@ -61,13 +61,8 @@ export default function Clients() {
     }
   };
 
-  // Detail panel
   const openDetail = (c: Client) => setDetail(c);
   const closeDetail = () => setDetail(null);
-  const refreshDetail = (id: string) => {
-    const fresh = clients.find(c => c.id === id);
-    if (fresh) setDetail(fresh);
-  };
 
   // Add note
   const addNote = () => {

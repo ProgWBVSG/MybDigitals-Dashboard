@@ -1,17 +1,9 @@
 import { useMemo, useState } from 'react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { 
-  CheckCircle2, Clock, AlertTriangle, CalendarDays, TrendingUp, 
-  Users, Wallet, MinusCircle, Target, Plus, Trash2, TrendingDown 
-} from 'lucide-react';
-import { useTasks, useCalendar, useClients, useFinance, useExchangeRate } from './hooks';
-import { fmt, isOverdue, fmtMoney, fmtUSD, type Board, type TaskCard } from './utils';
-
-const CHART_COLORS = ['#6366f1', '#3b82f6', '#f59e0b', '#10b981'];
+import { Target, Plus, Trash2, TrendingDown, TrendingUp, Wallet, MinusCircle } from 'lucide-react';
+import { useClients, useFinance, useExchangeRate } from './hooks';
+import { fmt, fmtMoney, fmtUSD } from './utils';
 
 export default function Metrics() {
-  const { boards } = useTasks();
-  const { events } = useCalendar();
   const { clients } = useClients();
   const { expenses, goals, addExpense, removeExpense, addGoal, removeGoal } = useFinance();
   const dolarRate = useExchangeRate();
@@ -27,10 +19,6 @@ export default function Metrics() {
   const netProfit = totalRevenue - totalExpenses;
 
   const toUSD = (ars: number) => ars / dolarRate;
-
-  // KPIs
-  const activeClients = clients.filter(c => c.status === 'active').length;
-  const overdueCount = 0; // Simplified for this view
 
   const handleAddExpense = () => {
     if (expForm.amount <= 0 || !expForm.description) return;

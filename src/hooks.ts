@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client, type ClientProject, type ClientNote } from './utils';
+import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client, type Expense, type Goal } from './utils';
 import { supabase } from './supabase';
 
 // ─── TOAST ───
@@ -228,8 +228,8 @@ export function useClients() {
 
   const load = useCallback(async () => {
     const { data: clientsData, error: errC } = await supabase.from('clients').select('*');
-    const { data: projectsData, error: errP } = await supabase.from('client_projects').select('*');
-    const { data: notesData, error: errN } = await supabase.from('client_notes').select('*');
+    const { data: projectsData } = await supabase.from('client_projects').select('*');
+    const { data: notesData } = await supabase.from('client_notes').select('*');
 
     if (!errC && clientsData) {
       const fullClients = clientsData.map(c => {

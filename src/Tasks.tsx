@@ -1,7 +1,7 @@
 import { useState, type DragEvent } from 'react';
 import { Plus, Trash2, Pencil, Calendar, GripVertical, LayoutGrid, AlertCircle } from 'lucide-react';
 import { useTasks, toast } from './hooks';
-import { PRIORITIES, PRIORITY_LABELS, COLORS, fmt, isOverdue, type TaskCard as TCard } from './utils';
+import { PRIORITIES, PRIORITY_LABELS, fmt, isOverdue, type TaskCard as TCard } from './utils';
 
 const emptyCard = (boardId: string, colId: string): Omit<TCard, 'id' | 'createdAt' | 'updatedAt' | 'order'> => ({
   boardId, columnId: colId, title: '', description: '', assignedTo: [],
