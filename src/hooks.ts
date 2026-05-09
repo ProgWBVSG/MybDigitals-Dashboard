@@ -91,8 +91,10 @@ export function useSkills() {
     const metaDesc = JSON.stringify({ text: data.description, links: data.links || '' });
     const { links, description, ...rest } = data as any;
     const { error } = await supabase.from('skills').insert([mapToSnake({ ...rest, description: metaDesc })]);
-    if (error) toast('Error al crear skill', 'error');
-    else toast('Skill creada');
+    if (error) {
+      console.error('Skill DB Error:', error);
+      toast(`Error: ${error.message}`, 'error');
+    } else toast('Skill creada');
   };
 
   const update = async (id: string, updates: Partial<Skill>) => {
