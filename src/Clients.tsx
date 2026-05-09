@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useClients, toast } from './hooks';
 import {
-  uuid, fmt, fmtMoney,
+  uuid, fmt, fmtMoney, fmtUSD,
   CLIENT_STATUSES, CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS,
   PROJECT_STATUSES, PROJECT_STATUS_LABELS,
   type Client, type ClientProject, type ClientNote
