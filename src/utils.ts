@@ -110,7 +110,9 @@ export interface CalEvent {
 export interface ClientProject {
   id: string; name: string; description: string;
   status: 'pending' | 'in_progress' | 'delivered' | 'cancelled';
-  value: number; startDate: number; endDate: number | null;
+  value: number; currency: 'ARS' | 'USD';
+  startDate: number; endDate: number | null;
+  links: string;
 }
 
 export interface ClientNote {
@@ -135,5 +137,6 @@ export interface Client {
   projects: ClientProject[];
   notes: ClientNote[];
   totalRevenue: number;
+  totalRevenueUSD: number;
   createdAt: number; updatedAt: number;
 }

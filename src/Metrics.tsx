@@ -22,10 +22,15 @@ export default function Metrics() {
   const [goalForm, setGoalForm] = useState({ name: '', targetAmount: 0 });
 
   // Calculations
-  const totalRevenue = useMemo(() => clients.reduce((s, c) => s + c.totalRevenue, 0), [clients]);
+  const totalRevenueARS = useMemo(() => clients.reduce((s, c) => s + (c.totalRevenue || 0), 0), [clients]);
+  const totalRevenueUSD = useMemo(() => clients.reduce((s, c) => s + (c.totalRevenueUSD || 0), 0), [clients]);
   const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
-  const netProfit = totalRevenue - totalExpenses;
+  
   const toUSD = (ars: number) => ars / dolarRate;
+  
+  const equivalentTotalARS = totalRevenueARS + (totalRevenueUSD * dolarRate);
+  const equivalentTotalUSD = toUSD(totalRevenueARS) + totalRevenueUSD;
+  const netProfitARS = equivalentTotalARS - totalExpenses;
 
   // Task & Board Metrics (using currently loaded cards in active board)
   const allCards = cards;
@@ -85,10 +90,10 @@ export default function Metrics() {
         <FinanceKPI 
           icon={<TrendingUp size={20} />} 
           label="Ingresos Totales" 
-          ars={totalRevenue} 
-          usd={toUSD(totalRevenue)} 
+          ars={equivalentTotalARS} 
+          usd={equivalentTotalUSD} 
           color="#10b981" 
-          sub="Facturación acumulada"
+          sub="Facturación acumulada (ARS eqv)"
         />
         <FinanceKPI 
           icon={<MinusCircle size={20} />} 
@@ -100,11 +105,11 @@ export default function Metrics() {
           action={<button className="btn btn-ghost btn-sm" onClick={() => setShowExpModal(true)}><Plus size={14} /></button>}
         />
         <FinanceKPI 
-          icon={netProfit >= 0 ? <Wallet size={20} /> : <TrendingDown size={20} />} 
+          icon={netProfitARS >= 0 ? <Wallet size={20} /> : <TrendingDown size={20} />} 
           label="Balance Neto" 
-          ars={netProfit} 
-          usd={toUSD(netProfit)} 
-          color={netProfit >= 0 ? '#3b82f6' : '#ef4444'} 
+          ars={netProfitARS} 
+          usd={toUSD(netProfitARS)} 
+          color={netProfitARS >= 0 ? '#3b82f6' : '#ef4444'} 
           sub="ARS vs USD Blue"
         />
         <KPI 
@@ -178,13 +183,13 @@ export default function Metrics() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {goals.map(g => {
-                const percent = Math.min(Math.round((totalRevenue / g.targetAmount) * 100), 100);
+                const percent = Math.min(Math.round((equivalentTotalARS / g.targetAmount) * 100), 100);
                 return (
                   <div key={g.id}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                       <span style={{ fontSize: 14, fontWeight: 600 }}>{g.name}</span>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtMoney(totalRevenue)} / {fmtMoney(g.targetAmount)}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtMoney(equivalentTotalARS)} / {fmtMoney(g.targetAmount)}</span>
                         <button className="btn btn-ghost btn-icon btn-sm" onClick={() => removeGoal(g.id)}><Trash2 size={12} /></button>
                       </div>
                     </div>

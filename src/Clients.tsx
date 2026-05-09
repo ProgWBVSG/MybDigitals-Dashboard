@@ -13,12 +13,12 @@ import {
 
 const emptyClient: Omit<Client, 'id' | 'createdAt' | 'updatedAt'> = {
   name: '', contact: { email: '', whatsapp: '', instagram: '' },
-  status: 'prospect', projects: [], notes: [], totalRevenue: 0,
+  status: 'prospect', projects: [], notes: [], totalRevenue: 0, totalRevenueUSD: 0,
 };
 
 const emptyProject: ClientProject = {
-  id: '', name: '', description: '', status: 'pending', value: 0,
-  startDate: Date.now(), endDate: null,
+  id: '', name: '', description: '', status: 'pending', value: 0, currency: 'ARS',
+  startDate: Date.now(), endDate: null, links: '',
 };
 
 export default function Clients() {
@@ -50,13 +50,18 @@ export default function Clients() {
 
   const save = () => {
     if (!form.name.trim()) { toast('El nombre es obligatorio', 'error'); return; }
-    const revenue = form.projects.filter(p => p.status !== 'cancelled').reduce((s, p) => s + p.value, 0);
-    if (editing) update(editing.id, { ...form, totalRevenue: revenue });
-    else create({ ...form, totalRevenue: revenue });
+    const revenue = form.projects.length > 0 
+      ? form.projects.filter(p => p.status !== 'cancelled' && p.currency === 'ARS').reduce((s, p) => s + p.value, 0) 
+      : form.totalRevenue;
+    const revenueUSD = form.projects.length > 0 
+      ? form.projects.filter(p => p.status !== 'cancelled' && p.currency === 'USD').reduce((s, p) => s + p.value, 0) 
+      : form.totalRevenueUSD;
+      
+    if (editing) update(editing.id, { ...form, totalRevenue: revenue, totalRevenueUSD: revenueUSD });
+    else create({ ...form, totalRevenue: revenue, totalRevenueUSD: revenueUSD });
     close();
-    // Refresh detail if open
     if (detail && editing) {
-      const refreshed = { ...detail, ...form, totalRevenue: revenue, updatedAt: Date.now() };
+      const refreshed = { ...detail, ...form, totalRevenue: revenue, totalRevenueUSD: revenueUSD, updatedAt: Date.now() };
       setDetail(refreshed);
     }
   };
@@ -85,17 +90,19 @@ export default function Clients() {
     } else {
       projs = [...detail.projects, projForm];
     }
-    const revenue = projs.filter(p => p.status !== 'cancelled').reduce((s, p) => s + p.value, 0);
-    update(detail.id, { projects: projs, totalRevenue: revenue });
-    setDetail({ ...detail, projects: projs, totalRevenue: revenue });
+    const revenue = projs.filter(p => p.status !== 'cancelled' && p.currency === 'ARS').reduce((s, p) => s + p.value, 0);
+    const revenueUSD = projs.filter(p => p.status !== 'cancelled' && p.currency === 'USD').reduce((s, p) => s + p.value, 0);
+    update(detail.id, { projects: projs, totalRevenue: revenue, totalRevenueUSD: revenueUSD });
+    setDetail({ ...detail, projects: projs, totalRevenue: revenue, totalRevenueUSD: revenueUSD });
     setProjModal(false);
   };
   const deleteProj = (pid: string) => {
     if (!detail) return;
     const projs = detail.projects.filter(p => p.id !== pid);
-    const revenue = projs.filter(p => p.status !== 'cancelled').reduce((s, p) => s + p.value, 0);
-    update(detail.id, { projects: projs, totalRevenue: revenue });
-    setDetail({ ...detail, projects: projs, totalRevenue: revenue });
+    const revenue = projs.filter(p => p.status !== 'cancelled' && p.currency === 'ARS').reduce((s, p) => s + p.value, 0);
+    const revenueUSD = projs.filter(p => p.status !== 'cancelled' && p.currency === 'USD').reduce((s, p) => s + p.value, 0);
+    update(detail.id, { projects: projs, totalRevenue: revenue, totalRevenueUSD: revenueUSD });
+    setDetail({ ...detail, projects: projs, totalRevenue: revenue, totalRevenueUSD: revenueUSD });
   };
 
   return (
@@ -149,9 +156,16 @@ export default function Clients() {
                     </span>
                   </div>
                   <div style={{ fontSize: 12, marginTop: 6, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: 12 }}>
-                      {fmtMoney(c.totalRevenue)}
-                    </span>
+                    {(c.totalRevenue > 0 || c.totalRevenueUSD === 0) && (
+                      <span style={{ fontWeight: 700, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: 12 }}>
+                        {fmtMoney(c.totalRevenue)}
+                      </span>
+                    )}
+                    {c.totalRevenueUSD > 0 && (
+                      <span style={{ fontWeight: 700, color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)', padding: '2px 8px', borderRadius: 12 }}>
+                        {fmtUSD(c.totalRevenueUSD)}
+                      </span>
+                    )}
                     {c.projects.length > 0 && (
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                         {c.projects.map(p => (
@@ -217,25 +231,39 @@ export default function Clients() {
 
             {/* Revenue */}
             <Section title="Facturación">
-              <div style={{ fontSize: 28, fontWeight: 800, color: '#10b981' }}>{fmtMoney(detail.totalRevenue)}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#10b981' }}>{fmtMoney(detail.totalRevenue)}</div>
+                {detail.totalRevenueUSD > 0 && (
+                  <div style={{ fontSize: 20, fontWeight: 800, color: '#3b82f6' }}>{fmtUSD(detail.totalRevenueUSD)}</div>
+                )}
+              </div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>desde {fmt(detail.createdAt)}</div>
             </Section>
 
             {/* Projects / Services */}
             <Section title="Servicios Vendidos" action={<button className="btn btn-ghost btn-sm" onClick={openProjNew}><FolderPlus size={14} /> Agregar</button>}>
               {detail.projects.length === 0 ? (
-                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Sin proyectos</p>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Sin servicios o proyectos</p>
               ) : detail.projects.map(p => (
-                <div key={p.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ flex: 1 }}>
+                <div key={p.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)', display: 'flex', gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{p.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 8, marginTop: 4 }}>
+                    {p.description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.description}</div>}
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                       <span className="badge" style={{ fontSize: 10 }}>{PROJECT_STATUS_LABELS[p.status]}</span>
-                      <span>{fmtMoney(p.value)}</span>
+                      <span style={{ fontWeight: 600, color: p.currency === 'USD' ? '#3b82f6' : '#10b981' }}>{p.currency === 'USD' ? fmtUSD(p.value) : fmtMoney(p.value)}</span>
+                      {p.endDate && <span style={{ background: 'var(--bg-hover)', padding: '2px 6px', borderRadius: 4 }}>Entrega: {fmt(p.endDate)}</span>}
                     </div>
+                    {p.links && (
+                      <div style={{ marginTop: 6, fontSize: 11, color: 'var(--primary)', wordBreak: 'break-all' }}>
+                        <a href={p.links.startsWith('http') ? p.links : `https://${p.links}`} target="_blank" rel="noopener noreferrer">{p.links}</a>
+                      </div>
+                    )}
                   </div>
-                  <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openProjEdit(p)}><Pencil size={12} /></button>
-                  <button className="btn btn-ghost btn-icon btn-sm" onClick={() => deleteProj(p.id)}><Trash2 size={12} /></button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openProjEdit(p)}><Pencil size={14} /></button>
+                    <button className="btn btn-ghost btn-icon btn-sm" onClick={() => deleteProj(p.id)}><Trash2 size={14} /></button>
+                  </div>
                 </div>
               ))}
             </Section>
@@ -330,14 +358,31 @@ export default function Clients() {
                     {PROJECT_STATUSES.map(s => <option key={s} value={s}>{PROJECT_STATUS_LABELS[s]}</option>)}
                   </select>
                 </div>
+                <div className="input-group" style={{ width: 100 }}>
+                  <label>Moneda</label>
+                  <select className="select" value={projForm.currency} onChange={e => setProjForm(f => ({ ...f, currency: e.target.value as 'ARS' | 'USD' }))}>
+                    <option value="ARS">ARS</option>
+                    <option value="USD">USD</option>
+                  </select>
+                </div>
                 <div className="input-group" style={{ flex: 1 }}>
-                  <label>Valor ($)</label>
+                  <label>Valor</label>
                   <input className="input" type="number" value={projForm.value} onChange={e => setProjForm(f => ({ ...f, value: Number(e.target.value) }))} />
                 </div>
               </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div className="input-group" style={{ flex: 1 }}>
+                  <label>Fecha inicio</label>
+                  <input className="input" type="date" value={new Date(projForm.startDate).toISOString().split('T')[0]} onChange={e => setProjForm(f => ({ ...f, startDate: new Date(e.target.value).getTime() }))} />
+                </div>
+                <div className="input-group" style={{ flex: 1 }}>
+                  <label>Fecha de Entrega</label>
+                  <input className="input" type="date" value={projForm.endDate ? new Date(projForm.endDate).toISOString().split('T')[0] : ''} onChange={e => setProjForm(f => ({ ...f, endDate: e.target.value ? new Date(e.target.value).getTime() : null }))} />
+                </div>
+              </div>
               <div className="input-group">
-                <label>Fecha inicio</label>
-                <input className="input" type="date" value={new Date(projForm.startDate).toISOString().split('T')[0]} onChange={e => setProjForm(f => ({ ...f, startDate: new Date(e.target.value).getTime() }))} />
+                <label>Documentos / Links (Google Drive, Figma, etc)</label>
+                <textarea className="textarea" value={projForm.links} onChange={e => setProjForm(f => ({ ...f, links: e.target.value }))} placeholder="https://..." style={{ minHeight: 60 }} />
               </div>
             </div>
             <div className="modal-actions">
