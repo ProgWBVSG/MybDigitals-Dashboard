@@ -5,7 +5,7 @@ import {
   Users, Wallet, MinusCircle, Target, Plus, Trash2, TrendingDown, Receipt, Calendar 
 } from 'lucide-react';
 import { useTasks, useCalendar, useClients, useFinance, useExchangeRate } from './hooks';
-import { fmt, isOverdue, fmtMoney, fmtUSD, type Board } from './utils';
+import { fmt, isOverdue, fmtMoney, fmtUSD, type Board, type ClientProject } from './utils';
 
 const CHART_COLORS = ['#6366f1', '#3b82f6', '#f59e0b', '#10b981'];
 
@@ -41,6 +41,18 @@ export default function Metrics() {
   const upcomingEvents = events.filter(e => e.startDate > Date.now()).sort((a, b) => a.startDate - b.startDate).slice(0, 5);
   const completionRate = totalTasks > 0 ? Math.round((completed / totalTasks) * 100) : 0;
   const activeClients = clients.filter(c => c.status === 'active').length;
+
+  // Payment tracking
+  const allProjects = clients.flatMap(c => c.projects.map(p => ({ ...p, clientName: c.name, clientId: c.id })));
+  const activeProjects = allProjects.filter(p => p.status !== 'cancelled');
+  const pendingPayments = activeProjects.filter(p => (p.paidPercentage || 0) < 100 && p.value > 0);
+  const totalPendingARS = pendingPayments.filter(p => p.currency === 'ARS').reduce((s, p) => s + p.value * (1 - (p.paidPercentage || 0) / 100), 0);
+  const totalPendingUSD = pendingPayments.filter(p => p.currency === 'USD').reduce((s, p) => s + p.value * (1 - (p.paidPercentage || 0) / 100), 0);
+  const totalCollectedARS = activeProjects.filter(p => p.currency === 'ARS').reduce((s, p) => s + p.value * ((p.paidPercentage || 0) / 100), 0);
+  const totalCollectedUSD = activeProjects.filter(p => p.currency === 'USD').reduce((s, p) => s + p.value * ((p.paidPercentage || 0) / 100), 0);
+  const collectionRate = activeProjects.length > 0 
+    ? Math.round(activeProjects.reduce((s, p) => s + (p.paidPercentage || 0), 0) / activeProjects.length) 
+    : 0;
 
   const donutData = [
     { name: 'Completadas', value: completed, color: '#10b981' },
@@ -120,6 +132,77 @@ export default function Metrics() {
           color="#f59e0b" 
         />
       </div>
+
+      {/* Cobros Pendientes Section */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 28 }}>
+        <div className="card card-3d" style={{ padding: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{ color: '#10b981' }}><Wallet size={20} /></div>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Cobrado</span>
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#10b981' }}>{fmtMoney(totalCollectedARS)}</div>
+          {totalCollectedUSD > 0 && <div style={{ fontSize: 14, fontWeight: 600, color: '#3b82f6', marginTop: 2 }}>{fmtUSD(totalCollectedUSD)}</div>}
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Tasa de cobro: {collectionRate}%</div>
+        </div>
+        <div className="card card-3d" style={{ padding: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{ color: '#f59e0b' }}><Clock size={20} /></div>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Pendiente de Cobro</span>
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#f59e0b' }}>{fmtMoney(totalPendingARS)}</div>
+          {totalPendingUSD > 0 && <div style={{ fontSize: 14, fontWeight: 600, color: '#3b82f6', marginTop: 2 }}>{fmtUSD(totalPendingUSD)}</div>}
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{pendingPayments.length} proyectos con cobro pendiente</div>
+        </div>
+        <div className="card card-3d" style={{ padding: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{ color: '#6366f1' }}><TrendingUp size={20} /></div>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Cobro General</span>
+          </div>
+          <div style={{ height: 10, background: 'var(--bg-hover)', borderRadius: 5, overflow: 'hidden', marginTop: 12, marginBottom: 8 }}>
+            <div style={{ width: `${collectionRate}%`, height: '100%', background: 'linear-gradient(90deg, #6366f1, #10b981)', borderRadius: 5, transition: 'width 0.6s ease' }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+            <span style={{ color: '#10b981', fontWeight: 700 }}>{collectionRate}% cobrado</span>
+            <span style={{ color: 'var(--text-muted)' }}>{100 - collectionRate}% pendiente</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Pending Payments Detail */}
+      {pendingPayments.length > 0 && (
+        <div className="card card-3d" style={{ padding: 24, marginBottom: 28 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertTriangle size={18} color="#f59e0b" /> Detalle de Cobros Pendientes
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {pendingPayments.sort((a, b) => (a.paidPercentage || 0) - (b.paidPercentage || 0)).map((p: ClientProject & { clientName: string }) => {
+              const paid = p.paidPercentage || 0;
+              const paidAmt = p.value * (paid / 100);
+              const pendAmt = p.value - paidAmt;
+              const barColor = paid >= 75 ? '#10b981' : paid >= 50 ? '#f59e0b' : '#ef4444';
+              return (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600 }}>{p.clientName}</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>— {p.name}</span>
+                    </div>
+                    <div style={{ height: 6, background: 'var(--bg-hover)', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ width: `${paid}%`, height: '100%', background: barColor, borderRadius: 3, transition: 'width 0.4s ease' }} />
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 12, color: barColor, fontWeight: 700 }}>{paid}% cobrado</div>
+                    <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>
+                      Falta: {p.currency === 'USD' ? fmtUSD(pendAmt) : fmtMoney(pendAmt)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* General KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>

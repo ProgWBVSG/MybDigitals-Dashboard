@@ -111,6 +111,7 @@ export interface ClientProject {
   id: string; name: string; description: string;
   status: 'pending' | 'in_progress' | 'delivered' | 'cancelled';
   value: number; currency: 'ARS' | 'USD';
+  paidPercentage: number;
   startDate: number; endDate: number | null;
   links: string;
 }

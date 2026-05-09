@@ -18,7 +18,7 @@ const emptyClient: Omit<Client, 'id' | 'createdAt' | 'updatedAt'> = {
 
 const emptyProject: ClientProject = {
   id: '', name: '', description: '', status: 'pending', value: 0, startDate: Date.now(), 
-  currency: 'ARS', links: '', endDate: null
+  currency: 'ARS', links: '', endDate: null, paidPercentage: 0
 };
 
 function getTimeLeft(endDate: number | null) {
@@ -280,7 +280,12 @@ export default function Clients() {
             <Section title="Servicios Vendidos" action={<button className="btn btn-ghost btn-sm" onClick={openProjNew}><FolderPlus size={14} /> Agregar</button>}>
               {detail.projects.length === 0 ? (
                 <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Sin servicios o proyectos</p>
-              ) : detail.projects.map(p => (
+              ) : detail.projects.map(p => {
+                const paid = p.paidPercentage || 0;
+                const paidAmount = p.value * (paid / 100);
+                const pendingAmount = p.value - paidAmount;
+                const paidColor = paid >= 100 ? '#10b981' : paid >= 50 ? '#f59e0b' : '#ef4444';
+                return (
                 <div key={p.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)', display: 'flex', gap: 10 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{p.name}</div>
@@ -311,13 +316,35 @@ export default function Clients() {
                           </a>
                         )}
                       </div>
+                    {/* Payment progress */}
+                    {p.value > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
+                          <span style={{ color: paidColor, fontWeight: 700 }}>
+                            {paid >= 100 ? '✓ Cobrado' : `Cobrado ${paid}%`}
+                          </span>
+                          <span style={{ color: 'var(--text-muted)' }}>
+                            {p.currency === 'USD' ? fmtUSD(paidAmount) : fmtMoney(paidAmount)} / {p.currency === 'USD' ? fmtUSD(p.value) : fmtMoney(p.value)}
+                          </span>
+                        </div>
+                        <div style={{ height: 6, background: 'var(--bg-hover)', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ width: `${paid}%`, height: '100%', background: paidColor, borderRadius: 3, transition: 'width 0.4s ease' }} />
+                        </div>
+                        {paid < 100 && (
+                          <div style={{ fontSize: 10, color: '#ef4444', marginTop: 3, fontWeight: 600 }}>
+                            Pendiente: {p.currency === 'USD' ? fmtUSD(pendingAmount) : fmtMoney(pendingAmount)}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openProjEdit(p)}><Pencil size={14} /></button>
                     <button className="btn btn-ghost btn-icon btn-sm" onClick={() => deleteProj(p.id)}><Trash2 size={14} /></button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </Section>
 
             {/* Notes */}
@@ -418,6 +445,26 @@ export default function Clients() {
                         <input className="input" type="number" value={formProj.value} onChange={e => setFormProj(f => ({ ...f, value: Number(e.target.value) }))} />
                       </div>
                     </div>
+                    <div className="input-group">
+                      <label>Porcentaje Cobrado — {formProj.paidPercentage || 0}%</label>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {[0, 25, 50, 75, 100].map(v => (
+                          <button key={v} type="button" className={`filter-chip ${(formProj.paidPercentage || 0) === v ? 'active' : ''}`}
+                            style={{ padding: '4px 10px', fontSize: 12 }}
+                            onClick={() => setFormProj(f => ({ ...f, paidPercentage: v }))}>{v}%</button>
+                        ))}
+                        <input className="input" type="number" min={0} max={100}
+                          style={{ width: 70, textAlign: 'center' }}
+                          value={formProj.paidPercentage || 0}
+                          onChange={e => setFormProj(f => ({ ...f, paidPercentage: Math.min(100, Math.max(0, Number(e.target.value))) }))} />
+                      </div>
+                      {formProj.value > 0 && (
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                          Cobrado: {formProj.currency === 'USD' ? fmtUSD(formProj.value * (formProj.paidPercentage || 0) / 100) : fmtMoney(formProj.value * (formProj.paidPercentage || 0) / 100)}
+                          {' '}· Pendiente: {formProj.currency === 'USD' ? fmtUSD(formProj.value * (1 - (formProj.paidPercentage || 0) / 100)) : fmtMoney(formProj.value * (1 - (formProj.paidPercentage || 0) / 100))}
+                        </div>
+                      )}
+                    </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                       <div className="input-group" style={{ flex: 1 }}>
                         <label>Fecha de Entrega</label>
@@ -482,6 +529,26 @@ export default function Clients() {
                   <label>Valor</label>
                   <input className="input" type="number" value={projForm.value} onChange={e => setProjForm(f => ({ ...f, value: Number(e.target.value) }))} />
                 </div>
+              </div>
+              <div className="input-group">
+                <label>Porcentaje Cobrado — {projForm.paidPercentage || 0}%</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {[0, 25, 50, 75, 100].map(v => (
+                    <button key={v} type="button" className={`filter-chip ${(projForm.paidPercentage || 0) === v ? 'active' : ''}`}
+                      style={{ padding: '4px 10px', fontSize: 12 }}
+                      onClick={() => setProjForm(f => ({ ...f, paidPercentage: v }))}>{v}%</button>
+                  ))}
+                  <input className="input" type="number" min={0} max={100}
+                    style={{ width: 70, textAlign: 'center' }}
+                    value={projForm.paidPercentage || 0}
+                    onChange={e => setProjForm(f => ({ ...f, paidPercentage: Math.min(100, Math.max(0, Number(e.target.value))) }))} />
+                </div>
+                {projForm.value > 0 && (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                    Cobrado: {projForm.currency === 'USD' ? fmtUSD(projForm.value * (projForm.paidPercentage || 0) / 100) : fmtMoney(projForm.value * (projForm.paidPercentage || 0) / 100)}
+                    {' '}· Pendiente: {projForm.currency === 'USD' ? fmtUSD(projForm.value * (1 - (projForm.paidPercentage || 0) / 100)) : fmtMoney(projForm.value * (1 - (projForm.paidPercentage || 0) / 100))}
+                  </div>
+                )}
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
                 <div className="input-group" style={{ flex: 1 }}>
