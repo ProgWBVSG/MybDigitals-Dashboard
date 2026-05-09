@@ -118,7 +118,23 @@ export default function Skills() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
           {Object.entries(groupedSkills).map(([cat, sks]) => (
-            <div key={cat}>
+            <div 
+              key={cat}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => {
+                e.preventDefault();
+                const skillId = e.dataTransfer.getData('skillId');
+                if (skillId) {
+                  const skillToMove = skills.find(sk => sk.id === skillId);
+                  if (skillToMove && skillToMove.category !== cat) {
+                    update(skillToMove.id, { category: cat });
+                  }
+                }
+              }}
+              style={{ padding: '8px', borderRadius: '12px', background: 'transparent', transition: 'background 0.2s' }}
+              onDragEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.02)'; }}
+              onDragLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
                 <FolderPlus size={20} style={{ color: 'var(--primary)' }} />
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{cat}</h2>
@@ -130,11 +146,19 @@ export default function Skills() {
                 )}
               </div>
               {sks.length === 0 && (
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 16 }}>Carpeta vacía</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 16, padding: '20px', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: '8px' }}>
+                  Carpeta vacía. Arrastrá skills acá para moverlas.
+                </div>
               )}
               <div className="skills-grid">
                 {sks.map(s => (
-                  <div key={s.id} className="card skill-card">
+                  <div 
+                    key={s.id} 
+                    className="card skill-card"
+                    draggable
+                    onDragStart={e => e.dataTransfer.setData('skillId', s.id)}
+                    style={{ cursor: 'grab' }}
+                  >
                     <div className="card-header">
                       <h3 style={{ color: s.color }}>{s.name}</h3>
                       <span className="badge" style={{ background: `${s.color}22`, color: s.color }}>{s.category}</span>
