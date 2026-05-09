@@ -96,6 +96,17 @@ body {
   color: var(--text-primary); font-size: 14px; font-family: inherit;
   transition: border-color 0.2s;
 }
+
+/* Ocultar flechitas de los inputs numéricos */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 .input:focus, .textarea:focus, .select:focus {
   outline: none; border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(99,102,241,0.15);

@@ -165,7 +165,10 @@ export function useTasks() {
     if (!error && data) {
       setActiveBoardId(data.id);
       toast('Tablero creado');
-    } else { toast('Error al crear tablero', 'error'); }
+    } else {
+      console.error('Board creation error:', error);
+      toast(`Error al crear tablero: ${error?.message || 'Desconocido'}`, 'error');
+    }
   };
 
   const deleteBoard = async (id: string) => {
