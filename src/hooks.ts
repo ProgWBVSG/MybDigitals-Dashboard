@@ -59,7 +59,23 @@ export function useSkills() {
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.from('skills').select('*');
-    if (!error && data) setSkills(data.map(mapToCamel));
+    if (!error && data) {
+      setSkills(data.map(d => {
+        const camel = mapToCamel(d);
+        let desc = camel.description || '';
+        let links = '';
+        try {
+          if (desc.startsWith('{')) {
+            const meta = JSON.parse(desc);
+            if (meta.text !== undefined) {
+              desc = meta.text;
+              links = meta.links || '';
+            }
+          }
+        } catch (e) {}
+        return { ...camel, description: desc, links };
+      }));
+    }
     setLoading(false);
   }, []);
 
@@ -72,13 +88,24 @@ export function useSkills() {
   }, [load]);
 
   const create = async (data: Omit<Skill, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const { error } = await supabase.from('skills').insert([mapToSnake(data)]);
+    const metaDesc = JSON.stringify({ text: data.description, links: data.links || '' });
+    const { links, description, ...rest } = data as any;
+    const { error } = await supabase.from('skills').insert([mapToSnake({ ...rest, description: metaDesc })]);
     if (error) toast('Error al crear skill', 'error');
     else toast('Skill creada');
   };
 
   const update = async (id: string, updates: Partial<Skill>) => {
-    const { error } = await supabase.from('skills').update(mapToSnake({ ...updates, updatedAt: Date.now() })).eq('id', id);
+    let payload = { ...updates, updatedAt: Date.now() };
+    if (updates.description !== undefined || updates.links !== undefined) {
+      const current = skills.find(s => s.id === id);
+      const newDesc = updates.description !== undefined ? updates.description : (current?.description || '');
+      const newLinks = updates.links !== undefined ? updates.links : (current?.links || '');
+      const metaDesc = JSON.stringify({ text: newDesc, links: newLinks });
+      const { links, description, ...rest } = payload as any;
+      payload = { ...rest, description: metaDesc };
+    }
+    const { error } = await supabase.from('skills').update(mapToSnake(payload)).eq('id', id);
     if (error) toast('Error al actualizar', 'error');
     else toast('Skill actualizada');
   };

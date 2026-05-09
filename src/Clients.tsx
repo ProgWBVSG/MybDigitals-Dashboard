@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   Plus, Search, X, Pencil, Trash2, Users, Mail, Phone, AtSign,
-  FolderPlus, MessageSquarePlus, ChevronRight
+  FolderPlus, MessageSquarePlus, ChevronRight, Clock, Link
 } from 'lucide-react';
 import { useClients, toast } from './hooks';
 import {
@@ -17,9 +17,17 @@ const emptyClient: Omit<Client, 'id' | 'createdAt' | 'updatedAt'> = {
 };
 
 const emptyProject: ClientProject = {
-  id: '', name: '', description: '', status: 'pending', value: 0, currency: 'ARS',
-  startDate: Date.now(), endDate: null, links: '',
+  id: '', name: '', description: '', status: 'pending', value: 0, startDate: Date.now(), 
+  currency: 'ARS', links: '', endDate: null
 };
+
+function getTimeLeft(endDate: number | null) {
+  if (!endDate) return null;
+  const days = Math.ceil((endDate - Date.now()) / (1000 * 60 * 60 * 24));
+  if (days < 0) return `Atrasado ${Math.abs(days)}d`;
+  if (days === 0) return 'Entrega hoy';
+  return `Faltan ${days}d`;
+}
 
 export default function Clients() {
   const { clients, create, update, remove } = useClients();
@@ -186,11 +194,21 @@ export default function Clients() {
                     )}
                     {c.projects.length > 0 && (
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        {c.projects.map(p => (
-                          <span key={p.id} className="tag" style={{ fontSize: 10, padding: '2px 6px', background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-                            {p.name}
-                          </span>
-                        ))}
+                    {c.projects.filter(p => p.status !== 'cancelled').map(p => {
+                          const timeLeft = p.status !== 'delivered' ? getTimeLeft(p.endDate) : 'Entregado';
+                          const isLate = p.endDate && p.status !== 'delivered' && p.endDate < Date.now();
+                          return (
+                            <span key={p.id} className="tag" style={{ 
+                               fontSize: 10, padding: '2px 8px', 
+                               background: isLate ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg-hover)', 
+                               border: `1px solid ${isLate ? 'rgba(239, 68, 68, 0.3)' : 'var(--border)'}`,
+                               color: isLate ? '#ef4444' : 'inherit',
+                               display: 'flex', gap: 6, alignItems: 'center', borderRadius: 12
+                            }}>
+                              {p.name} {timeLeft && <span style={{opacity: 0.7, fontWeight: 600}}>• {timeLeft}</span>}
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -267,16 +285,32 @@ export default function Clients() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{p.name}</div>
                     {p.description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.description}</div>}
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <span className="badge" style={{ fontSize: 10 }}>{PROJECT_STATUS_LABELS[p.status]}</span>
-                      <span style={{ fontWeight: 600, color: p.currency === 'USD' ? '#3b82f6' : '#10b981' }}>{p.currency === 'USD' ? fmtUSD(p.value) : fmtMoney(p.value)}</span>
-                      {p.endDate && <span style={{ background: 'var(--bg-hover)', padding: '2px 6px', borderRadius: 4 }}>Entrega: {fmt(p.endDate)}</span>}
-                    </div>
-                    {p.links && (
-                      <div style={{ marginTop: 6, fontSize: 11, color: 'var(--primary)', wordBreak: 'break-all' }}>
-                        <a href={p.links.startsWith('http') ? p.links : `https://${p.links}`} target="_blank" rel="noopener noreferrer">{p.links}</a>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 10, background: 'var(--bg-hover)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)' }}>
+                          {PROJECT_STATUS_LABELS[p.status]}
+                        </span>
+                        <span style={{ fontSize: 10, background: 'var(--bg-hover)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)' }}>
+                          {p.currency === 'USD' ? fmtUSD(p.value) : fmtMoney(p.value)}
+                        </span>
+                        {p.endDate && (
+                          <span style={{ 
+                            fontSize: 10,
+                            background: (p.endDate < Date.now() && p.status !== 'delivered') ? 'rgba(239, 68, 68, 0.1)' : 'var(--bg-hover)', 
+                            color: (p.endDate < Date.now() && p.status !== 'delivered') ? '#ef4444' : 'inherit',
+                            padding: '2px 6px', borderRadius: 4, border: `1px solid ${(p.endDate < Date.now() && p.status !== 'delivered') ? 'rgba(239, 68, 68, 0.3)' : 'var(--border)'}`,
+                            display: 'flex', gap: 4, alignItems: 'center' 
+                          }}>
+                            <Clock size={10} />
+                            {p.status === 'delivered' ? `Entregado el ${fmt(p.endDate).split(',')[0]}` : `Entrega: ${fmt(p.endDate).split(',')[0]} (${getTimeLeft(p.endDate)})`}
+                          </span>
+                        )}
+                        {p.links && (
+                          <a href={p.links.startsWith('http') ? p.links : `https://${p.links}`} target="_blank" rel="noreferrer" 
+                             style={{ fontSize: 10, background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', gap: 4, alignItems: 'center', textDecoration: 'none' }}>
+                            <Link size={10} /> Links / Drive
+                          </a>
+                        )}
                       </div>
-                    )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openProjEdit(p)}><Pencil size={14} /></button>

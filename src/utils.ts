@@ -81,7 +81,7 @@ export const fmtUSD = (n: number) => new Intl.NumberFormat('en-US', { style: 'cu
 export interface Skill {
   id: string; name: string; category: string; level: number;
   description: string; assignedTo: string[]; createdAt: number;
-  updatedAt: number; color: string;
+  updatedAt: number; color: string; links?: string;
 }
 
 export interface Board {
