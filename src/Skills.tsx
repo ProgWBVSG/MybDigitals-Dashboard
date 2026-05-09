@@ -18,17 +18,24 @@ export default function Skills() {
   const [filterCat, setFilterCat] = useState('');
   const [confirm, setConfirm] = useState<string | null>(null);
 
+  const allCategories = useMemo(() => {
+    const cats = new Set(CATEGORIES);
+    skills.forEach(s => cats.add(s.category));
+    return Array.from(cats);
+  }, [skills]);
+
   const groupedSkills = useMemo(() => {
-    let list = skills;
+    let list = skills.filter(s => s.name !== '__folder__');
     if (search) list = list.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
     if (filterCat) list = list.filter(s => s.category === filterCat);
     
-    return CATEGORIES.reduce((acc, cat) => {
+    return allCategories.reduce((acc, cat) => {
       const catSkills = list.filter(s => s.category === cat);
-      if (catSkills.length > 0) acc[cat] = catSkills;
+      const hasDummy = skills.some(s => s.name === '__folder__' && s.category === cat);
+      if (catSkills.length > 0 || hasDummy) acc[cat] = catSkills;
       return acc;
     }, {} as Record<string, Skill[]>);
-  }, [skills, search, filterCat]);
+  }, [skills, search, filterCat, allCategories]);
   
   const hasResults = Object.keys(groupedSkills).length > 0;
 
@@ -41,6 +48,30 @@ export default function Skills() {
     if (editing) update(editing.id, form);
     else create(form);
     close();
+  };
+
+  const createFolder = () => {
+    const name = window.prompt('Nombre de la nueva carpeta:');
+    if (name && name.trim()) {
+      create({
+        name: '__folder__',
+        category: name.trim(),
+        level: 1,
+        description: '',
+        assignedTo: [],
+        color: '#6366f1',
+        links: ''
+      });
+      toast('Carpeta creada');
+    }
+  };
+
+  const deleteFolder = (cat: string) => {
+    const dummy = skills.find(s => s.name === '__folder__' && s.category === cat);
+    if (dummy) {
+      remove(dummy.id);
+      toast('Carpeta eliminada');
+    }
   };
 
   const addPerson = () => {
@@ -66,11 +97,14 @@ export default function Skills() {
         <div className="toolbar-right">
           <div className="filters">
             <button className={`filter-chip ${!filterCat ? 'active' : ''}`} onClick={() => setFilterCat('')}>Todas</button>
-            {CATEGORIES.map(c => (
+            {allCategories.map(c => (
               <button key={c} className={`filter-chip ${filterCat === c ? 'active' : ''}`} onClick={() => setFilterCat(c)}>{c}</button>
             ))}
           </div>
-          <button className="btn btn-primary" onClick={openNew}><Plus size={16} /> Nueva Skill</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-secondary" onClick={createFolder}><FolderPlus size={16} /> Nueva Carpeta</button>
+            <button className="btn btn-primary" onClick={openNew}><Plus size={16} /> Nueva Skill</button>
+          </div>
         </div>
       </div>
 
@@ -89,7 +123,15 @@ export default function Skills() {
                 <FolderPlus size={20} style={{ color: 'var(--primary)' }} />
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{cat}</h2>
                 <span className="badge" style={{ marginLeft: 'auto' }}>{sks.length} items</span>
+                {sks.length === 0 && (
+                  <button className="btn btn-ghost btn-sm btn-icon" onClick={() => deleteFolder(cat)} title="Eliminar carpeta vacía">
+                    <Trash2 size={14} style={{ color: 'var(--text-muted)' }} />
+                  </button>
+                )}
               </div>
+              {sks.length === 0 && (
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 16 }}>Carpeta vacía</div>
+              )}
               <div className="skills-grid">
                 {sks.map(s => (
                   <div key={s.id} className="card skill-card">
@@ -155,10 +197,11 @@ export default function Skills() {
                 <input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej: React, Python, SEO..." />
               </div>
               <div className="input-group">
-                <label>Categoría</label>
-                <select className="select" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <label>Carpeta / Categoría</label>
+                <input className="input" list="cat-list" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} placeholder="Escribí o seleccioná una carpeta..." />
+                <datalist id="cat-list">
+                  {allCategories.map(c => <option key={c} value={c} />)}
+                </datalist>
               </div>
               <div className="input-group">
                 <label>Nivel: {LEVELS[form.level - 1]}</label>
