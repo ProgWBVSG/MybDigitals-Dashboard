@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client, type Expense, type Goal } from './utils';
+import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client, type Expense, type Goal, type ClientProject, type ClientNote } from './utils';
 import { supabase } from './supabase';
 
 // ─── TOAST ───
@@ -237,7 +237,23 @@ export function useClients() {
         return {
           ...camel,
           contact: c.contact || { email: '', whatsapp: '', instagram: '' },
-          projects: projectsData ? projectsData.filter(p => p.client_id === c.id).map(mapToCamel) : [],
+          projects: projectsData ? projectsData.filter(p => p.client_id === c.id).map(p => {
+            const mappedProj = mapToCamel(p);
+            let desc = mappedProj.description || '';
+            let currency = 'ARS';
+            let links = '';
+            try {
+              if (desc.startsWith('{')) {
+                const meta = JSON.parse(desc);
+                if (meta.text !== undefined) {
+                  desc = meta.text;
+                  currency = meta.currency || 'ARS';
+                  links = meta.links || '';
+                }
+              }
+            } catch (e) {}
+            return { ...mappedProj, description: desc, currency, links };
+          }) : [],
           notes: notesData ? notesData.filter(n => n.client_id === c.id).map(mapToCamel).sort((a: any, b: any) => b.createdAt - a.createdAt) : []
         };
       }));
@@ -253,28 +269,33 @@ export function useClients() {
     return () => { supabase.removeChannel(subC); supabase.removeChannel(subP); supabase.removeChannel(subN); };
   }, [load]);
 
-  const create = async (data: Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'projects' | 'notes'>) => {
-    // IMPORTANTE: Quitamos proyectos y notas porque son tablas aparte
-    const { projects, notes, ...rest } = data as any;
-    
-    // Manda el objeto 'contact' entero tal como está
+  const create = async (data: Omit<Client, 'id' | 'createdAt' | 'updatedAt' | 'projects' | 'notes'> & { projects?: ClientProject[], notes?: ClientNote[] }) => {
+    // Remove projects, notes, and the derived totalRevenueUSD
+    const { projects, notes, totalRevenueUSD, ...rest } = data as any;
     const payload = mapToSnake(rest);
     
-    const { error } = await supabase.from('clients').insert([payload]);
+    const { data: createdClient, error } = await supabase.from('clients').insert([payload]).select().single();
     if (error) {
       console.error('Full DB Error:', error);
-      alert('Error de Base de Datos: ' + error.message + '\nDetalle: ' + error.details);
       toast('Error al crear cliente', 'error');
     } else {
+      if (createdClient && projects && projects.length > 0) {
+        for (const p of projects) {
+          const metaDesc = JSON.stringify({ text: p.description, currency: p.currency, links: p.links });
+          const { currency, links, description, ...dbProj } = p as any;
+          const mapped = mapToSnake({ ...dbProj, description: metaDesc, clientId: createdClient.id });
+          await supabase.from('client_projects').insert(mapped);
+        }
+        const revenueARS = projects.filter((p: any) => p.status !== 'cancelled' && p.currency === 'ARS').reduce((s: number, p: any) => s + p.value, 0);
+        await supabase.from('clients').update({ total_revenue: revenueARS }).eq('id', createdClient.id);
+      }
       toast('Cliente creado');
     }
   };
 
   const update = async (id: string, updates: Partial<Client>) => {
-    // Quitamos proyectos y notas
-    const { projects, notes, ...clientFields } = updates;
-    
-    // Mapeamos a snake_case, el contact pasará directo como JSON
+    // Remove projects, notes, and the derived totalRevenueUSD
+    const { projects, notes, totalRevenueUSD, ...clientFields } = updates;
     const payload = mapToSnake(clientFields);
 
     if (Object.keys(payload).length > 0) {
@@ -292,10 +313,15 @@ export function useClients() {
       
       // Upsert projects
       for (const p of projects) {
+        // Pack metadata into description to avoid schema errors
+        const metaDesc = JSON.stringify({ text: p.description, currency: p.currency, links: p.links });
+        const { currency, links, description, ...dbProj } = p as any;
+        const mapped = mapToSnake({ ...dbProj, description: metaDesc, clientId: id });
+        
         if (p.id) {
-           await supabase.from('client_projects').upsert(mapToSnake({ ...p, clientId: id }));
+           await supabase.from('client_projects').upsert(mapped);
         } else {
-           await supabase.from('client_projects').insert(mapToSnake({ ...p, clientId: id }));
+           await supabase.from('client_projects').insert(mapped);
         }
       }
       // Delete removed projects
@@ -304,9 +330,8 @@ export function useClients() {
         await supabase.from('client_projects').delete().in('id', toDelete.map(d => d.id));
       }
 
-      // Recalcular Total Revenue (Opcional, pero util si queremos persistirlo en BD en tabla clients)
-      const revenue = projects.filter(p => p.status !== 'cancelled').reduce((s, p) => s + p.value, 0);
-      await supabase.from('clients').update({ total_revenue: revenue }).eq('id', id);
+      const revenueARS = projects.filter(p => p.status !== 'cancelled' && p.currency === 'ARS').reduce((s, p) => s + p.value, 0);
+      await supabase.from('clients').update({ total_revenue: revenueARS }).eq('id', id);
     }
 
     // Notas (Add only)

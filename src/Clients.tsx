@@ -44,21 +44,39 @@ export default function Clients() {
     return list.sort((a, b) => b.updatedAt - a.updatedAt);
   }, [clients, search, filterStatus]);
 
-  const openNew = () => { setForm(emptyClient); setEditing(null); setModal(true); };
+  const [formProj, setFormProj] = useState(emptyProject);
+  const [addProj, setAddProj] = useState(false);
+
+  const openNew = () => { 
+    setForm(emptyClient); 
+    setFormProj({ ...emptyProject, id: uuid() });
+    setAddProj(true);
+    setEditing(null); 
+    setModal(true); 
+  };
   const openEdit = (c: Client) => { setForm(c); setEditing(c); setModal(true); };
   const close = () => { setModal(false); setEditing(null); };
 
   const save = () => {
     if (!form.name.trim()) { toast('El nombre es obligatorio', 'error'); return; }
-    const revenue = form.projects.length > 0 
-      ? form.projects.filter(p => p.status !== 'cancelled' && p.currency === 'ARS').reduce((s, p) => s + p.value, 0) 
+    
+    // Si estamos creando un cliente nuevo y el usuario habilitó "Agregar Servicio Inicial" y le puso un nombre
+    const isAddingProj = !editing && addProj && formProj.name.trim();
+    const finalProjects = isAddingProj ? [formProj] : form.projects;
+    
+    const revenue = finalProjects.length > 0 
+      ? finalProjects.filter(p => p.status !== 'cancelled' && p.currency === 'ARS').reduce((s, p) => s + p.value, 0) 
       : form.totalRevenue;
-    const revenueUSD = form.projects.length > 0 
-      ? form.projects.filter(p => p.status !== 'cancelled' && p.currency === 'USD').reduce((s, p) => s + p.value, 0) 
+    const revenueUSD = finalProjects.length > 0 
+      ? finalProjects.filter(p => p.status !== 'cancelled' && p.currency === 'USD').reduce((s, p) => s + p.value, 0) 
       : form.totalRevenueUSD;
       
-    if (editing) update(editing.id, { ...form, totalRevenue: revenue, totalRevenueUSD: revenueUSD });
-    else create({ ...form, totalRevenue: revenue, totalRevenueUSD: revenueUSD });
+    if (editing) {
+      update(editing.id, { ...form, totalRevenue: revenue, totalRevenueUSD: revenueUSD });
+    } else {
+      create({ ...form, totalRevenue: revenue, totalRevenueUSD: revenueUSD, projects: isAddingProj ? [formProj] : [] });
+    }
+    
     close();
     if (detail && editing) {
       const refreshed = { ...detail, ...form, totalRevenue: revenue, totalRevenueUSD: revenueUSD, updatedAt: Date.now() };
@@ -320,7 +338,68 @@ export default function Clients() {
                 <input className="input" value={form.contact.instagram} onChange={e => setForm(f => ({ ...f, contact: { ...f.contact, instagram: e.target.value } }))} placeholder="@usuario" />
               </div>
             </div>
-            <div className="modal-actions">
+            
+            {/* Project section inside Client Modal (only when creating) */}
+            {!editing && (
+              <>
+                <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input type="checkbox" id="addProj" checked={addProj} onChange={e => setAddProj(e.target.checked)} style={{ accentColor: 'var(--primary)', width: 16, height: 16 }} />
+                  <label htmlFor="addProj" style={{ fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>Añadir Servicio / Proyecto ahora</label>
+                </div>
+                {addProj && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16, padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid var(--border)' }}>
+                    <div className="input-group">
+                      <label>Servicio Adquirido</label>
+                      <select className="select" value={formProj.name} onChange={e => setFormProj(f => ({ ...f, name: e.target.value }))}>
+                        <option value="" disabled>Seleccionar servicio...</option>
+                        <option value="Landing Page">Landing Page</option>
+                        <option value="Página Web">Página Web</option>
+                        <option value="Automatización">Automatización</option>
+                        <option value="Invitación Digital">Invitación Digital</option>
+                        <option value="E-commerce">E-commerce</option>
+                        <option value="Diseño UI/UX">Diseño UI/UX</option>
+                        <option value="Otro">Otro servicio...</option>
+                      </select>
+                    </div>
+                    <div className="input-group">
+                      <label>Descripción</label>
+                      <input className="input" value={formProj.description} onChange={e => setFormProj(f => ({ ...f, description: e.target.value }))} placeholder="Detalles breves..." />
+                    </div>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <div className="input-group" style={{ flex: 1 }}>
+                        <label>Estado</label>
+                        <select className="select" value={formProj.status} onChange={e => setFormProj(f => ({ ...f, status: e.target.value as ClientProject['status'] }))}>
+                          {PROJECT_STATUSES.map(s => <option key={s} value={s}>{PROJECT_STATUS_LABELS[s]}</option>)}
+                        </select>
+                      </div>
+                      <div className="input-group" style={{ width: 100 }}>
+                        <label>Moneda</label>
+                        <select className="select" value={formProj.currency} onChange={e => setFormProj(f => ({ ...f, currency: e.target.value as 'ARS' | 'USD' }))}>
+                          <option value="ARS">ARS</option>
+                          <option value="USD">USD</option>
+                        </select>
+                      </div>
+                      <div className="input-group" style={{ flex: 1 }}>
+                        <label>Valor</label>
+                        <input className="input" type="number" value={formProj.value} onChange={e => setFormProj(f => ({ ...f, value: Number(e.target.value) }))} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <div className="input-group" style={{ flex: 1 }}>
+                        <label>Fecha de Entrega</label>
+                        <input className="input" type="date" value={formProj.endDate ? new Date(formProj.endDate).toISOString().split('T')[0] : ''} onChange={e => setFormProj(f => ({ ...f, endDate: e.target.value ? new Date(e.target.value).getTime() : null }))} />
+                      </div>
+                    </div>
+                    <div className="input-group">
+                      <label>Documentos / Links (Opcional)</label>
+                      <input className="input" value={formProj.links} onChange={e => setFormProj(f => ({ ...f, links: e.target.value }))} placeholder="https://..." />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="modal-actions" style={{ marginTop: 24 }}>
               <button className="btn btn-secondary" onClick={close}>Cancelar</button>
               <button className="btn btn-primary" onClick={save}>{editing ? 'Guardar' : 'Crear Cliente'}</button>
             </div>
