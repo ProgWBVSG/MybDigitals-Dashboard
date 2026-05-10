@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Plus, Search, X, Pencil, Trash2, Users, Mail, Phone, AtSign,
   FolderPlus, MessageSquarePlus, ChevronRight, Clock, Link
@@ -51,6 +51,16 @@ export default function Clients() {
     if (filterStatus) list = list.filter(c => c.status === filterStatus);
     return list.sort((a, b) => b.updatedAt - a.updatedAt);
   }, [clients, search, filterStatus]);
+
+  // Sync detail panel with fresh data from Supabase whenever clients reload
+  useEffect(() => {
+    if (detail) {
+      const fresh = clients.find(c => c.id === detail.id);
+      if (fresh) {
+        setDetail(fresh);
+      }
+    }
+  }, [clients]);
 
   const [formProj, setFormProj] = useState(emptyProject);
   const [addProj, setAddProj] = useState(false);

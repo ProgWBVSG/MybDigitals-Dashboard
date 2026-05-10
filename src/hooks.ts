@@ -274,6 +274,7 @@ export function useClients() {
             let desc = mappedProj.description || '';
             let currency = 'ARS';
             let links = '';
+            let paidPercentage = 0;
             try {
               if (desc.startsWith('{')) {
                 const meta = JSON.parse(desc);
@@ -281,10 +282,11 @@ export function useClients() {
                   desc = meta.text;
                   currency = meta.currency || 'ARS';
                   links = meta.links || '';
+                  paidPercentage = meta.paidPercentage || 0;
                 }
               }
             } catch (e) {}
-            return { ...mappedProj, description: desc, currency, links };
+            return { ...mappedProj, description: desc, currency, links, paidPercentage };
           }) : [],
           notes: notesData ? notesData.filter(n => n.client_id === c.id).map(mapToCamel).sort((a: any, b: any) => b.createdAt - a.createdAt) : []
         };
@@ -313,8 +315,8 @@ export function useClients() {
     } else {
       if (createdClient && projects && projects.length > 0) {
         for (const p of projects) {
-          const metaDesc = JSON.stringify({ text: p.description, currency: p.currency, links: p.links });
-          const { currency, links, description, ...dbProj } = p as any;
+          const metaDesc = JSON.stringify({ text: p.description, currency: p.currency, links: p.links, paidPercentage: p.paidPercentage || 0 });
+          const { currency, links, description, paidPercentage, ...dbProj } = p as any;
           const mapped = mapToSnake({ ...dbProj, description: metaDesc, clientId: createdClient.id });
           await supabase.from('client_projects').insert(mapped);
         }
@@ -346,8 +348,8 @@ export function useClients() {
       // Upsert projects
       for (const p of projects) {
         // Pack metadata into description to avoid schema errors
-        const metaDesc = JSON.stringify({ text: p.description, currency: p.currency, links: p.links });
-        const { currency, links, description, ...dbProj } = p as any;
+        const metaDesc = JSON.stringify({ text: p.description, currency: p.currency, links: p.links, paidPercentage: p.paidPercentage || 0 });
+        const { currency, links, description, paidPercentage, ...dbProj } = p as any;
         const mapped = mapToSnake({ ...dbProj, description: metaDesc, clientId: id });
         
         if (p.id) {
