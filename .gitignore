@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Supabase CLI temp / local
+supabase/.temp
+supabase/.branches
+.drive-secrets.env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

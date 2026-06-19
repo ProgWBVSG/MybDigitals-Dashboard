@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client, type Expense, type Goal, type ClientProject, type ClientNote } from './utils';
+import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client, type Expense, type Goal, type ClientProject, type ClientNote,
+  type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type ServiceType } from './utils';
+import { getPlaybook } from './playbooks';
 import { supabase } from './supabase';
 
 // ─── TOAST ───
@@ -312,6 +314,7 @@ export function useClients() {
     if (error) {
       console.error('Full DB Error:', error);
       toast('Error al crear cliente', 'error');
+      return null;
     } else {
       if (createdClient && projects && projects.length > 0) {
         for (const p of projects) {
@@ -324,6 +327,7 @@ export function useClients() {
         await supabase.from('clients').update({ total_revenue: revenueARS }).eq('id', createdClient.id);
       }
       toast('Cliente creado');
+      return createdClient?.id as string ?? null;
     }
   };
 
@@ -438,6 +442,127 @@ export function useFinance() {
   };
 
   return { expenses, goals, loading, addExpense, removeExpense, addGoal, updateGoal, removeGoal, refresh: load };
+}
+
+// ─── ONBOARDINGS HOOK ───
+export function useOnboardings() {
+  const [onboardings, setOnboardings] = useState<Onboarding[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    const { data: obData, error } = await supabase.from('onboardings').select('*');
+    const { data: stepData } = await supabase.from('onboarding_steps').select('*');
+    const { data: payData } = await supabase.from('onboarding_payments').select('*');
+    const { data: docData } = await supabase.from('onboarding_documents').select('*');
+    const { data: clientData } = await supabase.from('clients').select('id, name');
+
+    if (!error && obData) {
+      const nameOf = (id: string) => clientData?.find((c: any) => c.id === id)?.name || '';
+      setOnboardings(obData.map(o => {
+        const camel = mapToCamel(o);
+        return {
+          ...camel,
+          clientName: nameOf(o.client_id),
+          steps: stepData ? stepData.filter(s => s.onboarding_id === o.id).map(mapToCamel).sort((a: any, b: any) => a.order - b.order) : [],
+          payments: payData ? payData.filter(p => p.onboarding_id === o.id).map(mapToCamel) : [],
+          documents: docData ? docData.filter(d => d.onboarding_id === o.id).map(mapToCamel) : [],
+        };
+      }));
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('onboarding_all')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'onboardings' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'onboarding_steps' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'onboarding_payments' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'onboarding_documents' }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+
+  // Crea el onboarding y "materializa" el playbook en filas reales
+  const create = async (clientId: string, serviceType: ServiceType, title: string): Promise<string | null> => {
+    const playbook = getPlaybook(serviceType);
+    if (!playbook) { toast('Ese servicio todavía no tiene playbook', 'error'); return null; }
+
+    const now = Date.now();
+    const { data: ob, error } = await supabase.from('onboardings').insert([mapToSnake({
+      clientId, serviceType, title, status: 'active', currentPhase: 0,
+      driveRootLink: '', whatsappLink: '', domain: '', startedAt: now, launchedAt: null,
+    })]).select().single();
+
+    if (error || !ob) {
+      console.error('Onboarding create error:', error);
+      toast(`Error al crear onboarding: ${error?.message || ''}`, 'error');
+      return null;
+    }
+
+    const steps = playbook.steps.map((s, i) => mapToSnake({
+      onboardingId: ob.id, phase: s.phase, phaseName: s.phaseName, title: s.title,
+      description: s.description, owner: s.owner, assignedTo: '', status: 'pending',
+      isOptional: !!s.isOptional, link: '', dueDate: null, order: i, completedAt: null,
+    }));
+    const payments = playbook.payments.map(p => mapToSnake({
+      onboardingId: ob.id, label: p.label, amount: 0, currency: 'ARS',
+      percentage: p.percentage, paid: false, paidAt: null,
+    }));
+    const documents = playbook.documents.map(d => mapToSnake({
+      onboardingId: ob.id, docType: d.docType, title: d.title,
+      content: d.content, externalLink: '', status: 'pending',
+    }));
+
+    const [{ error: e1 }, { error: e2 }, { error: e3 }] = await Promise.all([
+      supabase.from('onboarding_steps').insert(steps),
+      supabase.from('onboarding_payments').insert(payments),
+      supabase.from('onboarding_documents').insert(documents),
+    ]);
+    if (e1 || e2 || e3) {
+      console.error('Materialize error:', e1 || e2 || e3);
+      toast('Onboarding creado, pero falló parte del playbook', 'error');
+    } else {
+      toast('Onboarding creado');
+    }
+    return ob.id as string;
+  };
+
+  const update = async (id: string, updates: Partial<Onboarding>) => {
+    const { steps, payments, documents, clientName, createdAt, ...fields } = updates as any;
+    const { error } = await supabase.from('onboardings').update(mapToSnake({ ...fields, updatedAt: Date.now() })).eq('id', id);
+    if (error) toast('Error al actualizar', 'error');
+  };
+
+  const updateStep = async (id: string, updates: Partial<OnboardingStep>) => {
+    const payload: any = { ...updates };
+    if (updates.status !== undefined) {
+      payload.completedAt = updates.status === 'done' ? Date.now() : null;
+    }
+    const { error } = await supabase.from('onboarding_steps').update(mapToSnake(payload)).eq('id', id);
+    if (error) toast('Error al actualizar el paso', 'error');
+  };
+
+  const updatePayment = async (id: string, updates: Partial<OnboardingPayment>) => {
+    const payload: any = { ...updates };
+    if (updates.paid !== undefined) payload.paidAt = updates.paid ? Date.now() : null;
+    const { error } = await supabase.from('onboarding_payments').update(mapToSnake(payload)).eq('id', id);
+    if (error) toast('Error al actualizar el pago', 'error');
+  };
+
+  const updateDocument = async (id: string, updates: Partial<OnboardingDocument>) => {
+    const { error } = await supabase.from('onboarding_documents').update(mapToSnake({ ...updates, updatedAt: Date.now() })).eq('id', id);
+    if (error) toast('Error al guardar el documento', 'error');
+    else toast('Documento guardado');
+  };
+
+  const remove = async (id: string) => {
+    const { error } = await supabase.from('onboardings').delete().eq('id', id);
+    if (error) toast('Error al eliminar', 'error');
+    else toast('Onboarding eliminado');
+  };
+
+  return { onboardings, loading, create, update, updateStep, updatePayment, updateDocument, remove, refresh: load };
 }
 
 // ─── EXCHANGE RATE HOOK ───

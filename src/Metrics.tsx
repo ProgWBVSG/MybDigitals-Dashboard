@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { 
-  CheckCircle2, Clock, AlertTriangle, CalendarDays, TrendingUp, 
-  Users, Wallet, MinusCircle, Target, Plus, Trash2, TrendingDown, Receipt, Calendar 
+import {
+  CheckCircle2, Clock, AlertTriangle, CalendarDays, TrendingUp,
+  Users, Wallet, MinusCircle, Target, Plus, Trash2, TrendingDown, Receipt, Calendar, Rocket
 } from 'lucide-react';
-import { useTasks, useCalendar, useClients, useFinance, useExchangeRate } from './hooks';
-import { fmt, isOverdue, fmtMoney, fmtUSD, type Board, type ClientProject } from './utils';
+import { useTasks, useCalendar, useClients, useFinance, useExchangeRate, useOnboardings } from './hooks';
+import { fmt, isOverdue, fmtMoney, fmtUSD, onboardingProgress, type Board, type ClientProject } from './utils';
 
 const CHART_COLORS = ['#6366f1', '#3b82f6', '#f59e0b', '#10b981'];
 
@@ -13,8 +13,16 @@ export default function Metrics() {
   const { boards, cards } = useTasks();
   const { events } = useCalendar();
   const { clients } = useClients();
-  const { expenses, goals, addExpense, removeExpense, addGoal, removeGoal } = useFinance();
+  const { expenses, goals, addExpense, removeExpense, addGoal, updateGoal, removeGoal } = useFinance();
+  const { onboardings } = useOnboardings();
   const dolarRate = useExchangeRate();
+
+  // Onboarding metrics
+  const activeOnboardings = onboardings.filter(o => o.status === 'active');
+  const avgOnbProgress = activeOnboardings.length > 0
+    ? Math.round(activeOnboardings.reduce((s, o) => s + onboardingProgress(o.steps), 0) / activeOnboardings.length)
+    : 0;
+  const launchedOnboardings = onboardings.filter(o => o.status === 'launched').length;
 
   const [showExpModal, setShowExpModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
@@ -211,6 +219,7 @@ export default function Metrics() {
         <KPI icon={<AlertTriangle size={20} />} label="Atrasadas" value={String(overdue)} sub={overdue > 0 ? '⚠️ requieren atención' : 'todo al día'} color={overdue > 0 ? '#ef4444' : '#10b981'} />
         <KPI icon={<CalendarDays size={20} />} label="Próx. Eventos" value={String(upcomingEvents.length)} sub="esta semana" color="#6366f1" />
         <KPI icon={<Users size={20} />} label="Clientes Activos" value={String(activeClients)} sub={`de ${clients.length} total`} color="#f59e0b" />
+        <KPI icon={<Rocket size={20} />} label="Onboardings" value={String(activeOnboardings.length)} sub={activeOnboardings.length > 0 ? `${avgOnbProgress}% progreso prom.` : `${launchedOnboardings} lanzados`} color="#8b5cf6" />
       </div>
 
       {/* Charts row */}
@@ -266,24 +275,35 @@ export default function Metrics() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {goals.map(g => {
-                const percent = Math.min(Math.round((equivalentTotalARS / g.targetAmount) * 100), 100);
+                const current = g.currentAmount || 0;
+                const percent = g.targetAmount > 0 ? Math.min(Math.round((current / g.targetAmount) * 100), 100) : 0;
                 return (
                   <div key={g.id}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                       <span style={{ fontSize: 14, fontWeight: 600 }}>{g.name}</span>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtMoney(equivalentTotalARS)} / {fmtMoney(g.targetAmount)}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtMoney(current)} / {fmtMoney(g.targetAmount)}</span>
                         <button className="btn btn-ghost btn-icon btn-sm" onClick={() => removeGoal(g.id)}><Trash2 size={12} /></button>
                       </div>
                     </div>
                     <div style={{ height: 12, background: 'var(--bg-hover)', borderRadius: 6, overflow: 'hidden', position: 'relative' }}>
-                      <div style={{ 
-                        width: `${percent}%`, height: '100%', 
-                        background: 'linear-gradient(90deg, var(--primary), #10b981)', 
-                        borderRadius: 6, transition: 'width 1s ease-out' 
+                      <div style={{
+                        width: `${percent}%`, height: '100%',
+                        background: 'linear-gradient(90deg, var(--primary), #10b981)',
+                        borderRadius: 6, transition: 'width 1s ease-out'
                       }} />
                     </div>
-                    <div style={{ fontSize: 12, marginTop: 6, textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>{percent}%</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 10 }}>
+                      <input
+                        className="input"
+                        type="number"
+                        defaultValue={current || ''}
+                        placeholder="Monto actual"
+                        style={{ width: 140, fontSize: 12, padding: '6px 10px' }}
+                        onBlur={e => { const v = Number(e.target.value); if (v !== current) updateGoal(g.id, { currentAmount: v }); }}
+                      />
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>{percent}%</span>
+                    </div>
                   </div>
                 );
               })}

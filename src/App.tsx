@@ -1,18 +1,19 @@
 import { useState } from 'react';
-import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2 } from 'lucide-react';
+import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket } from 'lucide-react';
 import { useToastProvider } from './hooks';
 import Skills from './Skills';
 import Tasks from './Tasks';
 import CalendarView from './Calendar';
 import Metrics from './Metrics';
 import Clients from './Clients';
+import Onboarding from './Onboarding';
 import './index.css';
 
-type Tab = 'metrics' | 'tasks' | 'calendar' | 'clients' | 'skills';
+type Tab = 'metrics' | 'onboarding' | 'tasks' | 'calendar' | 'clients' | 'skills';
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('metrics');
   const toasts = useToastProvider();
+  const [tab, setTab] = useState<Tab>('metrics');
 
   return (
     <>
@@ -32,6 +33,9 @@ export default function App() {
         <nav className="header-nav">
           <button className={tab === 'metrics' ? 'active' : ''} onClick={() => setTab('metrics')}>
             <BarChart3 size={16} /> Métricas
+          </button>
+          <button className={tab === 'onboarding' ? 'active' : ''} onClick={() => setTab('onboarding')}>
+            <Rocket size={16} /> Onboarding
           </button>
           <button className={tab === 'tasks' ? 'active' : ''} onClick={() => setTab('tasks')}>
             <LayoutGrid size={16} /> Tasks
@@ -53,6 +57,7 @@ export default function App() {
       {/* Main Content */}
       <main className="main">
         {tab === 'metrics' && <Metrics />}
+        {tab === 'onboarding' && <Onboarding />}
         {tab === 'tasks' && <Tasks />}
         {tab === 'calendar' && <CalendarView />}
         {tab === 'clients' && <Clients />}

@@ -73,6 +73,45 @@ export const CLIENT_STATUS_COLORS: Record<string, string> = { prospect: '#f59e0b
 export const PROJECT_STATUSES = ['pending', 'in_progress', 'delivered', 'cancelled'] as const;
 export const PROJECT_STATUS_LABELS: Record<string, string> = { pending: 'Pendiente', in_progress: 'En curso', delivered: 'Entregado', cancelled: 'Cancelado' };
 
+// ─── ONBOARDING ───
+export const SERVICE_TYPES = ['landing', 'web_pro', 'automation', 'consulting'] as const;
+export type ServiceType = typeof SERVICE_TYPES[number];
+export const SERVICE_LABELS: Record<ServiceType, string> = {
+  landing: 'Landing Page',
+  web_pro: 'Web Profesional',
+  automation: 'Automatización IA',
+  consulting: 'Consultoría',
+};
+// Servicios con playbook ya disponible (el resto se muestra "próximamente")
+export const SERVICE_AVAILABLE: Record<ServiceType, boolean> = {
+  landing: true, web_pro: false, automation: false, consulting: false,
+};
+
+export const ONBOARDING_STATUSES = ['active', 'paused', 'launched', 'archived'] as const;
+export const ONBOARDING_STATUS_LABELS: Record<string, string> = { active: 'En curso', paused: 'Pausado', launched: 'Lanzado', archived: 'Archivado' };
+export const ONBOARDING_STATUS_COLORS: Record<string, string> = { active: '#10b981', paused: '#64748b', launched: '#6366f1', archived: '#475569' };
+
+export const STEP_STATUSES = ['pending', 'in_progress', 'done', 'blocked', 'skipped'] as const;
+export type StepStatus = typeof STEP_STATUSES[number];
+export const STEP_STATUS_LABELS: Record<StepStatus, string> = { pending: 'Pendiente', in_progress: 'En proceso', done: 'Hecho', blocked: 'Bloqueado', skipped: 'Omitido' };
+export const STEP_STATUS_COLORS: Record<StepStatus, string> = { pending: '#64748b', in_progress: '#3b82f6', done: '#10b981', blocked: '#ef4444', skipped: '#475569' };
+
+export type StepOwner = 'myb' | 'client' | 'both';
+export const OWNER_LABELS: Record<StepOwner, string> = { myb: 'MYB', client: 'Cliente', both: 'Ambos' };
+export const OWNER_COLORS: Record<StepOwner, string> = { myb: '#6366f1', client: '#f59e0b', both: '#14b8a6' };
+
+export const DOC_TYPES = ['acuerdo', 'brief', 'kb_ia', 'guia_admin', 'feedback', 'testimonios', 'credenciales'] as const;
+export type DocType = typeof DOC_TYPES[number];
+export const DOC_LABELS: Record<DocType, string> = {
+  acuerdo: 'Acuerdo de buena fe',
+  brief: 'Brief de marca',
+  kb_ia: 'Base de conocimiento IA',
+  guia_admin: 'Guía de uso / Admin',
+  feedback: 'Feedback del cliente',
+  testimonios: 'Testimonios',
+  credenciales: 'Accesos y credenciales',
+};
+
 // ─── CURRENCY ───
 export const fmtMoney = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
 export const fmtUSD = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
@@ -141,3 +180,76 @@ export interface Client {
   totalRevenueUSD: number;
   createdAt: number; updatedAt: number;
 }
+
+// ─── ONBOARDING TYPES ───
+export interface Onboarding {
+  id: string;
+  clientId: string;
+  serviceType: ServiceType;
+  title: string;
+  status: 'active' | 'paused' | 'launched' | 'archived';
+  currentPhase: number;
+  driveRootLink: string;
+  whatsappLink: string;
+  domain: string;
+  startedAt: number;
+  launchedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+  // Relaciones (se cargan en el hook, no son columnas)
+  steps: OnboardingStep[];
+  payments: OnboardingPayment[];
+  documents: OnboardingDocument[];
+  clientName?: string;
+}
+
+export interface OnboardingStep {
+  id: string;
+  onboardingId: string;
+  phase: number;
+  phaseName: string;
+  title: string;
+  description: string;
+  owner: StepOwner;
+  assignedTo: string;
+  status: StepStatus;
+  isOptional: boolean;
+  link: string;
+  dueDate: number | null;
+  order: number;
+  completedAt: number | null;
+}
+
+export interface OnboardingPayment {
+  id: string;
+  onboardingId: string;
+  label: string;
+  amount: number;
+  currency: 'ARS' | 'USD';
+  percentage: number;
+  paid: boolean;
+  paidAt: number | null;
+}
+
+export interface OnboardingDocument {
+  id: string;
+  onboardingId: string;
+  docType: DocType;
+  title: string;
+  content: string;
+  externalLink: string;
+  status: 'pending' | 'in_progress' | 'done';
+  updatedAt: number;
+}
+
+// % de avance: pasos hechos sobre el total (excluyendo los omitidos)
+export const onboardingProgress = (steps: OnboardingStep[]): number => {
+  const countable = steps.filter(s => s.status !== 'skipped');
+  if (countable.length === 0) return 0;
+  const done = countable.filter(s => s.status === 'done').length;
+  return Math.round((done / countable.length) * 100);
+};
+
+// Próxima acción pendiente (la primera sin hacer ni omitir, por orden)
+export const onboardingNextStep = (steps: OnboardingStep[]): OnboardingStep | null =>
+  [...steps].sort((a, b) => a.order - b.order).find(s => s.status !== 'done' && s.status !== 'skipped') || null;
