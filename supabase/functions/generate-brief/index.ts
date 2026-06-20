@@ -49,7 +49,7 @@ ESTRUCTURA OBLIGATORIA (en Markdown, respetando los títulos):
 ## 11. Especificaciones de la Web (función, arquitectura de contenido por secciones, criterios de diseño, CTAs exactos)
 ## 12. Brief para Inteligencia Artificial (IA-Ready)
   ### 12.1 Rol de la IA
-  ### 12.2 Framework COSTAR (tabla: Contexto, Objetivo, Estilo, Tono, Audiencia, Restricciones)
+  ### 12.2 Framework COSTAR (presentalo como LISTA, NUNCA como tabla; una línea por cada ítem: **Contexto:** … **Objetivo:** … **Estilo:** … **Tono:** … **Audiencia:** … **Restricciones:** …)
   ### 12.3 Prompt base para Claude Code (un párrafo directivo, listo para copiar, que resuma todo para construir la web)
 ## 13. Próximos Pasos (checklist)
 

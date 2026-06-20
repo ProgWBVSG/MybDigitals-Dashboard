@@ -102,8 +102,9 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
     setGenerating(true);
     try {
       await update(o.id, { discovery });
+      const acuerdoContent = buildAcuerdo(discovery);
       // Acuerdo: plantilla, instantáneo
-      await saveDocContent('acuerdo', buildAcuerdo(discovery));
+      await saveDocContent('acuerdo', acuerdoContent);
       // Brief: IA
       const { data, error } = await supabase.functions.invoke('generate-brief', { body: { discovery } });
       let errMsg = '';
@@ -117,6 +118,20 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
       // Abrir el Brief recién generado para que se vea al instante
       const briefDoc = o.documents.find(d => d.docType === 'brief');
       if (briefDoc) setDocModal({ ...briefDoc, content: data.brief, status: 'in_progress' });
+
+      // Sincronizar el contenido generado a los Google Docs de Drive (en segundo plano, idempotente)
+      const docsForDrive = o.documents.map(d => ({
+        title: d.title,
+        content: d.docType === 'brief' ? data.brief : d.docType === 'acuerdo' ? acuerdoContent : (d.content || ''),
+      }));
+      supabase.functions.invoke('create-drive-folders', { body: { clientName: o.clientName, documents: docsForDrive } })
+        .then(({ data: dr }: any) => {
+          if (dr?.ok) {
+            if (dr.link && !o.driveRootLink) update(o.id, { driveRootLink: dr.link });
+            toast('Documentos sincronizados a Drive 📁');
+          }
+        })
+        .catch(() => { /* silencioso: el contenido ya quedó en el dashboard */ });
     } catch (e: any) {
       toast(`Error: ${e?.message || e}`, 'error');
     } finally {

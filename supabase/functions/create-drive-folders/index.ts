@@ -1,12 +1,10 @@
-// Edge Function: crea la estructura de carpetas + documentos de un cliente
-// en el Drive de MYB, actuando COMO la cuenta de MYB (OAuth refresh token).
-// Así los archivos son propiedad de MYB y usan su espacio de Drive.
+// Edge Function: crea/actualiza la estructura de carpetas + documentos de un
+// cliente en el Drive de MYB, actuando COMO la cuenta de MYB (OAuth refresh token).
+// Es IDEMPOTENTE: si la carpeta/doc ya existe, lo reutiliza y ACTUALIZA su contenido
+// (no duplica). Así se puede llamar al crear el onboarding y de nuevo al generar
+// el brief/acuerdo, y el Drive queda siempre con el contenido más nuevo.
 //
-// Secrets requeridos:
-//   GOOGLE_OAUTH_CLIENT_ID
-//   GOOGLE_OAUTH_CLIENT_SECRET
-//   GOOGLE_OAUTH_REFRESH_TOKEN
-//   DRIVE_PARENT_FOLDER_ID   -> ID de la carpeta "Clientes MyB Digitals"
+// Secrets: GOOGLE_OAUTH_CLIENT_ID / _SECRET / _REFRESH_TOKEN / DRIVE_PARENT_FOLDER_ID
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,16 +16,16 @@ const CLIENT_ID = Deno.env.get('GOOGLE_OAUTH_CLIENT_ID')!;
 const CLIENT_SECRET = Deno.env.get('GOOGLE_OAUTH_CLIENT_SECRET')!;
 const REFRESH_TOKEN = Deno.env.get('GOOGLE_OAUTH_REFRESH_TOKEN')!;
 const PARENT_FOLDER_ID = Deno.env.get('DRIVE_PARENT_FOLDER_ID')!;
+const FOLDER_MIME = 'application/vnd.google-apps.folder';
+const DOC_MIME = 'application/vnd.google-apps.document';
 
 async function getAccessToken(): Promise<string> {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      refresh_token: REFRESH_TOKEN,
-      grant_type: 'refresh_token',
+      client_id: CLIENT_ID, client_secret: CLIENT_SECRET,
+      refresh_token: REFRESH_TOKEN, grant_type: 'refresh_token',
     }),
   });
   const data = await res.json();
@@ -35,47 +33,55 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
+// Busca un hijo por nombre dentro de un parent (carpeta o doc)
+async function findChild(token: string, name: string, parentId: string, folder: boolean): Promise<string | null> {
+  const safe = name.replace(/'/g, "\\'");
+  const mime = folder ? ` and mimeType='${FOLDER_MIME}'` : ` and mimeType!='${FOLDER_MIME}'`;
+  const q = `name='${safe}' and '${parentId}' in parents and trashed=false${mime}`;
+  const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await res.json();
+  return data?.files?.[0]?.id || null;
+}
+
 async function createFolder(token: string, name: string, parentId: string): Promise<string> {
-  const res = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,webViewLink&supportsAllDrives=true', {
+  const res = await fetch('https://www.googleapis.com/drive/v3/files?fields=id&supportsAllDrives=true', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name,
-      mimeType: 'application/vnd.google-apps.folder',
-      parents: [parentId],
-    }),
+    body: JSON.stringify({ name, mimeType: FOLDER_MIME, parents: [parentId] }),
   });
   const data = await res.json();
   if (!data.id) throw new Error(`No se pudo crear la carpeta "${name}": ` + JSON.stringify(data));
   return data.id;
 }
 
-// Crea un Google Doc con contenido (sube el texto y Drive lo convierte a Documento)
-async function createDoc(token: string, name: string, content: string, parentId: string): Promise<void> {
-  const boundary = 'mybdigitals' + crypto.randomUUID();
-  const metadata = {
-    name,
-    parents: [parentId],
-    mimeType: 'application/vnd.google-apps.document',
-  };
-  const body =
-    `--${boundary}\r\n` +
-    `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-    JSON.stringify(metadata) + `\r\n` +
-    `--${boundary}\r\n` +
-    `Content-Type: text/plain; charset=UTF-8\r\n\r\n` +
-    (content || '') + `\r\n` +
-    `--${boundary}--`;
+async function upsertFolder(token: string, name: string, parentId: string): Promise<string> {
+  return (await findChild(token, name, parentId, true)) || (await createFolder(token, name, parentId));
+}
 
+// Crea o actualiza un Google Doc con contenido de texto
+async function upsertDoc(token: string, name: string, content: string, parentId: string): Promise<void> {
+  const existing = await findChild(token, name, parentId, false);
+  if (existing) {
+    const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existing}?uploadType=media&supportsAllDrives=true`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'text/plain; charset=UTF-8' },
+      body: content || ' ',
+    });
+    if (!res.ok) throw new Error(`No se pudo actualizar "${name}": ${await res.text()}`);
+    return;
+  }
+  const boundary = 'mybdigitals' + crypto.randomUUID();
+  const metadata = { name, parents: [parentId], mimeType: DOC_MIME };
+  const body =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+    `--${boundary}\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n${content || ' '}\r\n--${boundary}--`;
   const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
     body,
   });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`No se pudo crear el documento "${name}": ${err}`);
-  }
+  if (!res.ok) throw new Error(`No se pudo crear el documento "${name}": ${await res.text()}`);
 }
 
 Deno.serve(async (req) => {
@@ -85,21 +91,20 @@ Deno.serve(async (req) => {
     if (!clientName) throw new Error('Falta el nombre del cliente (clientName)');
 
     const token = await getAccessToken();
-    const rootId = await createFolder(token, clientName, PARENT_FOLDER_ID);
-    await createFolder(token, '01 Fotos y Videos', rootId);
-    const docsFolderId = await createFolder(token, '02 Documentación', rootId);
+    const rootId = await upsertFolder(token, clientName, PARENT_FOLDER_ID);
+    await upsertFolder(token, '01 Fotos y Videos', rootId);
+    const docsFolderId = await upsertFolder(token, '02 Documentación', rootId);
 
-    // Crear cada documento como Google Doc dentro de "02 Documentación".
+    // Cada documento = una subcarpeta con su Google Doc adentro (crea o actualiza)
     const docs: { title: string; content: string }[] = Array.isArray(documents) ? documents : [];
-    let docsCreated = 0;
+    let docsOk = 0;
     let docsWarning = '';
     for (const d of docs) {
       if (!d?.title) continue;
       try {
-        // Una carpeta por cada documento, con el Google Doc adentro
-        const subFolderId = await createFolder(token, d.title, docsFolderId);
-        await createDoc(token, d.title, d.content || '', subFolderId);
-        docsCreated++;
+        const sub = await upsertFolder(token, d.title, docsFolderId);
+        await upsertDoc(token, d.title, d.content || '', sub);
+        docsOk++;
       } catch (e) {
         docsWarning = String((e as Error)?.message || e);
         break;
@@ -107,7 +112,7 @@ Deno.serve(async (req) => {
     }
 
     const link = `https://drive.google.com/drive/folders/${rootId}`;
-    return new Response(JSON.stringify({ ok: true, folderId: rootId, link, docsCreated, docsWarning }), {
+    return new Response(JSON.stringify({ ok: true, folderId: rootId, link, docsOk, docsWarning }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
