@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   ArrowLeft, Trash2, CheckCircle2, Circle, Link as LinkIcon, MessageCircle, Globe,
   FileText, Copy, X, ChevronDown, ChevronRight, ExternalLink, FolderPlus, Sparkles,
-  Map as MapIcon, ListChecks, Lock, DollarSign, Palette, Code2, Search, Rocket, Trophy,
+  Map as MapIcon, ListChecks, Lock, DollarSign, Palette, Code2, Search, Rocket, Trophy, BookOpen,
 } from 'lucide-react';
 import { toast } from './hooks';
 import { supabase } from './supabase';
 import { buildAcuerdo } from './playbooks';
+import { STEP_GUIDES, type StepGuide } from './guides';
 import {
   SERVICE_LABELS, ONBOARDING_STATUSES, ONBOARDING_STATUS_LABELS,
   STEP_STATUSES, STEP_STATUS_LABELS,
@@ -339,6 +340,7 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
                         </button>
                       </div>
 
+                      {isOpen && STEP_GUIDES[s.title] && <StepGuideBlock guide={STEP_GUIDES[s.title]} />}
                       {isOpen && (
                         <div className="onb-step-edit">
                           <div className="input-group">
@@ -592,6 +594,34 @@ function ProjectMap({ phases, progress, onPick }: {
         })}
       </div>
       <p className="onb-map-hint">Tocá una etapa para ver y completar sus pasos.</p>
+    </div>
+  );
+}
+
+// ─── Ficha/guía consultiva de un paso ───
+function StepGuideBlock({ guide }: { guide: StepGuide }) {
+  return (
+    <div className="onb-guide">
+      <div className="onb-guide-title"><BookOpen size={14} /> Guía del paso</div>
+      <div className="onb-guide-sec"><span className="onb-guide-h">Qué es</span><p>{guide.que}</p></div>
+      <div className="onb-guide-sec"><span className="onb-guide-h">Cómo se hace</span><p>{guide.como}</p></div>
+      {guide.preguntas && guide.preguntas.length > 0 && (
+        <div className="onb-guide-sec">
+          <span className="onb-guide-h">Preguntas para la reunión</span>
+          <ul>{guide.preguntas.map((q, i) => <li key={i}>{q}</li>)}</ul>
+        </div>
+      )}
+      {guide.dolor && (
+        <div className="onb-guide-pain">
+          <div><span className="onb-guide-h">El dolor a detectar</span><p>{guide.dolor}</p></div>
+          {guide.identificar && <div><span className="onb-guide-h">Cómo identificarlo</span><p>{guide.identificar}</p></div>}
+          {guide.solucion && <div><span className="onb-guide-h">Cómo se soluciona</span><p>{guide.solucion}</p></div>}
+        </div>
+      )}
+      <div className="onb-guide-sec">
+        <span className="onb-guide-h">Listo cuando</span>
+        <ul className="onb-guide-check">{guide.listo.map((l, i) => <li key={i}>{l}</li>)}</ul>
+      </div>
     </div>
   );
 }
