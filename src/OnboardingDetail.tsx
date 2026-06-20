@@ -62,6 +62,9 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
     if (slots[field] !== (o[field] || '')) update(o.id, { [field]: slots[field] } as any);
   };
 
+  // ID de la carpeta raíz ya creada (para reutilizar y no duplicar en Drive)
+  const driveFolderId = () => (o.driveRootLink.match(/folders\/([^?/]+)/) || [])[1] || undefined;
+
   // Llama a la Edge Function que crea la estructura de carpetas en el Drive de MYB
   const createDriveFolders = async () => {
     if (!o.clientName) { toast('El onboarding no tiene cliente asociado', 'error'); return; }
@@ -70,6 +73,7 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
       const { data, error } = await supabase.functions.invoke('create-drive-folders', {
         body: {
           clientName: o.clientName,
+          rootFolderId: driveFolderId(),
           documents: o.documents.map(d => ({ title: d.title, content: d.content })),
         },
       });
@@ -130,7 +134,7 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
         title: d.title,
         content: d.docType === 'brief' ? data.brief : d.docType === 'acuerdo' ? acuerdoContent : (d.content || ''),
       }));
-      supabase.functions.invoke('create-drive-folders', { body: { clientName: o.clientName, documents: docsForDrive } })
+      supabase.functions.invoke('create-drive-folders', { body: { clientName: o.clientName, rootFolderId: driveFolderId(), documents: docsForDrive } })
         .then(({ data: dr }: any) => {
           if (dr?.ok) {
             if (dr.link && !o.driveRootLink) update(o.id, { driveRootLink: dr.link });
@@ -231,7 +235,7 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
         <button className="btn btn-secondary" onClick={createDriveFolders} disabled={creatingFolders}
           style={{ marginTop: 14 }}>
           <FolderPlus size={15} />
-          {creatingFolders ? 'Creando carpetas…' : slots.driveRootLink ? 'Recrear carpetas en Drive' : 'Crear carpetas en Drive automáticamente'}
+          {creatingFolders ? 'Sincronizando con Drive…' : slots.driveRootLink ? 'Actualizar carpetas en Drive' : 'Crear carpetas en Drive'}
         </button>
       </div>
 

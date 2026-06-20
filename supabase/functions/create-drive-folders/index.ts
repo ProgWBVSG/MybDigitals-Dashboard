@@ -87,11 +87,12 @@ async function upsertDoc(token: string, name: string, content: string, parentId:
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const { clientName, documents } = await req.json();
-    if (!clientName) throw new Error('Falta el nombre del cliente (clientName)');
+    const { clientName, documents, rootFolderId } = await req.json();
+    if (!clientName && !rootFolderId) throw new Error('Falta clientName o rootFolderId');
 
     const token = await getAccessToken();
-    const rootId = await upsertFolder(token, clientName, PARENT_FOLDER_ID);
+    // Si ya conocemos la carpeta raíz, la reutilizamos (evita duplicados por latencia de búsqueda)
+    const rootId = rootFolderId || await upsertFolder(token, clientName, PARENT_FOLDER_ID);
     await upsertFolder(token, '01 Fotos y Videos', rootId);
     const docsFolderId = await upsertFolder(token, '02 Documentación', rootId);
 
