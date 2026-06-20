@@ -53,6 +53,13 @@ ESTRUCTURA OBLIGATORIA (en Markdown, respetando los títulos):
   ### 12.3 Prompt base para Claude Code (un párrafo directivo, listo para copiar, que resuma todo para construir la web)
 ## 13. Próximos Pasos (checklist)
 
+EXTENSIÓN Y COMPLETITUD (REGLA MÁS IMPORTANTE):
+- Sé CONCISO. Cada sección: 1 a 3 párrafos cortos o una lista breve. Total objetivo: 1800-2500 palabras. NUNCA superes las 3000 palabras.
+- Es OBLIGATORIO terminar el documento COMPLETO. Las dos últimas piezas son las MÁS importantes y NO se pueden omitir nunca:
+  · Sección 12.3 "Prompt base para Claude Code" (un párrafo directivo listo para copiar).
+  · Sección 13 "Próximos Pasos" (checklist).
+- Si ves que te estás quedando largo, RECORTÁ las secciones del medio (3 a 11), pero JAMÁS omitas ni recortes la Sección 12 completa ni la 13. Mejor breve y completo que extenso y cortado.
+
 Devolvé ÚNICAMENTE el Markdown del brief, sin texto adicional antes ni después.`;
 
 async function generateBrief(discovery: Record<string, unknown>): Promise<string> {
@@ -71,7 +78,11 @@ async function generateBrief(discovery: Record<string, unknown>): Promise<string
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+        generationConfig: {
+          temperature: 0.6,
+          maxOutputTokens: 32768,            // techo alto: garantiza que complete aunque se extienda
+          thinkingConfig: { thinkingBudget: 2048 },
+        },
       }),
     },
   );
@@ -79,7 +90,17 @@ async function generateBrief(discovery: Record<string, unknown>): Promise<string
   if (!res.ok) throw new Error('Gemini error: ' + JSON.stringify(data));
   const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('') || '';
   if (!text) throw new Error('Gemini no devolvió texto: ' + JSON.stringify(data));
-  return text.trim();
+  return clean(text);
+}
+
+// Limpia rarezas de la IA: ráfagas de espacios y líneas en blanco de más.
+function clean(md: string): string {
+  return md
+    .replace(/[ \t]{6,}/g, ' ')   // colapsa runs largos de espacios/tabs (glitch), respeta indentación normal
+    .replace(/-{4,}/g, '---')     // colapsa separadores de tabla absurdamente largos
+    .replace(/[ \t]+\n/g, '\n')   // saca espacios sobrantes al final de línea
+    .replace(/\n{4,}/g, '\n\n\n') // máximo 2 líneas en blanco seguidas
+    .trim();
 }
 
 Deno.serve(async (req) => {
