@@ -146,6 +146,43 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
         <button className="btn btn-ghost btn-icon" onClick={() => setConfirmDel(true)}><Trash2 size={16} /></button>
       </div>
 
+      {/* PASO 1 — Datos del cliente → genera Brief + Acuerdo */}
+      <div className="card card-3d" style={{ padding: 22, marginBottom: 20, border: '1.5px solid var(--primary)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setDiscoveryOpen(v => !v)}>
+          <h3 style={{ fontSize: 17, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Sparkles size={20} color="var(--primary-light)" /> Datos del cliente — Brief &amp; Acuerdo
+          </h3>
+          <ChevronDown size={18} style={{ transform: discoveryOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s', color: 'var(--text-muted)' }} />
+        </div>
+        {discoveryOpen && (
+          <>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '10px 0 18px', lineHeight: 1.5 }}>
+              📝 Cargá acá todo lo que salió de la reunión con el cliente (lo más importante es <strong>"Notas libres"</strong>: pegá ahí todo, aunque esté desordenado). Cuando termines, tocá <strong>"Generar Brief + Acuerdo"</strong> y la IA arma los dos documentos automáticamente.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
+              {DISCOVERY_FIELDS.map(f => (
+                <div key={f.key} className="input-group" style={f.big ? { gridColumn: '1 / -1' } : undefined}>
+                  <label>{f.label}</label>
+                  {f.big ? (
+                    <textarea className="textarea" value={discovery[f.key] || ''} placeholder={f.placeholder}
+                      onChange={e => setDiscovery(d => ({ ...d, [f.key]: e.target.value }))}
+                      onBlur={() => persistDiscovery(discovery)} style={{ minHeight: 70 }} />
+                  ) : (
+                    <input className="input" value={discovery[f.key] || ''} placeholder={f.placeholder}
+                      onChange={e => setDiscovery(d => ({ ...d, [f.key]: e.target.value }))}
+                      onBlur={() => persistDiscovery(discovery)} />
+                  )}
+                </div>
+              ))}
+            </div>
+            <button className="btn btn-primary" onClick={generateDocs} disabled={generating}
+              style={{ marginTop: 18, fontSize: 15, padding: '12px 26px' }}>
+              <Sparkles size={17} /> {generating ? 'Generando Brief + Acuerdo…' : 'Generar Brief + Acuerdo'}
+            </button>
+          </>
+        )}
+      </div>
+
       {/* Progreso global */}
       <div className="card card-3d" style={{ padding: 20, marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -203,42 +240,6 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Discovery / Datos de la reunión */}
-      <div className="card card-3d" style={{ padding: 20, marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setDiscoveryOpen(v => !v)}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Sparkles size={18} color="var(--primary-light)" /> Discovery — Datos de la reunión
-          </h3>
-          <ChevronDown size={18} style={{ transform: discoveryOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s', color: 'var(--text-muted)' }} />
-        </div>
-        {discoveryOpen && (
-          <>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '8px 0 16px' }}>
-              Cargá lo que salió de la reunión con el cliente. Con esto el dashboard genera el <strong>Brief</strong> (con IA) y el <strong>Acuerdo</strong> automáticamente.
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
-              {DISCOVERY_FIELDS.map(f => (
-                <div key={f.key} className="input-group" style={f.big ? { gridColumn: '1 / -1' } : undefined}>
-                  <label>{f.label}</label>
-                  {f.big ? (
-                    <textarea className="textarea" value={discovery[f.key] || ''} placeholder={f.placeholder}
-                      onChange={e => setDiscovery(d => ({ ...d, [f.key]: e.target.value }))}
-                      onBlur={() => persistDiscovery(discovery)} style={{ minHeight: 70 }} />
-                  ) : (
-                    <input className="input" value={discovery[f.key] || ''} placeholder={f.placeholder}
-                      onChange={e => setDiscovery(d => ({ ...d, [f.key]: e.target.value }))}
-                      onBlur={() => persistDiscovery(discovery)} />
-                  )}
-                </div>
-              ))}
-            </div>
-            <button className="btn btn-primary" onClick={generateDocs} disabled={generating} style={{ marginTop: 16 }}>
-              <Sparkles size={16} /> {generating ? 'Generando Brief + Acuerdo…' : 'Generar Brief + Acuerdo'}
-            </button>
-          </>
-        )}
       </div>
 
       {/* Documentos */}
