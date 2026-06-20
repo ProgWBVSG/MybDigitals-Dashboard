@@ -34,77 +34,289 @@ export interface Playbook {
 
 // ─── DOCUMENTOS BASE (plantillas editables) ───
 
-const DOC_ACUERDO = `# Acuerdo de Buena Fe — MYB Digitals
+const DOC_ACUERDO = `# ACUERDO DE SERVICIOS DIGITALES
+## [Tipo de proyecto — ej: Desarrollo de Landing Page Profesional]
+### [Cliente] × Agencia MYB Digitals
 
-**Cliente:** _______________________
-**Servicio:** Landing Page
-**Fecha:** ___ / ___ / _____
+**Fecha de emisión:** Córdoba, [mes y año]
+**Modalidad:** Acuerdo de trabajo y alcance de servicios
+**Vigencia:** Desde el inicio hasta la entrega del proyecto
 
-## 1. Alcance del proyecto
-- Diseño y desarrollo de una (1) Landing Page profesional.
-- Optimización SEO + AEO (preparada para ser recomendada por buscadores e IAs).
-- Hasta 2 rondas de revisión de diseño incluidas.
+> El presente documento establece el alcance, las condiciones y los límites del trabajo acordado entre las partes. No constituye un contrato legal vinculante, sino un **acuerdo de buena fe** que define con claridad qué se hace, qué no se hace, cómo se trabaja y cuáles son las responsabilidades de cada parte. Su propósito es evitar malentendidos y garantizar que el proyecto se desarrolle con transparencia, orden y respeto mutuo.
 
-## 2. Plazos estimados
-- Inicio: al recibir el 50% inicial y el material del cliente.
-- Entrega estimada: ___ días hábiles.
+## 1. Las Partes
+**EL CLIENTE**
+- Nombre comercial: [Nombre / Marca]
+- Sector: [rubro]
+- Ubicación: [ciudad, país · alcance]
+- Contacto: [teléfono · email]
+- Redes: [Instagram / LinkedIn]
 
-## 3. Inversión y forma de pago
-- Total: $__________
-- 50% al inicio (seña, no reembolsable una vez comenzado el trabajo).
-- 50% restante contra entrega / antes del lanzamiento.
+**EL PROVEEDOR**
+- Agencia MYB Digitals
+- Contacto: digitalmatiybenja@gmail.com
+- Representado por: Matías König y Benjamín Vidal
 
-## 4. Responsabilidades del cliente
-- Entregar textos, fotos, logos y accesos en tiempo y forma.
-- Responder revisiones dentro de las 48 hs.
+## 2. Objetivos del Acuerdo
+MYB Digitals se compromete a diseñar, desarrollar y entregar [el proyecto] para [Cliente], orientado a [objetivo principal]. [Describir la brecha que cierra el proyecto entre la autoridad/realidad del cliente y su presencia digital actual, y para qué va a usar el entregable.] El alcance completo está detallado en las secciones siguientes.
 
-## 5. Lo que NO incluye
-- Producción de fotos/videos profesionales.
-- Mantenimiento mensual (se cotiza aparte).
-- Costos de dominio y hosting (a cargo del cliente salvo acuerdo).
+## 3. Lo que SÍ incluye este acuerdo
+**[Producto principal — ej: Landing Page Profesional]**
+- Diseño responsivo optimizado para todos los dispositivos (móvil, tablet, desktop).
+- Arquitectura de contenido profesional con las secciones acordadas en el brief.
+- Copywriting completo a partir del brief estratégico — **pieza central del entregable**.
+- Paleta y estética alineadas a la identidad de marca (ver brief).
+- Velocidad de carga optimizada (Core Web Vitals en verde).
 
-## 6. Propiedad
-- Al completar el pago total, el cliente recibe los archivos y accesos finales.
+**Funcionalidades técnicas**
+- Formulario de contacto con validación y notificaciones automáticas.
+- [Calendario integrado / CMS de blog / otras según el proyecto].
+- Botones de llamada a la acción estratégicos.
 
-_Firmado de buena fe entre ambas partes._
+**SEO y posicionamiento (incluye AEO/GEO)**
+- Metadata optimizada para [palabras clave del rubro].
+- Schema markup JSON-LD (ProfessionalService / Person / según corresponda).
+- **Optimización AEO/GEO:** archivo llms.txt y contenido en "bloques de respuesta" para que las IAs (ChatGPT, Perplexity, Google AI) puedan citar y recomendar la web.
+- Google Analytics 4 + Google Search Console.
+- Registro de dominio y configuración de hosting (incluido el primer año).
+- Certificado SSL activo (HTTPS).
+
+**Marco legal básico**
+- Política de Privacidad y Términos y Condiciones adaptados al negocio.
+
+## 4. Lo que NO incluye este acuerdo
+**Contenido y producción**
+- Fotografía/video profesional — los provee el Cliente o contrata por su cuenta.
+- Creación de logotipo — se integra el logo que defina el Cliente (se puede cotizar aparte).
+
+**Marketing y redes sociales**
+- Gestión de redes, creación de contenido, publicidad paga (Ads) y email marketing.
+
+**Funcionalidades avanzadas**
+- Pasarela de pagos, e-learning, CRM completo, área de clientes con login, integraciones no acordadas, chatbot con IA (se cotizan aparte).
+
+**Mantenimiento posterior**
+- Actualizaciones de contenido post-entrega (las gestiona el Cliente vía CMS).
+- Soporte indefinido (se puede acordar un plan mensual aparte).
+- Renovación de hosting y dominio a partir del 2° año.
+
+## 5. Responsabilidades del Cliente
+- Proveer material real (fotos, textos base, credenciales, testimonios) con la calidad acordada.
+- Validar contenidos y mensajes clave antes de la carga final.
+- Dar feedback en un máximo de 5 días hábiles por etapa.
+- Tomar las decisiones de contenido dentro de los plazos (las demoras afectan la entrega).
+- Proveer los accesos necesarios (calendario, dominio, etc.).
+- Abonar los costos de infraestructura a su nombre (MYB asesora, el titular es el Cliente).
+
+## 6. Responsabilidades de MYB Digitals
+- Desarrollar el proyecto conforme al brief estratégico de marca.
+- Desarrollar el copywriting con foco en claridad y jerarquía del mensaje.
+- Mantener comunicación activa y transparente durante todo el proyecto.
+- Entregar el código fuente completo al finalizar (el Cliente es propietario del código).
+- Probar en los principales navegadores y dispositivos antes de cada entrega.
+- Respetar la confidencialidad del negocio.
+- Optimizar para el objetivo principal de conversión.
+
+## 7. Metodología y Proceso de Trabajo
+El proyecto se estructura en etapas. Al finalizar cada una se hace una revisión conjunta y el Cliente aprueba antes de avanzar.
+
+| # | Etapa | Entregable |
+|---|-------|------------|
+| 01 | Definición y diseño | Wireframes, paleta, estructura de contenido aprobada |
+| 02 | Desarrollo frontend | Sitio funcionando con diseño y contenido de prueba |
+| 03 | Integraciones técnicas | Formulario, calendario, CMS operativos |
+| 04 | Carga de contenido real | Copywriting final, fotos, testimonios integrados |
+| 05 | SEO y AEO | Analytics, Search Console, schema, llms.txt, velocidad |
+| 06 | Revisión final y entrega | Sitio en producción, dominio activo, capacitación |
+
+## 8. Inversión y Condiciones de Pago
+- **Inversión total del proyecto:** $[monto] [moneda]
+- **50% al inicio (seña) / 50% en la entrega final.**
+- Los costos de infraestructura (dominio y hosting) están incluidos el primer año. A partir del 2° año los asume el Cliente.
+- Cualquier funcionalidad adicional fuera de este acuerdo se presupuesta por separado y requiere aprobación escrita antes de iniciar.
+
+## 9. Propiedad del Trabajo
+- El código, los diseños y los entregables son propiedad del Cliente una vez abonado el 100%.
+- MYB puede mostrar el proyecto en su portfolio, salvo indicación en contrario del Cliente.
+- Los contenidos provistos por el Cliente son y siguen siendo de su propiedad.
+- MYB no revende ni reutiliza código específico del negocio en proyectos de terceros.
+
+## 10. Confidencialidad
+Ambas partes mantienen la confidencialidad de toda información sensible compartida (estrategia, datos de clientes, facturación, metodologías, precios). Se mantiene durante la vigencia y por dos (2) años posteriores a la finalización.
+
+## 11. Modificaciones de Alcance
+Todo lo no especificado se considera fuera de alcance. Si el Cliente solicita algo nuevo: se evalúa el impacto en tiempo y costo, se emite un documento con el detalle, y el trabajo comienza solo una vez aprobado y abonado. Los ajustes menores dentro del mismo alcance no tienen costo, si se piden antes de la entrega de cada etapa.
+
+## 12. Cancelación del Proyecto
+Si el Cliente cancela el proyecto una vez iniciado: los pagos realizados no son reembolsables y se le entrega todo lo completado hasta la fecha. Si MYB Digitals no pudiera continuar por causas propias: devuelve los pagos del trabajo no realizado y entrega todo lo desarrollado.
+
+## 13. Resolución de Diferencias
+Ante cualquier diferencia, las partes la resuelven primero mediante diálogo directo. Si no hay acuerdo en diez (10) días, se podrá recurrir a un mediador neutral acordado por ambas partes. Ambas partes reconocen que este acuerdo fue redactado de buena fe.
+
+## 14. Manifestación de Acuerdo
+Ambas partes declaran haber leído, comprendido y aceptado el contenido íntegro del presente acuerdo, y que refleja fielmente lo conversado.
+
+CLIENTE: _______________________  [Nombre y DNI]
+PROVEEDOR: Agencia MYB Digitals — [DNI/CUIT]
+
+Córdoba, Argentina — [mes y año]
+Válido en formato digital con firma escaneada o manuscrita de ambas partes.
+
+---
+*Confidencial — Uso exclusivo de las partes firmantes*
 `;
 
-const DOC_BRIEF = `# Brief de Marca — _______________________
+const DOC_BRIEF = `# BRIEF ESTRATÉGICO DE MARCA
+## Arquitectura de Inteligencia de Marca
+### [CLIENTE] — [bajada / rol / categoría]
 
-> Completar junto al cliente en la llamada de kickoff. Cuanto mejor el brief, mejor el resultado.
+**Preparado por:** MYB Digitals · **Fecha:** [fecha] · **Entregable:** [Landing Page + Estrategia de Marca]
 
-## 1. Sobre el negocio
-- ¿A qué se dedican? (en una frase)
-- ¿Cuánto hace que existen?
-- ¿Qué los hace diferentes de la competencia?
+> **Instrucciones de uso.** Este brief captura la inteligencia estratégica de la marca. Es el documento de referencia para todo lo que se construya a partir de acá: la web, el copywriting, la identidad visual y la comunicación. Sirve para (1) definir el posicionamiento, (2) **alimentar a la IA y al equipo de diseño/desarrollo que producen la web**, (3) garantizar coherencia de tono, mensaje y estética, y (4) ser la brújula de las decisiones de copy y diseño. El copywriting es la pieza central del entregable.
 
-## 2. Objetivo de la landing
-- ¿Qué acción queremos que haga el visitante? (comprar / agendar / escribir por WhatsApp / suscribirse)
-- ¿Cómo medimos el éxito?
+---
 
-## 3. Público objetivo
-- ¿Quién es el cliente ideal? (edad, ubicación, qué problema tiene)
-- ¿Qué objeción suele frenar la compra?
+## ⚡ Resumen para la IA (leer primero)
+> Bloque denso y factual para que una IA (o un nuevo integrante) entienda la marca en 30 segundos. Completar con datos reales, sin relleno.
 
-## 4. Competencia y referencias
-- 2-3 webs que les gusten (y por qué)
-- 1-2 competidores directos
+- **Marca:** [nombre exacto]
+- **Qué hace, en una frase:** [...]
+- **Para quién:** [público objetivo en una línea]
+- **Objetivo de la web:** [acción principal que debe lograr]
+- **Diferencial único (USP):** [...]
+- **Tono:** [3-4 adjetivos] · **Trato:** [vos / usted / tú]
+- **Paleta:** [#hex principal, #hex secundario, neutros]
+- **Evitar siempre:** [clichés / palabras / estéticas prohibidas]
+- **Pruebas de autoridad:** [credenciales, números, casos reales]
 
-## 5. Identidad visual
-- Colores de marca: __________
-- Tipografía (si tienen): __________
-- ¿Tienen logo en alta? (sí / no)
-- Estilo: (minimalista / elegante / divertido / corporativo / otro)
+---
 
-## 6. Contenido
-- ¿Tienen textos o los redactamos nosotros?
-- ¿Tienen fotos/videos propios?
-- Testimonios de clientes (sí / no)
+## 1. Información General
+- **Nombre de la marca:** [...]
+- **Sector:** [...]
+- **Ubicación y alcance:** [ciudad · país · LATAM · online/presencial]
+- **Estado del negocio:** [idea / validación / en crecimiento / escalada]
+- **Canales actuales:** [Instagram / WhatsApp / web / ...]
+- **Contacto:** [teléfono · email]
 
-## 7. Técnico
-- ¿Necesitan formulario? ¿A dónde llegan los datos? (email / WhatsApp / base de datos)
-- ¿Email marketing? (MailerLite, etc.)
-- ¿Dominio ya comprado? ¿Cuál?
+**Cifras clave de la marca** (datos duros que dan autoridad)
+- [+N] [qué representa — ej: clientes acompañados]
+- [+N años] de trayectoria
+- [certificación / premio / hito]
+
+## 2. Brand Heart — El Corazón de la Marca
+- **Propósito** (por qué existe más allá del dinero): [...]
+- **Visión** (el futuro que quiere crear): [...]
+- **Misión** (lo que hace hoy, todos los días): [...]
+- **Valores irrenunciables** (3 a 5): [...]
+- **Comportamientos que NO representan a la marca** (líneas rojas): [...]
+
+## 3. Historia y Contexto
+- **De dónde viene** (origen, recorrido, qué le da autoridad): [...]
+- **Hitos que definen la trayectoria:** [...]
+- **Logros a destacar en la web:** [...]
+
+## 4. Servicios y Oferta
+- **Servicio central:** [nombre + qué resuelve + para quién]
+- **Otros servicios / áreas:** [...]
+- **Modelo de ingresos:** [servicios / programas / recurrente / mixto]
+- **Por qué este enfoque es diferente:** [...]
+
+## 5. Público Objetivo
+> Si hay varios segmentos, listarlos por separado para que cada uno se sienta identificado sin mezclar mensajes.
+
+- **Segmento 1:** [quién es · qué busca · qué valora]
+- **Segmento 2:** [...]
+- **Dolores que la marca resuelve:** [frases en primera persona del cliente]
+- **Deseos y aspiraciones:** [...]
+- **Objeciones frecuentes (y su respuesta):** [...]
+
+## 6. Análisis Competitivo
+- **El terreno donde compite:** [cómo es el mercado]
+- **Competidores directos:** [...]
+- **Oportunidades (huecos del mercado):** [...]
+- **Propuesta Única de Valor (USP):** [...]
+- **Razones para creer (RTB):** [pruebas, método, resultados]
+
+## 7. Identidad y Personalidad de Marca
+- **Si la marca fuera una persona…** [descripción en prosa de su carácter]
+- **Adjetivos que la definen:** [...]
+- **Paleta de colores (con HEX):**
+  - [#______] — [qué transmite]
+  - [#______] — [qué transmite]
+  - [#______] — neutro / fondo
+  - [#______] — texto
+- **Estética general:** [cálida/corporativa/minimalista; qué SÍ y qué NO]
+- **Emociones que debe generar al primer contacto:** [confianza / cercanía / deseo / ...]
+
+## 8. Tono y Estilo de Comunicación
+- **Cómo habla la marca:** [...]
+- **Lo que NO hace:** [...]
+- **Escala de tono** (marcar):
+  - Inspirador ●●●●○ Neutro
+  - Cercano ●●●●○ Distante
+  - Accesible ●●●●○ Técnico
+  - Con autoridad ●●●●● Informal
+- **Frases que SÍ representan la marca:** [3-5 ejemplos reales de copy]
+- **Frases que NUNCA usaría:** [3-5 ejemplos a evitar]
+- **Palabras que SÍ usamos:** [...]
+- **Palabras que NO usamos:** [...]
+
+## 9. Autoridad y Credenciales
+- **Formación / certificaciones / trayectoria:** [...]
+- **Comunidad / red / asociaciones:** [...]
+- **Prueba social en la web** (de mayor a menor peso): autoridad objetiva (números, certificaciones) → testimonios reales (idealmente uno por segmento) → logos/menciones de respaldo.
+
+## 10. Objetivos Estratégicos y Métricas
+- **Objetivo de la web:** [...]
+- **Objetivo de marketing principal:** [qué percepción debe generar al compartir el link]
+- **Primeros 90 días (SMART):** [específico, medible, alcanzable, relevante, temporal]
+- **KPIs prioritarios:** [consultas/mes, conversión visita→consulta, origen del tráfico, ...]
+- **Qué significa "ganar" para esta marca:** [...]
+
+## 11. Especificaciones de la Web
+- **Función de la página:** [carta de presentación / captación / catálogo / ...]
+- **Arquitectura de contenido sugerida** (secciones en orden):
+  1. Hero: [propuesta de valor + respaldo + CTA]
+  2. [Quién es / Sobre la marca]
+  3. [Para quién / segmentos]
+  4. [Servicios]
+  5. [Autoridad / prueba social]
+  6. [Testimonios]
+  7. [Contacto + CTA]
+- **Criterios de diseño:** mobile-first · velocidad crítica · estructura limpia y jerárquica · [referencia visual: ___]
+- **CTAs principales:** [textos exactos — ej: "Agendá una primera conversación"]
+
+## 12. Brief para Inteligencia Artificial (IA-Ready)
+> Esta sección convierte el brief en un input directo para construir la web con Claude Code.
+
+### 12.1 Rol de la IA
+Actuás como [estratega senior + diseñador/desarrollador web] especializado en [rubro]. Combinás visión estratégica de negocio con ejecución de copy y diseño de alto nivel.
+
+### 12.2 Framework COSTAR
+| Campo | Definición |
+|-------|------------|
+| **Contexto** | [qué es la marca y qué necesita] |
+| **Objetivo** | [qué debe lograr la web] |
+| **Estilo** | [cómo se escribe/diseña] |
+| **Tono** | [registro emocional] |
+| **Audiencia** | [a quién le habla] |
+| **Restricciones** | [qué evitar siempre] |
+
+### 12.3 Prompt base para Claude Code (copiar y adaptar)
+> Construí una [landing page] para [CLIENTE], [rubro]. Objetivo: [acción principal]. Público: [segmentos]. Tono: [adjetivos], trato de [vos/usted]. Paleta: [HEX]. Estética: [descripción], mobile-first, rápida y jerárquica. Secciones, en orden: [lista de la sección 11]. El copy debe sonar [tono] y apoyarse SIEMPRE en estas pruebas reales: [credenciales/números]. Prohibido: [clichés/palabras a evitar]. Incluí SEO técnico + AEO (llms.txt, FAQ y HowTo schema, bloques de respuesta) para que ChatGPT y Perplexity puedan recomendar la web. CTAs exactos: [textos].
+
+## 13. Próximos Pasos
+- [ ] Confirmar datos faltantes (email, CTA principal, cifras a destacar).
+- [ ] Definir la web de referencia visual.
+- [ ] Reunir testimonios reales (idealmente uno por segmento).
+- [ ] Definir/validar logo y paleta.
+- [ ] Desarrollar el copywriting completo.
+- [ ] Maquetar mobile-first y publicar.
+
+---
+Firma del Cliente: _______________________   Fecha: ___ / ___ / _____
+*Este brief debe revisarse cada 6 meses o ante cambios estratégicos importantes.*
 `;
 
 const DOC_KB_IA = `# Base de Conocimiento IA — _______________________
