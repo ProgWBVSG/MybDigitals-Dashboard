@@ -182,6 +182,46 @@ export interface Client {
 }
 
 // ─── ONBOARDING TYPES ───
+// Datos crudos de la reunión de discovery con el cliente (input para generar docs)
+export interface Discovery {
+  marca: string;
+  sector: string;
+  tipoProyecto: string;
+  queHace: string;
+  queQuiere: string;
+  dolores: string;
+  objetivos: string;
+  publico: string;
+  diferencial: string;
+  tono: string;
+  paleta: string;
+  referencias: string;
+  credenciales: string;
+  contacto: string;
+  monto: string;
+  moneda: string;
+  notas: string;
+}
+
+export const DISCOVERY_FIELDS: { key: keyof Discovery; label: string; placeholder: string; big?: boolean }[] = [
+  { key: 'marca', label: 'Nombre de la marca / cliente', placeholder: 'Ej: Roberto Corvalán — Coach Profesional' },
+  { key: 'sector', label: 'Sector / rubro', placeholder: 'Ej: Coaching ejecutivo · Formación' },
+  { key: 'tipoProyecto', label: 'Tipo de proyecto', placeholder: 'Ej: Landing Page de marca personal' },
+  { key: 'queHace', label: '¿Qué hace la marca?', placeholder: 'En 1-2 frases, a qué se dedica', big: true },
+  { key: 'queQuiere', label: '¿Qué quiere el cliente? (objetivo de la reunión)', placeholder: 'Qué pidió, qué espera lograr con la web', big: true },
+  { key: 'dolores', label: 'Dolores / problemas', placeholder: 'Del cliente y de su público objetivo', big: true },
+  { key: 'objetivos', label: 'Objetivos', placeholder: 'De negocio y de la web (qué acción buscar)', big: true },
+  { key: 'publico', label: 'Público objetivo / segmentos', placeholder: 'A quién le habla, edad, perfil, varios segmentos', big: true },
+  { key: 'diferencial', label: 'Diferencial / por qué lo elegirían', placeholder: 'Qué lo hace único frente a la competencia', big: true },
+  { key: 'credenciales', label: 'Autoridad / credenciales / números', placeholder: 'Certificaciones, años, casos, cifras reales', big: true },
+  { key: 'tono', label: 'Tono / personalidad deseada', placeholder: 'Ej: experto, cercano, premium; trato de vos/usted' },
+  { key: 'paleta', label: 'Paleta / estética / referencias', placeholder: 'Colores, estilo, webs de referencia' },
+  { key: 'contacto', label: 'Contacto y redes', placeholder: 'WhatsApp, email, IG, LinkedIn' },
+  { key: 'monto', label: 'Monto del proyecto', placeholder: 'Ej: 500' },
+  { key: 'moneda', label: 'Moneda', placeholder: 'ARS / USD' },
+  { key: 'notas', label: 'Notas libres de la reunión', placeholder: 'Todo lo demás que se dijo (la IA lo usa)', big: true },
+];
+
 export interface Onboarding {
   id: string;
   clientId: string;
@@ -196,6 +236,7 @@ export interface Onboarding {
   launchedAt: number | null;
   createdAt: number;
   updatedAt: number;
+  discovery: Partial<Discovery>;
   // Relaciones (se cargan en el hook, no son columnas)
   steps: OnboardingStep[];
   payments: OnboardingPayment[];

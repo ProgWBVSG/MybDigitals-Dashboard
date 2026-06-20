@@ -3,7 +3,7 @@
 // con contenido base editable. Al crear un onboarding, el hook "materializa"
 // este template en filas reales de Supabase para poder tildar y personalizar.
 
-import type { ServiceType, StepOwner, DocType } from './utils';
+import type { ServiceType, StepOwner, DocType, Discovery } from './utils';
 
 export interface PlaybookStep {
   phase: number;
@@ -492,3 +492,29 @@ export const PLAYBOOKS: Partial<Record<ServiceType, Playbook>> = {
 };
 
 export const getPlaybook = (service: ServiceType): Playbook | undefined => PLAYBOOKS[service];
+
+// ─── Armado del Acuerdo por plantilla (sin IA) ───
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+export function buildAcuerdo(d: Partial<Discovery>): string {
+  const now = new Date();
+  const mesAnio = `${MESES[now.getMonth()]} de ${now.getFullYear()}`;
+  const has = (s?: string) => !!(s && s.trim());
+  let t = DOC_ACUERDO;
+  const set = (placeholder: string, val?: string) => { if (has(val)) t = t.split(placeholder).join(val!.trim()); };
+
+  set('[Tipo de proyecto — ej: Desarrollo de Landing Page Profesional]', d.tipoProyecto);
+  set('[Producto principal — ej: Landing Page Profesional]', d.tipoProyecto);
+  set('[el proyecto]', d.tipoProyecto);
+  set('[Cliente]', d.marca);
+  set('[Nombre / Marca]', d.marca);
+  set('[rubro]', d.sector);
+  set('[palabras clave del rubro]', d.sector);
+  set('[teléfono · email]', d.contacto);
+  set('[objetivo principal]', d.objetivos || d.queQuiere);
+  set('[Describir la brecha que cierra el proyecto entre la autoridad/realidad del cliente y su presencia digital actual, y para qué va a usar el entregable.]', d.queQuiere);
+  set('[monto]', d.monto);
+  set('[moneda]', d.moneda);
+  t = t.split('[mes y año]').join(mesAnio);
+  return t;
+}

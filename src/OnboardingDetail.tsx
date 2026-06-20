@@ -1,16 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   ArrowLeft, Trash2, CheckCircle2, Circle, Link as LinkIcon, MessageCircle, Globe,
-  FileText, Copy, X, ChevronDown, ChevronRight, ExternalLink, FolderPlus,
+  FileText, Copy, X, ChevronDown, ChevronRight, ExternalLink, FolderPlus, Sparkles,
 } from 'lucide-react';
 import { toast } from './hooks';
 import { supabase } from './supabase';
+import { buildAcuerdo } from './playbooks';
 import {
   SERVICE_LABELS, ONBOARDING_STATUSES, ONBOARDING_STATUS_LABELS,
   STEP_STATUSES, STEP_STATUS_LABELS,
-  OWNER_LABELS, OWNER_COLORS, DOC_LABELS,
+  OWNER_LABELS, OWNER_COLORS, DOC_LABELS, DISCOVERY_FIELDS,
   onboardingProgress, fmt, fmtMoney, fmtUSD,
-  type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type StepStatus,
+  type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type StepStatus, type Discovery,
 } from './utils';
 
 interface Props {
@@ -30,9 +31,13 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
   const [confirmDel, setConfirmDel] = useState(false);
   const [creatingFolders, setCreatingFolders] = useState(false);
   const [slots, setSlots] = useState({ driveRootLink: '', whatsappLink: '', domain: '' });
+  const [discovery, setDiscovery] = useState<Partial<Discovery>>({});
+  const [discoveryOpen, setDiscoveryOpen] = useState(true);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     setSlots({ driveRootLink: o.driveRootLink || '', whatsappLink: o.whatsappLink || '', domain: o.domain || '' });
+    setDiscovery(o.discovery || {});
   }, [o.id]);
 
   const pct = onboardingProgress(o.steps);
@@ -77,6 +82,42 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
       toast(`Error: ${e?.message || e}`, 'error');
     } finally {
       setCreatingFolders(false);
+    }
+  };
+
+  const persistDiscovery = (next: Partial<Discovery>) => {
+    if (JSON.stringify(next) !== JSON.stringify(o.discovery || {})) update(o.id, { discovery: next });
+  };
+
+  const saveDocContent = async (docType: string, content: string) => {
+    const doc = o.documents.find(d => d.docType === docType);
+    if (doc) await supabase.from('onboarding_documents').update({ content, status: 'in_progress', updated_at: new Date().toISOString() }).eq('id', doc.id);
+  };
+
+  // Genera el Brief (IA/Gemini) + el Acuerdo (plantilla) desde los datos de la reunión
+  const generateDocs = async () => {
+    if (!discovery.marca && !discovery.queHace && !discovery.notas) {
+      toast('Cargá al menos los datos básicos de la reunión', 'error'); return;
+    }
+    setGenerating(true);
+    try {
+      await update(o.id, { discovery });
+      // Acuerdo: plantilla, instantáneo
+      await saveDocContent('acuerdo', buildAcuerdo(discovery));
+      // Brief: IA
+      const { data, error } = await supabase.functions.invoke('generate-brief', { body: { discovery } });
+      let errMsg = '';
+      if (error) {
+        errMsg = error.message;
+        try { const b = await (error as any).context?.json?.(); if (b?.error) errMsg = b.error; } catch { /* noop */ }
+      } else if (!data?.ok) errMsg = data?.error || 'Respuesta inesperada';
+      if (errMsg) { toast(`Acuerdo generado. El Brief (IA) falló: ${errMsg}`, 'error'); return; }
+      await saveDocContent('brief', data.brief);
+      toast('Brief y Acuerdo generados ✨');
+    } catch (e: any) {
+      toast(`Error: ${e?.message || e}`, 'error');
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -162,6 +203,42 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Discovery / Datos de la reunión */}
+      <div className="card card-3d" style={{ padding: 20, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setDiscoveryOpen(v => !v)}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Sparkles size={18} color="var(--primary-light)" /> Discovery — Datos de la reunión
+          </h3>
+          <ChevronDown size={18} style={{ transform: discoveryOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s', color: 'var(--text-muted)' }} />
+        </div>
+        {discoveryOpen && (
+          <>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '8px 0 16px' }}>
+              Cargá lo que salió de la reunión con el cliente. Con esto el dashboard genera el <strong>Brief</strong> (con IA) y el <strong>Acuerdo</strong> automáticamente.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
+              {DISCOVERY_FIELDS.map(f => (
+                <div key={f.key} className="input-group" style={f.big ? { gridColumn: '1 / -1' } : undefined}>
+                  <label>{f.label}</label>
+                  {f.big ? (
+                    <textarea className="textarea" value={discovery[f.key] || ''} placeholder={f.placeholder}
+                      onChange={e => setDiscovery(d => ({ ...d, [f.key]: e.target.value }))}
+                      onBlur={() => persistDiscovery(discovery)} style={{ minHeight: 70 }} />
+                  ) : (
+                    <input className="input" value={discovery[f.key] || ''} placeholder={f.placeholder}
+                      onChange={e => setDiscovery(d => ({ ...d, [f.key]: e.target.value }))}
+                      onBlur={() => persistDiscovery(discovery)} />
+                  )}
+                </div>
+              ))}
+            </div>
+            <button className="btn btn-primary" onClick={generateDocs} disabled={generating} style={{ marginTop: 16 }}>
+              <Sparkles size={16} /> {generating ? 'Generando Brief + Acuerdo…' : 'Generar Brief + Acuerdo'}
+            </button>
+          </>
+        )}
       </div>
 
       {/* Documentos */}
