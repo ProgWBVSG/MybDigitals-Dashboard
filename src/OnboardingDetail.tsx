@@ -293,7 +293,14 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
 
       {/* Fases / pasos */}
       {viewMode === 'mapa' ? (
-        <ProjectMap phases={phases} progress={pct} onPick={(phase: number) => setMapPhase(phase)} />
+        <>
+          <ProjectMap phases={phases} progress={pct} selected={mapPhase}
+            onPick={(phase: number) => setMapPhase(mapPhase === phase ? null : phase)} />
+          {mapPhaseObj && (
+            <PhasePanel ph={mapPhaseObj} intro={PHASE_GUIDES[mapPhaseObj.name]}
+              onClose={() => setMapPhase(null)} toggleStep={toggleStep} />
+          )}
+        </>
       ) : phases.map(ph => {
         const phPct = onboardingProgress(ph.steps);
         const collapsed = collapsedPhases[ph.phase];
@@ -377,23 +384,6 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
           </div>
         );
       })}
-
-      {/* Ficha de fase (al tocar un nodo del Mapa) */}
-      {mapPhaseObj && (
-        <PhaseModal
-          ph={mapPhaseObj}
-          intro={PHASE_GUIDES[mapPhaseObj.name]}
-          onClose={() => setMapPhase(null)}
-          toggleStep={toggleStep}
-          onOpenTecnico={() => {
-            const target = mapPhaseObj.phase;
-            setMapPhase(null);
-            setViewMode('tecnico');
-            setCollapsedPhases(Object.fromEntries(phases.map(p => [p.phase, p.phase !== target])) as Record<number, boolean>);
-            setTimeout(() => document.getElementById('onb-phase-' + target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
-          }}
-        />
-      )}
 
       {/* Modal documento */}
       {docModal && (
@@ -512,9 +502,10 @@ function smoothPath(pts: { x: number; y: number }[]): string {
   return d;
 }
 
-function ProjectMap({ phases, progress, onPick }: {
+function ProjectMap({ phases, progress, selected, onPick }: {
   phases: { phase: number; name: string; steps: OnboardingStep[] }[];
   progress: number;
+  selected?: number | null;
   onPick: (phase: number) => void;
 }) {
   const VB_W = 1000, VB_H = 440;
@@ -594,7 +585,7 @@ function ProjectMap({ phases, progress, onPick }: {
           const Icon = PHASE_ICONS[i % PHASE_ICONS.length];
           const state = doneArr[i] ? 'done' : (currentIdx === -1 || i < currentIdx ? 'done' : i === currentIdx ? 'current' : 'locked');
           return (
-            <button key={p.phase} className={`onb-node onb-node-${state}`}
+            <button key={p.phase} className={`onb-node onb-node-${state}${selected === p.phase ? ' onb-node-selected' : ''}`}
               style={{ left: `${(pts[i].x / VB_W) * 100}%`, top: `${(pts[i].y / VB_H) * 100}%` }}
               onClick={() => onPick(p.phase)}>
               {state === 'current' && (
@@ -645,65 +636,57 @@ function StepGuideBlock({ guide }: { guide: StepGuide }) {
   );
 }
 
-// ─── Ficha de fase (intro + pasos con guía), se abre desde el Mapa ───
-function PhaseModal({ ph, intro, onClose, toggleStep, onOpenTecnico }: {
+// ─── Panel inline de fase (se despliega dentro del Mapa) ───
+function PhasePanel({ ph, intro, onClose, toggleStep }: {
   ph: { phase: number; name: string; steps: OnboardingStep[] };
   intro?: PhaseGuide;
   onClose: () => void;
   toggleStep: (s: OnboardingStep) => void;
-  onOpenTecnico: () => void;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const pct = onboardingProgress(ph.steps);
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 660 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div>
-            <div className="onb-map-eyebrow" style={{ color: 'var(--primary-light)' }}>Fase {ph.phase} · {pct}% completada</div>
-            <h2 style={{ margin: '2px 0 0' }}>{ph.name}</h2>
-          </div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={18} /></button>
+    <div className="onb-phasepanel">
+      <div className="onb-phasepanel-head">
+        <div>
+          <div className="onb-map-eyebrow" style={{ color: 'var(--primary-light)' }}>Fase {ph.phase} · {pct}% completada</div>
+          <h3 style={{ margin: '2px 0 0', fontSize: 18, fontWeight: 800 }}>{ph.name}</h3>
         </div>
+        <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Cerrar"><X size={18} /></button>
+      </div>
 
-        {intro && (
-          <div className="onb-phase-intro">
-            <div><span className="onb-guide-h">Qué es</span><p>{intro.que}</p></div>
-            <div><span className="onb-guide-h">Por qué importa</span><p>{intro.porque}</p></div>
-            <div><span className="onb-guide-h">Cuándo</span><p>{intro.cuando}</p></div>
-          </div>
-        )}
+      {intro && (
+        <div className="onb-phase-intro">
+          <div><span className="onb-guide-h">Qué es</span><p>{intro.que}</p></div>
+          <div><span className="onb-guide-h">Por qué importa</span><p>{intro.porque}</p></div>
+          <div><span className="onb-guide-h">Cuándo</span><p>{intro.cuando}</p></div>
+        </div>
+      )}
 
-        <div className="onb-guide-h" style={{ marginBottom: 8 }}>Pasos de esta fase</div>
-        <div className="onb-pm-steps">
-          {ph.steps.map(s => {
-            const done = s.status === 'done';
-            const g = STEP_GUIDES[s.title];
-            const isOpen = open === s.id;
-            return (
-              <div key={s.id} className="onb-pm-step">
-                <div className="onb-pm-row">
-                  <button className={`onb-check ${done ? 'done' : ''}`} onClick={() => toggleStep(s)}>
-                    {done ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+      <div className="onb-guide-h" style={{ marginBottom: 8 }}>Pasos de esta fase</div>
+      <div className="onb-pm-steps">
+        {ph.steps.map(s => {
+          const done = s.status === 'done';
+          const g = STEP_GUIDES[s.title];
+          const isOpen = open === s.id;
+          return (
+            <div key={s.id} className="onb-pm-step">
+              <div className="onb-pm-row">
+                <button className={`onb-check ${done ? 'done' : ''}`} onClick={() => toggleStep(s)}>
+                  {done ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                </button>
+                <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: done ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: done ? 'line-through' : 'none' }}>{s.title}</span>
+                <span className="badge" style={{ background: `${OWNER_COLORS[s.owner]}22`, color: OWNER_COLORS[s.owner], flexShrink: 0 }}>{OWNER_LABELS[s.owner]}</span>
+                {g && (
+                  <button className="btn btn-ghost btn-sm" onClick={() => setOpen(isOpen ? null : s.id)}>
+                    <BookOpen size={14} /> {isOpen ? 'Ocultar' : 'Guía'}
                   </button>
-                  <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: done ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: done ? 'line-through' : 'none' }}>{s.title}</span>
-                  <span className="badge" style={{ background: `${OWNER_COLORS[s.owner]}22`, color: OWNER_COLORS[s.owner], flexShrink: 0 }}>{OWNER_LABELS[s.owner]}</span>
-                  {g && (
-                    <button className="btn btn-ghost btn-sm" onClick={() => setOpen(isOpen ? null : s.id)}>
-                      <BookOpen size={14} /> {isOpen ? 'Ocultar' : 'Guía'}
-                    </button>
-                  )}
-                </div>
-                {isOpen && g && <StepGuideBlock guide={g} />}
+                )}
               </div>
-            );
-          })}
-        </div>
-
-        <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={onClose}>Cerrar</button>
-          <button className="btn btn-primary" onClick={onOpenTecnico}><ListChecks size={15} /> Abrir en modo Técnico</button>
-        </div>
+              {isOpen && g && <StepGuideBlock guide={g} />}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

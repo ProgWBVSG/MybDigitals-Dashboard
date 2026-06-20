@@ -672,6 +672,17 @@ input[type="number"] {
 .onb-pm-row { display: flex; align-items: center; gap: 10px; padding: 9px 2px; }
 .onb-pm-step .onb-guide { margin: 0 0 10px 32px; }
 
+/* Panel inline de fase (dentro del Mapa) */
+.onb-phasepanel {
+  margin-top: 14px; padding: 18px 20px;
+  background: var(--bg-card); border: 1px solid rgba(99,102,241,0.3);
+  border-radius: 14px; box-shadow: 0 12px 32px -12px rgba(0,0,0,0.55);
+  animation: onbPanelIn 0.28s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.onb-phasepanel-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+@keyframes onbPanelIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+.onb-node-selected .onb-node-circle { outline: 3px solid rgba(165,180,252,0.9); outline-offset: 4px; }
+
 @keyframes onbMarch { to { stroke-dashoffset: -400; } }
 @keyframes onbHalo { 0% { transform: scale(0.85); opacity: 0.7; } 100% { transform: scale(1.9); opacity: 0; } }
 @keyframes onbFloat {
