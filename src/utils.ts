@@ -326,6 +326,15 @@ export const PREP_ITEMS: { key: string; label: string }[] = [
   { key: 'oferta', label: 'Pensé qué servicio le encaja' },
 ];
 
+export interface Proposal {
+  cliente: string;
+  subtitulo: string;
+  diagnostico: { texto: string; pilares: string[] };
+  secciones: { titulo: string; bullets: string[]; descripcion: string }[];
+  inversion?: { texto: string; items: string[] };
+  proximosPasos: string;
+}
+
 export interface Prospect {
   id: string;
   name: string;
@@ -337,6 +346,7 @@ export interface Prospect {
   mint: Record<string, string>;
   prep: Record<string, boolean>;
   notes: string;
+  proposal: Proposal | null;
   createdAt: number;
   updatedAt: number;
 }

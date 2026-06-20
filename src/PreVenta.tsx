@@ -1,17 +1,17 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Search, X, Trash2, Target, CalendarPlus, MessageCircle } from 'lucide-react';
+import { Plus, Search, X, Trash2, Target, CalendarPlus, MessageCircle, Sparkles, Presentation, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useProspects, toast } from './hooks';
 import { supabase } from './supabase';
 import {
   PRESALE_PIPELINE, PRESALE_STAGES, PRESALE_STAGE_LABELS, PRESALE_STAGE_COLORS,
   MINT_FIELDS, PREP_ITEMS, fmt, fmtDTLocal,
-  type Prospect, type PresaleStage,
+  type Prospect, type PresaleStage, type Proposal,
 } from './utils';
 
 const emptyProspect: Omit<Prospect, 'id' | 'createdAt' | 'updatedAt'> = {
   name: '', business: '', source: '', stage: 'prospeccion',
   contact: { whatsapp: '', email: '', instagram: '' },
-  meetingAt: null, mint: {}, prep: {}, notes: '',
+  meetingAt: null, mint: {}, prep: {}, notes: '', proposal: null,
 };
 
 export default function PreVenta() {
@@ -21,6 +21,8 @@ export default function PreVenta() {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(emptyProspect);
   const [confirm, setConfirm] = useState<string | null>(null);
+  const [generatingProp, setGeneratingProp] = useState(false);
+  const [deck, setDeck] = useState<Proposal | null>(null);
 
   // Mantener el panel sincronizado con datos frescos
   useEffect(() => {
@@ -65,6 +67,26 @@ export default function PreVenta() {
     }]);
     if (error) toast('Error al crear el evento', 'error');
     else { update(p.id, { stage: p.stage === 'prospeccion' || p.stage === 'contacto' ? 'agendado' : p.stage }); toast('Evento creado en el calendario 📅'); }
+  };
+
+  const generarPropuesta = async (p: Prospect) => {
+    setGeneratingProp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-proposal', {
+        body: { prospect: { name: p.name, business: p.business, source: p.source, stage: p.stage, notes: p.notes, mint: p.mint } },
+      });
+      let err = '';
+      if (error) { err = error.message; try { const b = await (error as any).context?.json?.(); if (b?.error) err = b.error; } catch { /* noop */ } }
+      else if (!data?.ok) err = data?.error || 'Respuesta inesperada';
+      if (err) { toast(`Error al generar propuesta: ${err}`, 'error'); return; }
+      await update(p.id, { proposal: data.proposal });
+      setDeck(data.proposal);
+      toast('Propuesta generada ✨');
+    } catch (e: any) {
+      toast(`Error: ${e?.message || e}`, 'error');
+    } finally {
+      setGeneratingProp(false);
+    }
   };
 
   return (
@@ -174,6 +196,24 @@ export default function PreVenta() {
               </button>
             </Section>
 
+            {/* Propuesta de valor */}
+            <Section title="Propuesta de valor">
+              {detail.proposal ? (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setDeck(detail.proposal)}>
+                    <Presentation size={14} /> Ver presentación
+                  </button>
+                  <button className="btn btn-secondary btn-sm" title="Regenerar con IA" onClick={() => generarPropuesta(detail)} disabled={generatingProp}>
+                    <Sparkles size={14} />
+                  </button>
+                </div>
+              ) : (
+                <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => generarPropuesta(detail)} disabled={generatingProp}>
+                  <Sparkles size={15} /> {generatingProp ? 'Generando propuesta…' : 'Generar propuesta con IA'}
+                </button>
+              )}
+            </Section>
+
             {/* Preparación */}
             <Section title="Preparación previa">
               {PREP_ITEMS.map(item => (
@@ -207,6 +247,9 @@ export default function PreVenta() {
       )}
 
       <button className="btn-fab" onClick={openNew}><Plus size={24} /></button>
+
+      {/* Presentación de la propuesta */}
+      {deck && <ProposalDeck proposal={deck} onClose={() => setDeck(null)} />}
 
       {/* Modal nuevo prospecto */}
       {modal && (
@@ -254,4 +297,93 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       {children}
     </div>
   );
+}
+
+// ─── Presentación de la propuesta (modo deck) ───
+function ProposalDeck({ proposal, onClose }: { proposal: Proposal; onClose: () => void }) {
+  const slides = _memoSlides(proposal);
+  const [i, setI] = useState(0);
+  const go = (d: number) => setI(v => Math.max(0, Math.min(slides.length - 1, v + d)));
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') go(1);
+      else if (e.key === 'ArrowLeft') go(-1);
+      else if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slides.length]);
+
+  const s = slides[i];
+  return (
+    <div className="deck-overlay" onClick={() => go(1)}>
+      <button className="deck-close" onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Cerrar"><X size={20} /></button>
+      <div className="deck-stage" onClick={e => e.stopPropagation()}>
+        {s.kind === 'portada' && (
+          <div className="deck-slide deck-portada">
+            <div className="deck-eyebrow">{proposal.subtitulo || 'Propuesta de valor'}</div>
+            <h1>{proposal.cliente}</h1>
+            <div className="deck-by">Presentado por <strong>MYB Digitals</strong> · soluciones digitales</div>
+          </div>
+        )}
+        {s.kind === 'diagnostico' && (
+          <div className="deck-slide">
+            <div className="deck-eyebrow">Diagnóstico</div>
+            <h2>Lo que necesita {proposal.cliente}</h2>
+            <p className="deck-lead">{proposal.diagnostico?.texto}</p>
+            <div className="deck-pillars">
+              {(proposal.diagnostico?.pilares || []).map((p, k) => (
+                <div key={k} className="deck-pillar"><span>{k + 1}</span>{p}</div>
+              ))}
+            </div>
+          </div>
+        )}
+        {s.kind === 'seccion' && (() => {
+          const sec = proposal.secciones[s.idx!];
+          return (
+            <div className="deck-slide">
+              <div className="deck-eyebrow">Solución · {s.idx! + 1} de {proposal.secciones.length}</div>
+              <h2>{sec.titulo}</h2>
+              <div className="deck-cols">
+                <ul className="deck-bullets">{(sec.bullets || []).map((b, k) => <li key={k}>{b}</li>)}</ul>
+                <p className="deck-desc">{sec.descripcion}</p>
+              </div>
+            </div>
+          );
+        })()}
+        {s.kind === 'inversion' && (
+          <div className="deck-slide">
+            <div className="deck-eyebrow">Inversión</div>
+            <h2>Inversión</h2>
+            <p className="deck-lead">{proposal.inversion?.texto}</p>
+            {(proposal.inversion?.items || []).length > 0 && (
+              <ul className="deck-bullets" style={{ maxWidth: 620 }}>{proposal.inversion!.items.map((it, k) => <li key={k}>{it}</li>)}</ul>
+            )}
+          </div>
+        )}
+        {s.kind === 'cierre' && (
+          <div className="deck-slide deck-portada">
+            <div className="deck-eyebrow">Próximos pasos</div>
+            <h2 style={{ maxWidth: 760 }}>{proposal.proximosPasos}</h2>
+            <div className="deck-by">Gracias · <strong>MYB Digitals</strong></div>
+          </div>
+        )}
+      </div>
+      <div className="deck-nav" onClick={e => e.stopPropagation()}>
+        <button className="btn btn-ghost btn-icon" onClick={() => go(-1)} disabled={i === 0}><ChevronLeft size={20} /></button>
+        <span>{i + 1} / {slides.length}</span>
+        <button className="btn btn-ghost btn-icon" onClick={() => go(1)} disabled={i === slides.length - 1}><ChevronRight size={20} /></button>
+      </div>
+    </div>
+  );
+}
+
+type DeckSlide = { kind: 'portada' | 'diagnostico' | 'seccion' | 'inversion' | 'cierre'; idx?: number };
+function _memoSlides(p: Proposal): DeckSlide[] {
+  const s: DeckSlide[] = [{ kind: 'portada' }, { kind: 'diagnostico' }];
+  (p.secciones || []).forEach((_, idx) => s.push({ kind: 'seccion', idx }));
+  if (p.inversion && (p.inversion.texto || (p.inversion.items || []).length > 0)) s.push({ kind: 'inversion' });
+  s.push({ kind: 'cierre' });
+  return s;
 }
