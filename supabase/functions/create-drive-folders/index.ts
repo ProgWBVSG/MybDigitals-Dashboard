@@ -96,7 +96,9 @@ Deno.serve(async (req) => {
     for (const d of docs) {
       if (!d?.title) continue;
       try {
-        await createDoc(token, d.title, d.content || '', docsFolderId);
+        // Una carpeta por cada documento, con el Google Doc adentro
+        const subFolderId = await createFolder(token, d.title, docsFolderId);
+        await createDoc(token, d.title, d.content || '', subFolderId);
         docsCreated++;
       } catch (e) {
         docsWarning = String((e as Error)?.message || e);
