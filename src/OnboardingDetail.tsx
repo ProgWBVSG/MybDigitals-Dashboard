@@ -97,7 +97,7 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
   // Genera el Brief (IA/Gemini) + el Acuerdo (plantilla) desde los datos de la reunión
   const generateDocs = async () => {
     if (!discovery.marca && !discovery.queHace && !discovery.notas) {
-      toast('Cargá al menos los datos básicos de la reunión', 'error'); return;
+      toast('Completá al menos el nombre de la marca y las notas de la reunión antes de generar', 'error'); return;
     }
     setGenerating(true);
     try {
@@ -113,7 +113,10 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
       } else if (!data?.ok) errMsg = data?.error || 'Respuesta inesperada';
       if (errMsg) { toast(`Acuerdo generado. El Brief (IA) falló: ${errMsg}`, 'error'); return; }
       await saveDocContent('brief', data.brief);
-      toast('Brief y Acuerdo generados ✨');
+      toast('¡Listo! Brief y Acuerdo generados ✨');
+      // Abrir el Brief recién generado para que se vea al instante
+      const briefDoc = o.documents.find(d => d.docType === 'brief');
+      if (briefDoc) setDocModal({ ...briefDoc, content: data.brief, status: 'in_progress' });
     } catch (e: any) {
       toast(`Error: ${e?.message || e}`, 'error');
     } finally {
