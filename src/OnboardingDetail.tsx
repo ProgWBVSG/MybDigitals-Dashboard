@@ -7,7 +7,7 @@ import {
 import { toast } from './hooks';
 import { supabase } from './supabase';
 import { buildAcuerdo } from './playbooks';
-import { STEP_GUIDES, type StepGuide } from './guides';
+import { STEP_GUIDES, PHASE_GUIDES, type StepGuide, type PhaseGuide } from './guides';
 import {
   SERVICE_LABELS, ONBOARDING_STATUSES, ONBOARDING_STATUS_LABELS,
   STEP_STATUSES, STEP_STATUS_LABELS,
@@ -37,6 +37,7 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
   const [discoveryOpen, setDiscoveryOpen] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [viewMode, setViewMode] = useState<'mapa' | 'tecnico'>('mapa');
+  const [mapPhase, setMapPhase] = useState<number | null>(null);
 
   useEffect(() => {
     setSlots({ driveRootLink: o.driveRootLink || '', whatsappLink: o.whatsappLink || '', domain: o.domain || '' });
@@ -54,6 +55,8 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
     });
     return Array.from(map.values()).sort((a, b) => a.phase - b.phase);
   }, [o.steps]);
+
+  const mapPhaseObj = mapPhase !== null ? (phases.find(p => p.phase === mapPhase) ?? null) : null;
 
   const saveSlot = (field: 'driveRootLink' | 'whatsappLink' | 'domain') => {
     if (slots[field] !== (o[field] || '')) update(o.id, { [field]: slots[field] } as any);
@@ -290,11 +293,7 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
 
       {/* Fases / pasos */}
       {viewMode === 'mapa' ? (
-        <ProjectMap phases={phases} progress={pct} onPick={(phase: number) => {
-          setViewMode('tecnico');
-          setCollapsedPhases(Object.fromEntries(phases.map(p => [p.phase, p.phase !== phase])) as Record<number, boolean>);
-          setTimeout(() => document.getElementById('onb-phase-' + phase)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
-        }} />
+        <ProjectMap phases={phases} progress={pct} onPick={(phase: number) => setMapPhase(phase)} />
       ) : phases.map(ph => {
         const phPct = onboardingProgress(ph.steps);
         const collapsed = collapsedPhases[ph.phase];
@@ -313,6 +312,8 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
             </div>
 
             {!collapsed && (
+              <>
+                {PHASE_GUIDES[ph.name] && <p className="onb-phase-intro-line">{PHASE_GUIDES[ph.name].que}</p>}
               <div className="onb-steps">
                 {ph.steps.map(s => {
                   const isOpen = expanded === s.id;
@@ -371,10 +372,28 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
                   );
                 })}
               </div>
+              </>
             )}
           </div>
         );
       })}
+
+      {/* Ficha de fase (al tocar un nodo del Mapa) */}
+      {mapPhaseObj && (
+        <PhaseModal
+          ph={mapPhaseObj}
+          intro={PHASE_GUIDES[mapPhaseObj.name]}
+          onClose={() => setMapPhase(null)}
+          toggleStep={toggleStep}
+          onOpenTecnico={() => {
+            const target = mapPhaseObj.phase;
+            setMapPhase(null);
+            setViewMode('tecnico');
+            setCollapsedPhases(Object.fromEntries(phases.map(p => [p.phase, p.phase !== target])) as Record<number, boolean>);
+            setTimeout(() => document.getElementById('onb-phase-' + target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+          }}
+        />
+      )}
 
       {/* Modal documento */}
       {docModal && (
@@ -621,6 +640,70 @@ function StepGuideBlock({ guide }: { guide: StepGuide }) {
       <div className="onb-guide-sec">
         <span className="onb-guide-h">Listo cuando</span>
         <ul className="onb-guide-check">{guide.listo.map((l, i) => <li key={i}>{l}</li>)}</ul>
+      </div>
+    </div>
+  );
+}
+
+// ─── Ficha de fase (intro + pasos con guía), se abre desde el Mapa ───
+function PhaseModal({ ph, intro, onClose, toggleStep, onOpenTecnico }: {
+  ph: { phase: number; name: string; steps: OnboardingStep[] };
+  intro?: PhaseGuide;
+  onClose: () => void;
+  toggleStep: (s: OnboardingStep) => void;
+  onOpenTecnico: () => void;
+}) {
+  const [open, setOpen] = useState<string | null>(null);
+  const pct = onboardingProgress(ph.steps);
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 660 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div>
+            <div className="onb-map-eyebrow" style={{ color: 'var(--primary-light)' }}>Fase {ph.phase} · {pct}% completada</div>
+            <h2 style={{ margin: '2px 0 0' }}>{ph.name}</h2>
+          </div>
+          <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        {intro && (
+          <div className="onb-phase-intro">
+            <div><span className="onb-guide-h">Qué es</span><p>{intro.que}</p></div>
+            <div><span className="onb-guide-h">Por qué importa</span><p>{intro.porque}</p></div>
+            <div><span className="onb-guide-h">Cuándo</span><p>{intro.cuando}</p></div>
+          </div>
+        )}
+
+        <div className="onb-guide-h" style={{ marginBottom: 8 }}>Pasos de esta fase</div>
+        <div className="onb-pm-steps">
+          {ph.steps.map(s => {
+            const done = s.status === 'done';
+            const g = STEP_GUIDES[s.title];
+            const isOpen = open === s.id;
+            return (
+              <div key={s.id} className="onb-pm-step">
+                <div className="onb-pm-row">
+                  <button className={`onb-check ${done ? 'done' : ''}`} onClick={() => toggleStep(s)}>
+                    {done ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                  </button>
+                  <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: done ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: done ? 'line-through' : 'none' }}>{s.title}</span>
+                  <span className="badge" style={{ background: `${OWNER_COLORS[s.owner]}22`, color: OWNER_COLORS[s.owner], flexShrink: 0 }}>{OWNER_LABELS[s.owner]}</span>
+                  {g && (
+                    <button className="btn btn-ghost btn-sm" onClick={() => setOpen(isOpen ? null : s.id)}>
+                      <BookOpen size={14} /> {isOpen ? 'Ocultar' : 'Guía'}
+                    </button>
+                  )}
+                </div>
+                {isOpen && g && <StepGuideBlock guide={g} />}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onClose}>Cerrar</button>
+          <button className="btn btn-primary" onClick={onOpenTecnico}><ListChecks size={15} /> Abrir en modo Técnico</button>
+        </div>
       </div>
     </div>
   );

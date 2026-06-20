@@ -1,6 +1,56 @@
 // ─── BASE DE CONOCIMIENTO: ficha por paso del onboarding ───
 // Guía consultiva para usar en reuniones reales. Se muestra al abrir un paso.
 
+export interface PhaseGuide {
+  que: string;     // Qué es la fase
+  porque: string;  // Por qué importa
+  cuando: string;  // Cuándo se hace
+}
+
+// Intro por fase (clave = nombre de la fase del playbook)
+export const PHASE_GUIDES: Record<string, PhaseGuide> = {
+  'Cierre & Pago': {
+    que: 'El momento en que un prospecto se convierte en cliente: se acuerda el alcance, se firma el espíritu del trabajo y entra la seña.',
+    porque: 'Filtra curiosos, financia el arranque y deja por escrito qué se hace y qué no. Sin esto, no hay proyecto.',
+    cuando: 'Apenas el cliente dice "sí", antes de tocar una sola herramienta.',
+  },
+  'Setup & Organización': {
+    que: 'Armar la infraestructura del proyecto: carpetas, canal de comunicación, acuerdo y accesos.',
+    porque: 'Un proyecto ordenado desde el día 1 transmite profesionalismo y evita el caos que hace perder tiempo y confianza.',
+    cuando: 'Inmediatamente después de cobrar la seña.',
+  },
+  'Discovery & Brief': {
+    que: 'La fase de descubrimiento: entender el negocio, su público, sus dolores y su marca a fondo.',
+    porque: 'Es la materia prima de TODO lo que sigue. Un mal brief = una web genérica. Acá se gana o se pierde el proyecto.',
+    cuando: 'En la llamada de kickoff y los días siguientes, antes de diseñar.',
+  },
+  'Diseño': {
+    que: 'Traducir la estrategia del brief en una dirección visual y una maqueta aprobada.',
+    porque: 'El diseño es lo primero que ve el cliente y su público; define la percepción de valor de toda la marca.',
+    cuando: 'Una vez que el brief está completo y hay material visual.',
+  },
+  'Desarrollo': {
+    que: 'Construir la web real: frontend, backend, funciones, seguridad e integraciones.',
+    porque: 'Es donde el diseño cobra vida y funciona de verdad. La calidad técnica sostiene todo lo demás.',
+    cuando: 'Con el diseño aprobado por el cliente.',
+  },
+  'SEO & AEO': {
+    que: 'Optimizar la web para que la encuentren: en buscadores (SEO) y en las IAs que recomiendan (AEO/GEO).',
+    porque: 'Una web hermosa que nadie encuentra no sirve. El AEO es el diferencial que casi nadie ofrece hoy.',
+    cuando: 'Antes del lanzamiento, con el contenido real cargado.',
+  },
+  'Lanzamiento': {
+    que: 'Poner la web en vivo en su dominio, con analítica y un control de calidad final.',
+    porque: 'Es el momento de mayor exposición; un detalle roto en producción daña la confianza recién ganada.',
+    cuando: 'Cuando todo está aprobado y probado.',
+  },
+  'Cierre & Retención': {
+    que: 'Cerrar bien el proyecto y abrir la relación a largo plazo: entrega, cobro final, testimonio y seguimiento.',
+    porque: 'Acá nace el ingreso recurrente y los referidos. Un cierre profesional convierte un cliente en un fan.',
+    cuando: 'Al entregar y durante los 30 días siguientes.',
+  },
+};
+
 export interface StepGuide {
   que: string;            // Qué es
   como: string;           // Cómo se consigue / se hace
