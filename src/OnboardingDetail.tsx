@@ -472,7 +472,7 @@ function DocEditor({ doc, onClose, onSave }: {
   );
 }
 
-// ─── MAPA DEL PROYECTO (vista dinámica tipo "caminito") ───
+// ─── MAPA DEL PROYECTO (vista "recorrido") ───
 const PHASE_ICONS = [DollarSign, FolderPlus, FileText, Palette, Code2, Search, Rocket, Trophy];
 
 // Spline suave (Catmull-Rom -> Bézier) que pasa por todos los puntos
@@ -496,36 +496,79 @@ function ProjectMap({ phases, progress, onPick }: {
   progress: number;
   onPick: (phase: number) => void;
 }) {
-  const VB_W = 1000, VB_H = 460;
+  const VB_W = 1000, VB_H = 440;
   const N = phases.length;
   const perRow = Math.max(1, Math.ceil(N / 2));
-  const xAt = (col: number) => 90 + (820 / Math.max(1, perRow - 1)) * col;
-  const pts = phases.map((_, i) =>
-    i < perRow ? { x: xAt(i), y: 150 } : { x: xAt(perRow - 1 - (i - perRow)), y: 320 }
-  );
+  const xAt = (col: number) => 110 + (780 / Math.max(1, perRow - 1)) * col;
+  // Caminito serpenteante con leve onda (más orgánico que 2 filas rectas)
+  const pts = phases.map((_, i) => {
+    const wave = i % 2 === 0 ? -18 : 18;
+    if (i < perRow) return { x: xAt(i), y: 160 + wave };
+    return { x: xAt(perRow - 1 - (i - perRow)), y: 320 - wave };
+  });
   const doneArr = phases.map(p => p.steps.length > 0 && onboardingProgress(p.steps) === 100);
   const currentIdx = doneArr.findIndex(d => !d);
   const d = smoothPath(pts);
 
+  // Campo de estrellas (estable por montaje)
+  const stars = useMemo(() => Array.from({ length: 54 }, () => ({
+    cx: +(Math.random() * VB_W).toFixed(0),
+    cy: +(Math.random() * VB_H).toFixed(0),
+    r: +(Math.random() * 1.6 + 0.4).toFixed(2),
+    o: +(Math.random() * 0.5 + 0.15).toFixed(2),
+    dur: +(Math.random() * 3 + 2).toFixed(1),
+  })), []);
+
+  const C = 2 * Math.PI * 16; // ring de progreso
+
   return (
-    <div className="card card-3d onb-map">
-      <div className="onb-map-head">
-        <h3>🗺️ Mapa del proyecto</h3>
-        <span className="onb-map-progress">{progress}% completado</span>
-      </div>
+    <div className="onb-map">
       <div className="onb-map-canvas">
+        {/* Encabezado superpuesto */}
+        <div className="onb-map-head">
+          <div>
+            <div className="onb-map-eyebrow">Recorrido del proyecto</div>
+            <h3 className="onb-map-title">Mapa del proyecto</h3>
+          </div>
+          <div className="onb-map-ring">
+            <svg width="46" height="46" viewBox="0 0 46 46">
+              <circle cx="23" cy="23" r="16" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
+              <circle cx="23" cy="23" r="16" fill="none" stroke="#818cf8" strokeWidth="4" strokeLinecap="round"
+                strokeDasharray={C} strokeDashoffset={C * (1 - progress / 100)} transform="rotate(-90 23 23)"
+                style={{ transition: 'stroke-dashoffset 1s ease' }} />
+            </svg>
+            <span>{progress}%</span>
+          </div>
+        </div>
+
         <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="xMidYMid meet" className="onb-map-svg">
           <defs>
             <linearGradient id="onbPathGrad" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor="#6366f1" />
+              <stop offset="55%" stopColor="#22d3ee" />
               <stop offset="100%" stopColor="#10b981" />
             </linearGradient>
+            <filter id="onbGlow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="5" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
           </defs>
-          <path d={d} fill="none" stroke="var(--border)" strokeWidth={7} strokeLinecap="round" strokeDasharray="1 16" opacity={0.7} />
-          <path d={d} fill="none" stroke="url(#onbPathGrad)" strokeWidth={8} strokeLinecap="round"
+          {/* estrellas */}
+          {stars.map((s, i) => (
+            <circle key={i} cx={s.cx} cy={s.cy} r={s.r} fill="#cbd5e1" opacity={s.o}>
+              <animate attributeName="opacity" values={`${s.o};${s.o * 0.25};${s.o}`} dur={`${s.dur}s`} repeatCount="indefinite" />
+            </circle>
+          ))}
+          {/* camino base (la ruta por delante) */}
+          <path d={d} fill="none" stroke="#334155" strokeWidth={9} strokeLinecap="round" opacity={0.55} />
+          <path className="onb-road-march" d={d} fill="none" stroke="#475569" strokeWidth={3} strokeLinecap="round" strokeDasharray="1 18" opacity={0.8} />
+          {/* progreso (camino recorrido, con glow) */}
+          <path d={d} fill="none" stroke="url(#onbPathGrad)" strokeWidth={7} strokeLinecap="round" filter="url(#onbGlow)"
             pathLength={100}
-            style={{ strokeDasharray: 100, strokeDashoffset: 100 - progress, transition: 'stroke-dashoffset 1.1s ease' }} />
+            style={{ strokeDasharray: 100, strokeDashoffset: 100 - progress, transition: 'stroke-dashoffset 1.2s ease' }} />
         </svg>
+
+        {/* nodos */}
         {phases.map((p, i) => {
           const Icon = PHASE_ICONS[i % PHASE_ICONS.length];
           const state = doneArr[i] ? 'done' : (currentIdx === -1 || i < currentIdx ? 'done' : i === currentIdx ? 'current' : 'locked');
@@ -533,11 +576,17 @@ function ProjectMap({ phases, progress, onPick }: {
             <button key={p.phase} className={`onb-node onb-node-${state}`}
               style={{ left: `${(pts[i].x / VB_W) * 100}%`, top: `${(pts[i].y / VB_H) * 100}%` }}
               onClick={() => onPick(p.phase)}>
-              <div className="onb-node-circle">
-                {state === 'done' ? <CheckCircle2 size={24} /> : state === 'locked' ? <Lock size={18} /> : <Icon size={24} />}
-                {state === 'current' && <span className="onb-node-rocket"><Rocket size={16} /></span>}
-              </div>
-              <span className="onb-node-label">{p.phase}. {p.name}</span>
+              {state === 'current' && (
+                <span className="onb-node-ship" aria-hidden="true"><Rocket size={20} /></span>
+              )}
+              <span className="onb-node-halo" />
+              <span className="onb-node-circle">
+                {state === 'done' ? <CheckCircle2 size={26} /> : state === 'locked' ? <Lock size={20} /> : <Icon size={26} />}
+              </span>
+              <span className="onb-node-label">
+                <span className="onb-node-eyebrow">Fase {p.phase}</span>
+                {p.name}
+              </span>
             </button>
           );
         })}
