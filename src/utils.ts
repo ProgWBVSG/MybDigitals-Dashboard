@@ -294,3 +294,49 @@ export const onboardingProgress = (steps: OnboardingStep[]): number => {
 // Próxima acción pendiente (la primera sin hacer ni omitir, por orden)
 export const onboardingNextStep = (steps: OnboardingStep[]): OnboardingStep | null =>
   [...steps].sort((a, b) => a.order - b.order).find(s => s.status !== 'done' && s.status !== 'skipped') || null;
+
+// ─── PRE-VENTA ───
+export const PRESALE_STAGES = ['prospeccion', 'contacto', 'agendado', 'reunion', 'calificacion', 'propuesta', 'ganado', 'perdido'] as const;
+export type PresaleStage = typeof PRESALE_STAGES[number];
+export const PRESALE_STAGE_LABELS: Record<PresaleStage, string> = {
+  prospeccion: 'Prospección', contacto: 'Contacto', agendado: 'Agendado', reunion: 'Reunión',
+  calificacion: 'Calificación', propuesta: 'Propuesta', ganado: 'Ganado', perdido: 'Perdido',
+};
+export const PRESALE_STAGE_COLORS: Record<PresaleStage, string> = {
+  prospeccion: '#64748b', contacto: '#3b82f6', agendado: '#f59e0b', reunion: '#8b5cf6',
+  calificacion: '#6366f1', propuesta: '#14b8a6', ganado: '#10b981', perdido: '#ef4444',
+};
+// Columnas del pipeline (las etapas activas; ganado/perdido se manejan aparte)
+export const PRESALE_PIPELINE: PresaleStage[] = ['prospeccion', 'contacto', 'agendado', 'reunion', 'calificacion', 'propuesta'];
+
+// Calificación MINT (Money, Influence, Need, Time)
+export const MINT_FIELDS: { key: string; label: string; hint: string }[] = [
+  { key: 'money', label: 'Money — Presupuesto', hint: '¿Tiene con qué invertir? ¿Cuánto maneja?' },
+  { key: 'influence', label: 'Influence — Decisión', hint: '¿Decide él/ella o hay que convencer a otro?' },
+  { key: 'need', label: 'Need — Necesidad', hint: '¿Qué tan real y urgente es el problema?' },
+  { key: 'time', label: 'Time — Timing', hint: '¿Para cuándo lo necesita?' },
+];
+
+// Checklist de preparación previa a la reunión
+export const PREP_ITEMS: { key: string; label: string }[] = [
+  { key: 'datos', label: 'Recopilé datos de contacto y del negocio' },
+  { key: 'investig', label: 'Investigué su negocio (web, IG, competencia)' },
+  { key: 'hipotesis', label: 'Hipótesis de qué necesita / su objetivo' },
+  { key: 'preguntas', label: 'Preparé las preguntas de discovery' },
+  { key: 'oferta', label: 'Pensé qué servicio le encaja' },
+];
+
+export interface Prospect {
+  id: string;
+  name: string;
+  business: string;
+  source: string;
+  stage: PresaleStage;
+  contact: { whatsapp?: string; email?: string; instagram?: string };
+  meetingAt: number | null;
+  mint: Record<string, string>;
+  prep: Record<string, boolean>;
+  notes: string;
+  createdAt: number;
+  updatedAt: number;
+}

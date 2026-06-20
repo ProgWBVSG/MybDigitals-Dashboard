@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket } from 'lucide-react';
+import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target } from 'lucide-react';
 import { useToastProvider } from './hooks';
 import Skills from './Skills';
 import Tasks from './Tasks';
@@ -7,9 +7,10 @@ import CalendarView from './Calendar';
 import Metrics from './Metrics';
 import Clients from './Clients';
 import Onboarding from './Onboarding';
+import PreVenta from './PreVenta';
 import './index.css';
 
-type Tab = 'metrics' | 'onboarding' | 'tasks' | 'calendar' | 'clients' | 'skills';
+type Tab = 'metrics' | 'preventa' | 'onboarding' | 'tasks' | 'calendar' | 'clients' | 'skills';
 
 export default function App() {
   const toasts = useToastProvider();
@@ -34,6 +35,9 @@ export default function App() {
           <button className={tab === 'metrics' ? 'active' : ''} onClick={() => setTab('metrics')}>
             <BarChart3 size={16} /> Métricas
           </button>
+          <button className={tab === 'preventa' ? 'active' : ''} onClick={() => setTab('preventa')}>
+            <Target size={16} /> Pre-venta
+          </button>
           <button className={tab === 'onboarding' ? 'active' : ''} onClick={() => setTab('onboarding')}>
             <Rocket size={16} /> Onboarding
           </button>
@@ -57,6 +61,7 @@ export default function App() {
       {/* Main Content */}
       <main className="main">
         {tab === 'metrics' && <Metrics />}
+        {tab === 'preventa' && <PreVenta />}
         {tab === 'onboarding' && <Onboarding />}
         {tab === 'tasks' && <Tasks />}
         {tab === 'calendar' && <CalendarView />}

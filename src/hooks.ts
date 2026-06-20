@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client, type Expense, type Goal, type ClientProject, type ClientNote,
-  type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type ServiceType } from './utils';
+  type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type ServiceType, type Prospect } from './utils';
 import { getPlaybook } from './playbooks';
 import { supabase } from './supabase';
 
@@ -563,6 +563,51 @@ export function useOnboardings() {
   };
 
   return { onboardings, loading, create, update, updateStep, updatePayment, updateDocument, remove, refresh: load };
+}
+
+// ─── PRE-VENTA (PROSPECTS) HOOK ───
+export function useProspects() {
+  const [prospects, setProspects] = useState<Prospect[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    const { data, error } = await supabase.from('prospects').select('*');
+    if (!error && data) {
+      setProspects(data.map(p => {
+        const c = mapToCamel(p);
+        return { ...c, contact: p.contact || {}, mint: p.mint || {}, prep: p.prep || {} };
+      }));
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('prospects_ch')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'prospects' }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+
+  const create = async (data: Omit<Prospect, 'id' | 'createdAt' | 'updatedAt'>): Promise<string | null> => {
+    const { data: created, error } = await supabase.from('prospects').insert([mapToSnake(data)]).select().single();
+    if (error) { console.error('Prospect create error:', error); toast('Error al crear prospecto', 'error'); return null; }
+    toast('Prospecto creado');
+    return created?.id ?? null;
+  };
+
+  const update = async (id: string, updates: Partial<Prospect>) => {
+    const { error } = await supabase.from('prospects').update(mapToSnake({ ...updates, updatedAt: Date.now() })).eq('id', id);
+    if (error) toast('Error al actualizar', 'error');
+  };
+
+  const remove = async (id: string) => {
+    const { error } = await supabase.from('prospects').delete().eq('id', id);
+    if (error) toast('Error al eliminar', 'error');
+    else toast('Prospecto eliminado');
+  };
+
+  return { prospects, loading, create, update, remove, refresh: load };
 }
 
 // ─── EXCHANGE RATE HOOK ───
