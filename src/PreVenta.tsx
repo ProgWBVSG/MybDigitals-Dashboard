@@ -23,6 +23,11 @@ export default function PreVenta() {
   const [confirm, setConfirm] = useState<string | null>(null);
   const [generatingProp, setGeneratingProp] = useState(false);
   const [deck, setDeck] = useState<Proposal | null>(null);
+  // Estado local de los campos editables (evita que un guardado pise a otro)
+  const [disc, setDisc] = useState<Record<string, string>>({});
+  const [mintL, setMintL] = useState<Record<string, string>>({});
+  const [contactL, setContactL] = useState<{ whatsapp?: string; email?: string; instagram?: string }>({});
+  const [prepL, setPrepL] = useState<Record<string, boolean>>({});
 
   // Mantener el panel sincronizado con datos frescos
   useEffect(() => {
@@ -31,6 +36,17 @@ export default function PreVenta() {
       if (fresh) setDetail(fresh);
     }
   }, [prospects]);
+
+  // Sincronizar el estado local SOLO cuando cambia el prospecto seleccionado
+  useEffect(() => {
+    setDisc(detail?.discovery || {});
+    setMintL(detail?.mint || {});
+    setContactL(detail?.contact || {});
+    setPrepL(detail?.prep || {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail?.id]);
+
+  const missing = PROSPECT_DISCOVERY_REQUIRED.filter(f => !(disc[f.key] || '').trim());
 
   const filtered = useMemo(() => {
     let list = prospects;
@@ -50,9 +66,9 @@ export default function PreVenta() {
     if (id) setTimeout(() => { const p = { ...form, id, createdAt: Date.now(), updatedAt: Date.now() } as Prospect; setDetail(p); }, 100);
   };
 
-  const waLink = (p: Prospect) => {
-    const num = (p.contact.whatsapp || '').replace(/[^\d]/g, '');
-    const msg = encodeURIComponent(`Hola ${p.name}! Soy de MYB Digitals. `);
+  const waLink = () => {
+    const num = (contactL.whatsapp || '').replace(/[^\d]/g, '');
+    const msg = encodeURIComponent(`Hola ${detail?.name || ''}! Soy de MYB Digitals. `);
     return `https://wa.me/${num}?text=${msg}`;
   };
 
@@ -80,18 +96,16 @@ export default function PreVenta() {
     catch { toast('Link: ' + link, 'info'); }
   };
 
-  const missingDiscovery = (p: Prospect) => PROSPECT_DISCOVERY_REQUIRED.filter(f => !(p.discovery?.[f.key] || '').trim());
-
   const generarPropuesta = async (p: Prospect) => {
-    const missing = missingDiscovery(p);
     if (missing.length) {
       toast(`Cargá estos datos antes de generar: ${missing.map(m => m.label).join(', ')}`, 'error');
       return;
     }
     setGeneratingProp(true);
     try {
+      await update(p.id, { discovery: disc, mint: mintL, contact: contactL }); // persistir lo último cargado
       const { data, error } = await supabase.functions.invoke('generate-proposal', {
-        body: { prospect: { name: p.name, business: p.business, ...p.discovery, mint: p.mint, notas: p.notes } },
+        body: { prospect: { name: p.name, business: p.business, ...disc, mint: mintL, notas: p.notes } },
       });
       let err = '';
       if (error) { err = error.message; try { const b = await (error as any).context?.json?.(); if (b?.error) err = b.error; } catch { /* noop */ } }
@@ -193,12 +207,12 @@ export default function PreVenta() {
             {/* Contacto */}
             <Section title="Contacto">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
-                <input className="input" placeholder="WhatsApp (+54 9 351...)" defaultValue={detail.contact.whatsapp || ''} onBlur={e => update(detail.id, { contact: { ...detail.contact, whatsapp: e.target.value } })} />
-                <input className="input" placeholder="Email" defaultValue={detail.contact.email || ''} onBlur={e => update(detail.id, { contact: { ...detail.contact, email: e.target.value } })} />
-                <input className="input" placeholder="Instagram" defaultValue={detail.contact.instagram || ''} onBlur={e => update(detail.id, { contact: { ...detail.contact, instagram: e.target.value } })} />
+                <input className="input" placeholder="WhatsApp (+54 9 351...)" value={contactL.whatsapp || ''} onChange={e => setContactL(c => ({ ...c, whatsapp: e.target.value }))} onBlur={() => update(detail.id, { contact: contactL })} />
+                <input className="input" placeholder="Email" value={contactL.email || ''} onChange={e => setContactL(c => ({ ...c, email: e.target.value }))} onBlur={() => update(detail.id, { contact: contactL })} />
+                <input className="input" placeholder="Instagram" value={contactL.instagram || ''} onChange={e => setContactL(c => ({ ...c, instagram: e.target.value }))} onBlur={() => update(detail.id, { contact: contactL })} />
               </div>
-              {detail.contact.whatsapp && (
-                <a className="btn btn-secondary btn-sm" href={waLink(detail)} target="_blank" rel="noreferrer" style={{ width: '100%', justifyContent: 'center' }}>
+              {contactL.whatsapp && (
+                <a className="btn btn-secondary btn-sm" href={waLink()} target="_blank" rel="noreferrer" style={{ width: '100%', justifyContent: 'center' }}>
                   <MessageCircle size={14} color="#25D366" /> Escribir por WhatsApp
                 </a>
               )}
@@ -219,18 +233,28 @@ export default function PreVenta() {
               <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '-2px 0 12px', lineHeight: 1.45 }}>
                 Completá con lo que sacaste de la reunión. Los campos con <span style={{ color: 'var(--danger)' }}>*</span> son obligatorios para generar la propuesta.
               </p>
-              {PROSPECT_DISCOVERY_FIELDS.map(f => (
-                <div key={f.key} className="input-group" style={{ marginBottom: 10 }}>
-                  <label style={{ textTransform: 'none', letterSpacing: 0 }}>{f.label}{f.req && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
-                  {f.big ? (
-                    <textarea className="textarea" placeholder={f.ph} defaultValue={detail.discovery[f.key] || ''} style={{ minHeight: 58 }}
-                      onBlur={e => update(detail.id, { discovery: { ...detail.discovery, [f.key]: e.target.value } })} />
-                  ) : (
-                    <input className="input" placeholder={f.ph} defaultValue={detail.discovery[f.key] || ''}
-                      onBlur={e => update(detail.id, { discovery: { ...detail.discovery, [f.key]: e.target.value } })} />
-                  )}
-                </div>
-              ))}
+              {PROSPECT_DISCOVERY_FIELDS.map(f => {
+                const faltante = f.req && !(disc[f.key] || '').trim();
+                return (
+                  <div key={f.key} className="input-group" style={{ marginBottom: 10 }}>
+                    <label style={{ textTransform: 'none', letterSpacing: 0 }}>
+                      {f.label}{f.req && <span style={{ color: 'var(--danger)' }}> *</span>}
+                      {faltante && <span style={{ color: 'var(--danger)', fontSize: 10, fontWeight: 600, marginLeft: 6 }}>(falta)</span>}
+                    </label>
+                    {f.big ? (
+                      <textarea className="textarea" placeholder={f.ph} value={disc[f.key] || ''}
+                        style={{ minHeight: 58, borderColor: faltante ? 'var(--danger)' : undefined }}
+                        onChange={e => setDisc(d => ({ ...d, [f.key]: e.target.value }))}
+                        onBlur={() => update(detail.id, { discovery: disc })} />
+                    ) : (
+                      <input className="input" placeholder={f.ph} value={disc[f.key] || ''}
+                        style={{ borderColor: faltante ? 'var(--danger)' : undefined }}
+                        onChange={e => setDisc(d => ({ ...d, [f.key]: e.target.value }))}
+                        onBlur={() => update(detail.id, { discovery: disc })} />
+                    )}
+                  </div>
+                );
+              })}
             </Section>
 
             {/* Propuesta de valor */}
@@ -252,12 +276,12 @@ export default function PreVenta() {
                 </>
               ) : (
                 <>
-                  <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => generarPropuesta(detail)} disabled={generatingProp || missingDiscovery(detail).length > 0}>
-                    <Sparkles size={15} /> {generatingProp ? 'Generando propuesta…' : 'Generar propuesta con IA'}
+                  <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => generarPropuesta(detail)} disabled={generatingProp || missing.length > 0}>
+                    <Sparkles size={15} /> {generatingProp ? 'Armando la presentación…' : 'Generar propuesta con IA'}
                   </button>
-                  {missingDiscovery(detail).length > 0 && (
+                  {missing.length > 0 && (
                     <div style={{ fontSize: 11, color: 'var(--warning)', marginTop: 7, lineHeight: 1.4 }}>
-                      Completá para habilitar: {missingDiscovery(detail).map(m => m.label).join(', ')}
+                      Completá para habilitar: {missing.map(m => m.label).join(', ')}
                     </div>
                   )}
                 </>
@@ -269,9 +293,9 @@ export default function PreVenta() {
               {PREP_ITEMS.map(item => (
                 <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', cursor: 'pointer', fontSize: 13 }}>
                   <input type="checkbox" style={{ accentColor: 'var(--primary)', width: 16, height: 16 }}
-                    checked={!!detail.prep[item.key]}
-                    onChange={e => update(detail.id, { prep: { ...detail.prep, [item.key]: e.target.checked } })} />
-                  <span style={{ color: detail.prep[item.key] ? 'var(--text-muted)' : 'var(--text-secondary)', textDecoration: detail.prep[item.key] ? 'line-through' : 'none' }}>{item.label}</span>
+                    checked={!!prepL[item.key]}
+                    onChange={e => { const np = { ...prepL, [item.key]: e.target.checked }; setPrepL(np); update(detail.id, { prep: np }); }} />
+                  <span style={{ color: prepL[item.key] ? 'var(--text-muted)' : 'var(--text-secondary)', textDecoration: prepL[item.key] ? 'line-through' : 'none' }}>{item.label}</span>
                 </label>
               ))}
             </Section>
@@ -281,8 +305,9 @@ export default function PreVenta() {
               {MINT_FIELDS.map(f => (
                 <div key={f.key} className="input-group" style={{ marginBottom: 10 }}>
                   <label style={{ textTransform: 'none', letterSpacing: 0 }}>{f.label}</label>
-                  <input className="input" placeholder={f.hint} defaultValue={detail.mint[f.key] || ''}
-                    onBlur={e => update(detail.id, { mint: { ...detail.mint, [f.key]: e.target.value } })} />
+                  <input className="input" placeholder={f.hint} value={mintL[f.key] || ''}
+                    onChange={e => setMintL(m => ({ ...m, [f.key]: e.target.value }))}
+                    onBlur={() => update(detail.id, { mint: mintL })} />
                 </div>
               ))}
             </Section>
