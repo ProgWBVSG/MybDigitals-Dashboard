@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Search, X, Trash2, Target, CalendarPlus, MessageCircle, Sparkles, Presentation, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, X, Trash2, Target, CalendarPlus, MessageCircle, Sparkles, Presentation, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
 import { useProspects, toast } from './hooks';
 import { supabase } from './supabase';
 import {
@@ -67,6 +67,17 @@ export default function PreVenta() {
     }]);
     if (error) toast('Error al crear el evento', 'error');
     else { update(p.id, { stage: p.stage === 'prospeccion' || p.stage === 'contacto' ? 'agendado' : p.stage }); toast('Evento creado en el calendario 📅'); }
+  };
+
+  const compartirPropuesta = async (p: Prospect) => {
+    if (!p.proposal) { toast('Primero generá la propuesta', 'error'); return; }
+    const token = p.shareToken || crypto.randomUUID();
+    const expires = Date.now() + 30 * 24 * 3600 * 1000;
+    await update(p.id, { shareToken: token, shareExpires: expires });
+    const base = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+    const link = `${base}/functions/v1/share-proposal?token=${token}`;
+    try { await navigator.clipboard.writeText(link); toast('Link copiado · válido 30 días 📋'); }
+    catch { toast('Link: ' + link, 'info'); }
   };
 
   const generarPropuesta = async (p: Prospect) => {
@@ -199,14 +210,20 @@ export default function PreVenta() {
             {/* Propuesta de valor */}
             <Section title="Propuesta de valor">
               {detail.proposal ? (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setDeck(detail.proposal)}>
-                    <Presentation size={14} /> Ver presentación
+                <>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setDeck(detail.proposal)}>
+                      <Presentation size={14} /> Ver presentación
+                    </button>
+                    <button className="btn btn-secondary btn-sm" title="Regenerar con IA" onClick={() => generarPropuesta(detail)} disabled={generatingProp}>
+                      <Sparkles size={14} />
+                    </button>
+                  </div>
+                  <button className="btn btn-secondary btn-sm" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }} onClick={() => compartirPropuesta(detail)}>
+                    <Share2 size={14} /> Compartir link (30 días)
                   </button>
-                  <button className="btn btn-secondary btn-sm" title="Regenerar con IA" onClick={() => generarPropuesta(detail)} disabled={generatingProp}>
-                    <Sparkles size={14} />
-                  </button>
-                </div>
+                  {detail.shareExpires && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Link activo · vence el {fmt(detail.shareExpires)}</div>}
+                </>
               ) : (
                 <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => generarPropuesta(detail)} disabled={generatingProp}>
                   <Sparkles size={15} /> {generatingProp ? 'Generando propuesta…' : 'Generar propuesta con IA'}
@@ -318,10 +335,13 @@ function ProposalDeck({ proposal, onClose }: { proposal: Proposal; onClose: () =
   const s = slides[i];
   return (
     <div className="deck-overlay" onClick={() => go(1)}>
+      <div className="deck-progress"><div style={{ width: `${((i + 1) / slides.length) * 100}%` }} /></div>
       <button className="deck-close" onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Cerrar"><X size={20} /></button>
+
       <div className="deck-stage" onClick={e => e.stopPropagation()}>
         {s.kind === 'portada' && (
-          <div className="deck-slide deck-portada">
+          <div className="deck-slide deck-cover">
+            <div className="deck-logo-mark">M</div>
             <div className="deck-eyebrow">{proposal.subtitulo || 'Propuesta de valor'}</div>
             <h1>{proposal.cliente}</h1>
             <div className="deck-by">Presentado por <strong>MYB Digitals</strong> · soluciones digitales</div>
@@ -329,12 +349,12 @@ function ProposalDeck({ proposal, onClose }: { proposal: Proposal; onClose: () =
         )}
         {s.kind === 'diagnostico' && (
           <div className="deck-slide">
-            <div className="deck-eyebrow">Diagnóstico</div>
+            <div className="deck-eyebrow"><span className="deck-tick" />Diagnóstico</div>
             <h2>Lo que necesita {proposal.cliente}</h2>
             <p className="deck-lead">{proposal.diagnostico?.texto}</p>
             <div className="deck-pillars">
               {(proposal.diagnostico?.pilares || []).map((p, k) => (
-                <div key={k} className="deck-pillar"><span>{k + 1}</span>{p}</div>
+                <div key={k} className="deck-pillar"><span>{String(k + 1).padStart(2, '0')}</span>{p}</div>
               ))}
             </div>
           </div>
@@ -342,38 +362,46 @@ function ProposalDeck({ proposal, onClose }: { proposal: Proposal; onClose: () =
         {s.kind === 'seccion' && (() => {
           const sec = proposal.secciones[s.idx!];
           return (
-            <div className="deck-slide">
-              <div className="deck-eyebrow">Solución · {s.idx! + 1} de {proposal.secciones.length}</div>
-              <h2>{sec.titulo}</h2>
-              <div className="deck-cols">
-                <ul className="deck-bullets">{(sec.bullets || []).map((b, k) => <li key={k}>{b}</li>)}</ul>
-                <p className="deck-desc">{sec.descripcion}</p>
+            <div className="deck-slide deck-section">
+              <div className="deck-num">{String(s.idx! + 1).padStart(2, '0')}</div>
+              <div className="deck-section-body">
+                <div className="deck-eyebrow"><span className="deck-tick" />Solución</div>
+                <h2>{sec.titulo}</h2>
+                <div className="deck-cols">
+                  <ul className="deck-bullets">{(sec.bullets || []).map((b, k) => <li key={k}>{b}</li>)}</ul>
+                  <p className="deck-desc">{sec.descripcion}</p>
+                </div>
               </div>
             </div>
           );
         })()}
         {s.kind === 'inversion' && (
           <div className="deck-slide">
-            <div className="deck-eyebrow">Inversión</div>
+            <div className="deck-eyebrow"><span className="deck-tick" />Inversión</div>
             <h2>Inversión</h2>
             <p className="deck-lead">{proposal.inversion?.texto}</p>
             {(proposal.inversion?.items || []).length > 0 && (
-              <ul className="deck-bullets" style={{ maxWidth: 620 }}>{proposal.inversion!.items.map((it, k) => <li key={k}>{it}</li>)}</ul>
+              <ul className="deck-bullets" style={{ maxWidth: 620, marginTop: 18 }}>{proposal.inversion!.items.map((it, k) => <li key={k}>{it}</li>)}</ul>
             )}
           </div>
         )}
         {s.kind === 'cierre' && (
-          <div className="deck-slide deck-portada">
+          <div className="deck-slide deck-cover">
             <div className="deck-eyebrow">Próximos pasos</div>
-            <h2 style={{ maxWidth: 760 }}>{proposal.proximosPasos}</h2>
+            <h2 style={{ maxWidth: 820 }}>{proposal.proximosPasos}</h2>
             <div className="deck-by">Gracias · <strong>MYB Digitals</strong></div>
           </div>
         )}
       </div>
-      <div className="deck-nav" onClick={e => e.stopPropagation()}>
-        <button className="btn btn-ghost btn-icon" onClick={() => go(-1)} disabled={i === 0}><ChevronLeft size={20} /></button>
-        <span>{i + 1} / {slides.length}</span>
-        <button className="btn btn-ghost btn-icon" onClick={() => go(1)} disabled={i === slides.length - 1}><ChevronRight size={20} /></button>
+
+      <div className="deck-footer" onClick={e => e.stopPropagation()}>
+        <span className="deck-foot-brand"><span className="deck-logo-mini">M</span> MYB Digitals</span>
+        <span className="deck-foot-client">{proposal.cliente}</span>
+        <div className="deck-nav">
+          <button className="btn btn-ghost btn-icon" onClick={() => go(-1)} disabled={i === 0}><ChevronLeft size={18} /></button>
+          <span>{i + 1} / {slides.length}</span>
+          <button className="btn btn-ghost btn-icon" onClick={() => go(1)} disabled={i === slides.length - 1}><ChevronRight size={18} /></button>
+        </div>
       </div>
     </div>
   );

@@ -347,6 +347,8 @@ export interface Prospect {
   prep: Record<string, boolean>;
   notes: string;
   proposal: Proposal | null;
+  shareToken?: string | null;
+  shareExpires?: number | null;
   createdAt: number;
   updatedAt: number;
 }
