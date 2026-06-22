@@ -21,6 +21,7 @@ Estilo MYB de propuesta:
 - Una portada, un diagnóstico que nombra los PILARES de la solución, y luego UNA sección por cada pilar (con puntos concretos + un párrafo que lo explica), y un cierre.
 - Los pilares y secciones son SIEMPRE a medida del negocio y sus dolores (ej: "Página web como vendedor", "Panel de control", "Automatizaciones de procesos", "Optimización SEO/AEO", etc.).
 - Tono experto, claro y cercano; sin clichés de marketing ni promesas mágicas. Español rioplatense (tratar de "ustedes"). Beneficios concretos y reales.
+- Basate ESTRICTAMENTE en los datos provistos del prospecto (qué hace, dolor, objetivo, servicio, etc.). NO inventes datos, cifras ni servicios que no estén. Si algo no se aclaró, omitilo en vez de inventar. La propuesta debe sentirse hecha a medida de ESTE cliente.
 
 Devolvé ÚNICAMENTE un JSON válido con EXACTAMENTE esta forma:
 {

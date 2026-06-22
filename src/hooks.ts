@@ -575,7 +575,7 @@ export function useProspects() {
     if (!error && data) {
       setProspects(data.map(p => {
         const c = mapToCamel(p);
-        return { ...c, contact: p.contact || {}, mint: p.mint || {}, prep: p.prep || {}, proposal: p.proposal ?? null };
+        return { ...c, contact: p.contact || {}, mint: p.mint || {}, prep: p.prep || {}, discovery: p.discovery || {}, proposal: p.proposal ?? null };
       }));
     }
     setLoading(false);

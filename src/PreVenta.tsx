@@ -4,14 +4,14 @@ import { useProspects, toast } from './hooks';
 import { supabase } from './supabase';
 import {
   PRESALE_PIPELINE, PRESALE_STAGES, PRESALE_STAGE_LABELS, PRESALE_STAGE_COLORS,
-  MINT_FIELDS, PREP_ITEMS, fmt, fmtDTLocal,
+  MINT_FIELDS, PREP_ITEMS, PROSPECT_DISCOVERY_FIELDS, PROSPECT_DISCOVERY_REQUIRED, fmt, fmtDTLocal,
   type Prospect, type PresaleStage, type Proposal,
 } from './utils';
 
 const emptyProspect: Omit<Prospect, 'id' | 'createdAt' | 'updatedAt'> = {
   name: '', business: '', source: '', stage: 'prospeccion',
   contact: { whatsapp: '', email: '', instagram: '' },
-  meetingAt: null, mint: {}, prep: {}, notes: '', proposal: null,
+  meetingAt: null, mint: {}, prep: {}, discovery: {}, notes: '', proposal: null,
 };
 
 export default function PreVenta() {
@@ -80,11 +80,18 @@ export default function PreVenta() {
     catch { toast('Link: ' + link, 'info'); }
   };
 
+  const missingDiscovery = (p: Prospect) => PROSPECT_DISCOVERY_REQUIRED.filter(f => !(p.discovery?.[f.key] || '').trim());
+
   const generarPropuesta = async (p: Prospect) => {
+    const missing = missingDiscovery(p);
+    if (missing.length) {
+      toast(`Cargá estos datos antes de generar: ${missing.map(m => m.label).join(', ')}`, 'error');
+      return;
+    }
     setGeneratingProp(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-proposal', {
-        body: { prospect: { name: p.name, business: p.business, source: p.source, stage: p.stage, notes: p.notes, mint: p.mint } },
+        body: { prospect: { name: p.name, business: p.business, ...p.discovery, mint: p.mint, notas: p.notes } },
       });
       let err = '';
       if (error) { err = error.message; try { const b = await (error as any).context?.json?.(); if (b?.error) err = b.error; } catch { /* noop */ } }
@@ -207,6 +214,25 @@ export default function PreVenta() {
               </button>
             </Section>
 
+            {/* Discovery: datos para la propuesta */}
+            <Section title="Datos para la propuesta">
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '-2px 0 12px', lineHeight: 1.45 }}>
+                Completá con lo que sacaste de la reunión. Los campos con <span style={{ color: 'var(--danger)' }}>*</span> son obligatorios para generar la propuesta.
+              </p>
+              {PROSPECT_DISCOVERY_FIELDS.map(f => (
+                <div key={f.key} className="input-group" style={{ marginBottom: 10 }}>
+                  <label style={{ textTransform: 'none', letterSpacing: 0 }}>{f.label}{f.req && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
+                  {f.big ? (
+                    <textarea className="textarea" placeholder={f.ph} defaultValue={detail.discovery[f.key] || ''} style={{ minHeight: 58 }}
+                      onBlur={e => update(detail.id, { discovery: { ...detail.discovery, [f.key]: e.target.value } })} />
+                  ) : (
+                    <input className="input" placeholder={f.ph} defaultValue={detail.discovery[f.key] || ''}
+                      onBlur={e => update(detail.id, { discovery: { ...detail.discovery, [f.key]: e.target.value } })} />
+                  )}
+                </div>
+              ))}
+            </Section>
+
             {/* Propuesta de valor */}
             <Section title="Propuesta de valor">
               {detail.proposal ? (
@@ -225,9 +251,16 @@ export default function PreVenta() {
                   {detail.shareExpires && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Link activo · vence el {fmt(detail.shareExpires)}</div>}
                 </>
               ) : (
-                <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => generarPropuesta(detail)} disabled={generatingProp}>
-                  <Sparkles size={15} /> {generatingProp ? 'Generando propuesta…' : 'Generar propuesta con IA'}
-                </button>
+                <>
+                  <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => generarPropuesta(detail)} disabled={generatingProp || missingDiscovery(detail).length > 0}>
+                    <Sparkles size={15} /> {generatingProp ? 'Generando propuesta…' : 'Generar propuesta con IA'}
+                  </button>
+                  {missingDiscovery(detail).length > 0 && (
+                    <div style={{ fontSize: 11, color: 'var(--warning)', marginTop: 7, lineHeight: 1.4 }}>
+                      Completá para habilitar: {missingDiscovery(detail).map(m => m.label).join(', ')}
+                    </div>
+                  )}
+                </>
               )}
             </Section>
 

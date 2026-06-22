@@ -326,6 +326,19 @@ export const PREP_ITEMS: { key: string; label: string }[] = [
   { key: 'oferta', label: 'Pensé qué servicio le encaja' },
 ];
 
+// Discovery del prospecto (info de empresa + reunión) → base para la propuesta
+export const PROSPECT_DISCOVERY_FIELDS: { key: string; label: string; ph: string; req: boolean; big: boolean }[] = [
+  { key: 'queHace', label: '¿Qué hace la empresa?', ph: 'En detalle: a qué se dedica, qué vende, hace cuánto', req: true, big: true },
+  { key: 'publico', label: 'Cliente ideal', ph: 'A quién le vende, perfil, zona', req: false, big: true },
+  { key: 'dolor', label: 'Principal dolor / problema', ph: 'Lo que más le duele hoy (lo que dijo en la reunión)', req: true, big: true },
+  { key: 'objetivo', label: '¿Qué quiere lograr?', ph: 'El resultado concreto que busca', req: true, big: true },
+  { key: 'situacion', label: '¿Cómo lo resuelve hoy?', ph: 'Web actual, Instagram, todo a mano...', req: false, big: false },
+  { key: 'servicio', label: 'Servicio que le proponemos', ph: 'Landing, Web profesional, Automatización IA...', req: true, big: false },
+  { key: 'diferencial', label: '¿Qué lo hace único?', ph: 'Frente a su competencia', req: false, big: true },
+  { key: 'queProbo', label: '¿Qué probó y no funcionó?', ph: 'Opcional', req: false, big: false },
+];
+export const PROSPECT_DISCOVERY_REQUIRED = PROSPECT_DISCOVERY_FIELDS.filter(f => f.req);
+
 export interface Proposal {
   cliente: string;
   subtitulo: string;
@@ -345,6 +358,7 @@ export interface Prospect {
   meetingAt: number | null;
   mint: Record<string, string>;
   prep: Record<string, boolean>;
+  discovery: Record<string, string>;
   notes: string;
   proposal: Proposal | null;
   shareToken?: string | null;
