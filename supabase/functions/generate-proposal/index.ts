@@ -41,6 +41,30 @@ Devolvé ÚNICAMENTE un JSON válido con EXACTAMENTE esta forma:
 - Cada sección: 4 a 6 bullets concretos.
 - Si no hay monto, dejá "inversion.items" vacío y un texto general.`;
 
+const GEN_CONFIG = { temperature: 0.6, maxOutputTokens: 6144, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 1024 } };
+const MODELS = [MODEL, 'gemini-2.0-flash'];
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+// Llama a Gemini con reintentos (503/429/500 = saturación temporal) y modelo de respaldo.
+async function geminiGenerate(prompt: string): Promise<any> {
+  let last: unknown = null;
+  for (const model of MODELS) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: GEN_CONFIG }) },
+      );
+      const data = await res.json();
+      if (res.ok) return data;
+      last = data;
+      const code = (data as { error?: { code?: number } })?.error?.code;
+      if (code === 503 || code === 429 || code === 500) { await sleep(900 * (attempt + 1)); continue; }
+      break; // error no recuperable -> probar el siguiente modelo
+    }
+  }
+  throw new Error('Gemini sigue saturado, probá de nuevo en un minuto. ' + JSON.stringify(last));
+}
+
 async function generateProposal(prospect: Record<string, unknown>): Promise<unknown> {
   const datos = Object.entries(prospect)
     .filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== '' && String(v) !== '{}')
@@ -49,24 +73,7 @@ async function generateProposal(prospect: Record<string, unknown>): Promise<unkn
 
   const prompt = `${SYSTEM_PROMPT}\n\n=== DATOS DEL PROSPECTO ===\n${datos}\n\n=== FIN ===\nGenerá la propuesta en JSON.`;
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.6,
-          maxOutputTokens: 6144,
-          responseMimeType: 'application/json',
-          thinkingConfig: { thinkingBudget: 1024 },
-        },
-      }),
-    },
-  );
-  const data = await res.json();
-  if (!res.ok) throw new Error('Gemini error: ' + JSON.stringify(data));
+  const data = await geminiGenerate(prompt);
   const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('') || '';
   if (!text) throw new Error('Gemini no devolvió texto: ' + JSON.stringify(data));
   try {

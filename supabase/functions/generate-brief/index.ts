@@ -62,6 +62,30 @@ EXTENSIÓN Y COMPLETITUD (REGLA MÁS IMPORTANTE):
 
 Devolvé ÚNICAMENTE el Markdown del brief, sin texto adicional antes ni después.`;
 
+const GEN_CONFIG = { temperature: 0.6, maxOutputTokens: 32768, thinkingConfig: { thinkingBudget: 2048 } };
+const MODELS = [MODEL, 'gemini-2.0-flash'];
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+// Gemini con reintentos (503/429/500 = saturación temporal) y modelo de respaldo.
+async function geminiGenerate(prompt: string): Promise<any> {
+  let last: unknown = null;
+  for (const model of MODELS) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: GEN_CONFIG }) },
+      );
+      const data = await res.json();
+      if (res.ok) return data;
+      last = data;
+      const code = (data as { error?: { code?: number } })?.error?.code;
+      if (code === 503 || code === 429 || code === 500) { await sleep(900 * (attempt + 1)); continue; }
+      break;
+    }
+  }
+  throw new Error('Gemini sigue saturado, probá de nuevo en un minuto. ' + JSON.stringify(last));
+}
+
 async function generateBrief(discovery: Record<string, unknown>): Promise<string> {
   const datos = Object.entries(discovery)
     .filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== '')
@@ -71,23 +95,7 @@ async function generateBrief(discovery: Record<string, unknown>): Promise<string
   const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
   const prompt = `${SYSTEM_PROMPT}\n\nFecha de hoy (usala tal cual en el encabezado, no inventes otra): ${hoy}.\n\n=== DATOS DE LA REUNIÓN CON EL CLIENTE ===\n${datos}\n\n=== FIN DE LOS DATOS ===\nRedactá ahora el brief completo.`;
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.6,
-          maxOutputTokens: 32768,            // techo alto: garantiza que complete aunque se extienda
-          thinkingConfig: { thinkingBudget: 2048 },
-        },
-      }),
-    },
-  );
-  const data = await res.json();
-  if (!res.ok) throw new Error('Gemini error: ' + JSON.stringify(data));
+  const data = await geminiGenerate(prompt);
   const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('') || '';
   if (!text) throw new Error('Gemini no devolvió texto: ' + JSON.stringify(data));
   return clean(text);
