@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   ArrowLeft, Trash2, CheckCircle2, Circle, Link as LinkIcon, MessageCircle, Globe,
   FileText, Copy, X, ChevronDown, ChevronRight, ExternalLink, FolderPlus, Sparkles,
-  Map as MapIcon, ListChecks, Lock, DollarSign, Palette, Code2, Search, Rocket, Trophy, BookOpen,
+  Map as MapIcon, ListChecks, Lock, DollarSign, Palette, Code2, Search, Rocket, Trophy, BookOpen, Plus,
 } from 'lucide-react';
 import { toast } from './hooks';
 import { supabase } from './supabase';
@@ -23,10 +23,12 @@ interface Props {
   updateStep: (id: string, updates: Partial<OnboardingStep>) => Promise<void>;
   updatePayment: (id: string, updates: Partial<OnboardingPayment>) => Promise<void>;
   updateDocument: (id: string, updates: Partial<OnboardingDocument>) => Promise<void>;
+  addStep: (onboardingId: string, step: { phase: number; phaseName: string; title: string; owner: OnboardingStep['owner']; isOptional?: boolean }) => Promise<void>;
+  removeStep: (id: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
 }
 
-export default function OnboardingDetail({ onboarding: o, onBack, update, updateStep, updatePayment, updateDocument, remove }: Props) {
+export default function OnboardingDetail({ onboarding: o, onBack, update, updateStep, updatePayment, updateDocument, addStep, removeStep, remove }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [collapsedPhases, setCollapsedPhases] = useState<Record<number, boolean>>({});
   const [docModal, setDocModal] = useState<OnboardingDocument | null>(null);
@@ -255,6 +257,11 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
                   {p.paid ? `Cobrado${p.paidAt ? ' el ' + fmt(p.paidAt) : ''}` : `${p.percentage}% del total`}
                 </div>
               </div>
+              {!p.paid && (
+                <input className="input" type="date" title="Fecha límite del pago"
+                  defaultValue={p.dueDate ? new Date(p.dueDate).toISOString().split('T')[0] : ''} style={{ width: 140 }}
+                  onChange={e => updatePayment(p.id, { dueDate: e.target.value ? new Date(e.target.value).getTime() : null })} />
+              )}
               <input className="input" type="number" defaultValue={p.amount || ''} placeholder="Monto"
                 style={{ width: 110 }} onBlur={e => { const v = Number(e.target.value); if (v !== p.amount) updatePayment(p.id, { amount: v }); }} />
               <select className="select" defaultValue={p.currency} style={{ width: 80 }}
@@ -362,6 +369,14 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
                             </select>
                           </div>
                           <div className="input-group">
+                            <label>Depende de</label>
+                            <select className="select" value={s.owner} onChange={e => updateStep(s.id, { owner: e.target.value as OnboardingStep['owner'] })}>
+                              <option value="myb">{OWNER_LABELS.myb}</option>
+                              <option value="client">{OWNER_LABELS.client}</option>
+                              <option value="both">{OWNER_LABELS.both}</option>
+                            </select>
+                          </div>
+                          <div className="input-group">
                             <label>Responsable</label>
                             <input className="input" defaultValue={s.assignedTo} placeholder="Vos / tu socio…"
                               onBlur={e => { if (e.target.value !== s.assignedTo) updateStep(s.id, { assignedTo: e.target.value }); }} />
@@ -377,11 +392,23 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
                             <input className="input" defaultValue={s.link} placeholder="https://…"
                               onBlur={e => { if (e.target.value !== s.link) updateStep(s.id, { link: e.target.value }); }} />
                           </div>
+                          <button className="btn btn-ghost btn-sm" style={{ gridColumn: '1 / -1', justifyContent: 'flex-start', color: 'var(--danger)' }}
+                            onClick={() => removeStep(s.id)}><Trash2 size={13} /> Borrar este paso</button>
                         </div>
                       )}
                     </div>
                   );
                 })}
+
+                {/* Agregar paso personalizado a esta fase */}
+                <div className="onb-add-step">
+                  <button className="btn btn-ghost btn-sm" onClick={() => addStep(o.id, { phase: ph.phase, phaseName: ph.name, title: 'Nuevo paso', owner: 'myb' })}>
+                    <Plus size={14} /> Agregar paso
+                  </button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => addStep(o.id, { phase: ph.phase, phaseName: ph.name, title: 'Esperando info del cliente', owner: 'client' })}>
+                    <Plus size={14} /> Esperar info del cliente
+                  </button>
+                </div>
               </div>
               </>
             )}

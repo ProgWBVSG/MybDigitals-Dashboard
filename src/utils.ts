@@ -270,7 +270,16 @@ export interface OnboardingPayment {
   percentage: number;
   paid: boolean;
   paidAt: number | null;
+  dueDate?: number | null;
 }
+
+// Reglas/normativas globales (compartidas por el equipo, guardadas en app_settings)
+export interface AppSettings {
+  stepDeadlineDays: number;     // plazo por defecto para cada paso de MYB
+  clientDeadlineDays: number;   // plazo cuando depende del cliente (info, accesos...)
+  paymentDeadlineDays: number;  // plazo para registrar/cobrar un pago
+}
+export const APP_SETTINGS_DEFAULTS: AppSettings = { stepDeadlineDays: 3, clientDeadlineDays: 2, paymentDeadlineDays: 3 };
 
 export interface OnboardingDocument {
   id: string;

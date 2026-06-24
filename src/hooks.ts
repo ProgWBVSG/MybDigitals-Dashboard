@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client, type Expense, type Goal, type ClientProject, type ClientNote,
   type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type ServiceType, type Prospect,
-  type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel } from './utils';
+  type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
+  type AppSettings, APP_SETTINGS_DEFAULTS } from './utils';
 import { getPlaybook } from './playbooks';
 import { supabase } from './supabase';
 
@@ -544,6 +545,23 @@ export function useOnboardings() {
     if (error) toast('Error al actualizar el paso', 'error');
   };
 
+  // Agrega un paso personalizado a un onboarding (al final de su fase)
+  const addStep = async (onboardingId: string, step: { phase: number; phaseName: string; title: string; owner: OnboardingStep['owner']; isOptional?: boolean }) => {
+    const ob = onboardings.find(o => o.id === onboardingId);
+    const maxOrder = ob && ob.steps.length ? Math.max(...ob.steps.map(s => s.order)) : -1;
+    const { error } = await supabase.from('onboarding_steps').insert(mapToSnake({
+      onboardingId, phase: step.phase, phaseName: step.phaseName, title: step.title,
+      description: '', owner: step.owner, assignedTo: '', status: 'pending',
+      isOptional: !!step.isOptional, link: '', dueDate: null, order: maxOrder + 1, completedAt: null,
+    }));
+    if (error) toast('No se pudo agregar el paso', 'error'); else toast('Paso agregado');
+  };
+
+  const removeStep = async (id: string) => {
+    const { error } = await supabase.from('onboarding_steps').delete().eq('id', id);
+    if (error) toast('No se pudo borrar el paso', 'error');
+  };
+
   const updatePayment = async (id: string, updates: Partial<OnboardingPayment>) => {
     const payload: any = { ...updates };
     if (updates.paid !== undefined) payload.paidAt = updates.paid ? Date.now() : null;
@@ -563,7 +581,7 @@ export function useOnboardings() {
     else toast('Onboarding eliminado');
   };
 
-  return { onboardings, loading, create, update, updateStep, updatePayment, updateDocument, remove, refresh: load };
+  return { onboardings, loading, create, update, updateStep, updatePayment, updateDocument, addStep, removeStep, remove, refresh: load };
 }
 
 // ─── PRE-VENTA (PROSPECTS) HOOK ───
@@ -611,6 +629,27 @@ export function useProspects() {
   return { prospects, loading, create, update, remove, refresh: load };
 }
 
+// ─── CONFIGURACIÓN GLOBAL (normativas de plazos, compartida) ───
+export function useAppSettings() {
+  const [settings, setSettings] = useState<AppSettings>(APP_SETTINGS_DEFAULTS);
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('app_settings').select('data').eq('id', 'global').maybeSingle();
+    if (data?.data) setSettings({ ...APP_SETTINGS_DEFAULTS, ...data.data });
+  }, []);
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('appsettings_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+  const update = async (patch: Partial<AppSettings>) => {
+    const next = { ...settings, ...patch };
+    setSettings(next);
+    const { error } = await supabase.from('app_settings').update({ data: next, updated_at: Date.now() }).eq('id', 'global');
+    if (error) toast('No se pudo guardar la configuración', 'error'); else toast('Configuración guardada');
+  };
+  return { settings, update };
+}
+
 // ─── NOTIFICACIONES (centro / "secretario" que vigila lo pendiente) ───
 const LS_NOTIF_SETTINGS = 'myb_notif_settings';
 const LS_NOTIF_READ = 'myb_notif_read';
@@ -621,6 +660,7 @@ export function useNotifications() {
   const { onboardings } = useOnboardings();
   const { events } = useCalendar();
   const { prospects } = useProspects();
+  const { settings: rules } = useAppSettings();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [settings, setSettingsState] = useState<NotifSettings>(() => {
     try { const v = localStorage.getItem(LS_NOTIF_SETTINGS); return v ? { ...NOTIF_DEFAULTS, ...JSON.parse(v) } : NOTIF_DEFAULTS; } catch { return NOTIF_DEFAULTS; }
@@ -650,20 +690,29 @@ export function useNotifications() {
 
     if (settings.payments) for (const o of onboardings) {
       if (o.status === 'archived') continue;
-      for (const p of (o.payments || [])) if (!p.paid) out.push({
-        id: `pay:${p.id}`, kind: 'payment', priority: o.status === 'launched' ? 'high' : 'normal',
-        title: `Cobro pendiente: ${p.label}`, body: `${o.clientName || o.title}${p.percentage ? ` · ${p.percentage}%` : ''}`, goto: 'onboarding',
-      });
+      const lastPaid = Math.max(o.startedAt || 0, ...(o.payments || []).filter(x => x.paid && x.paidAt).map(x => x.paidAt as number));
+      for (const p of (o.payments || [])) if (!p.paid) {
+        const due = p.dueDate || (lastPaid || now) + rules.paymentDeadlineDays * DAY;
+        const overdue = due < now;
+        out.push({ id: `pay:${p.id}`, kind: 'payment', priority: overdue || o.status === 'launched' ? 'high' : 'normal',
+          title: `${overdue ? 'Pago vencido: ' : 'Cobro pendiente: '}${p.label}`,
+          body: `${o.clientName || o.title}${p.percentage ? ` · ${p.percentage}%` : ''} · vence ${fmtRel(due)}`, dueAt: due, goto: 'onboarding' });
+      }
     }
 
     if (settings.steps) for (const o of onboardings) {
       if (o.status !== 'active') continue;
-      const next = (o.steps || []).find(s => !s.isOptional && (s.status === 'pending' || s.status === 'in_progress') && s.owner !== 'client');
+      const next = (o.steps || []).find(s => !s.isOptional && (s.status === 'pending' || s.status === 'in_progress'));
       if (next) {
-        const overdue = !!(next.dueDate && next.dueDate < now);
-        out.push({ id: `step:${next.id}`, kind: 'step', priority: overdue ? 'high' : 'low',
-          title: `${overdue ? 'Atrasado: ' : 'Seguir: '}${next.title}`, body: `${o.clientName || o.title} · ${next.phaseName}`,
-          dueAt: next.dueDate || undefined, goto: 'onboarding' });
+        // referencia = cuándo se volvió el paso actual (último paso completado, o el arranque)
+        const ref = Math.max(o.startedAt || 0, ...(o.steps || []).filter(s => s.completedAt).map(s => s.completedAt as number));
+        const days = next.owner === 'client' ? rules.clientDeadlineDays : rules.stepDeadlineDays;
+        const due = next.dueDate || (ref || now) + days * DAY;
+        const overdue = due < now;
+        const waiting = next.owner === 'client';
+        out.push({ id: `step:${next.id}`, kind: 'step', priority: overdue ? 'high' : 'normal',
+          title: `${overdue ? (waiting ? 'Reclamar al cliente: ' : 'Atrasado: ') : (waiting ? 'Esperando al cliente: ' : 'Seguir: ')}${next.title}`,
+          body: `${o.clientName || o.title} · ${next.phaseName} · vence ${fmtRel(due)}`, dueAt: due, goto: 'onboarding' });
       }
     }
 

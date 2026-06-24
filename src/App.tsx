@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target, LogOut, Bell } from 'lucide-react';
+import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target, LogOut, Bell, SlidersHorizontal } from 'lucide-react';
 import { supabase } from './supabase';
 import { useToastProvider, useNotifications } from './hooks';
 import Skills from './Skills';
@@ -12,10 +12,11 @@ import Onboarding from './Onboarding';
 import PreVenta from './PreVenta';
 import ProposalView from './ProposalView';
 import Notifications from './Notifications';
+import SettingsView from './Settings';
 import Login from './Login';
 import './index.css';
 
-type Tab = 'metrics' | 'preventa' | 'onboarding' | 'tasks' | 'calendar' | 'clients' | 'skills' | 'notifications';
+type Tab = 'metrics' | 'preventa' | 'onboarding' | 'tasks' | 'calendar' | 'clients' | 'skills' | 'notifications' | 'settings';
 
 export default function App() {
   // Link público de propuesta: muestra SOLO el deck, sin sesión ni acceso al dashboard.
@@ -86,6 +87,9 @@ function Dashboard() {
             <Bell size={18} />
             {notif.unread > 0 && <span className="notif-bell-badge">{notif.unread > 99 ? '99+' : notif.unread}</span>}
           </button>
+          <button className={`btn btn-ghost btn-icon${tab === 'settings' ? ' active' : ''}`} onClick={() => setTab('settings')} title="Configuración">
+            <SlidersHorizontal size={18} />
+          </button>
           <button className="btn btn-ghost btn-sm" onClick={() => supabase.auth.signOut()} title="Cerrar sesión">
             <LogOut size={16} /> Salir
           </button>
@@ -102,6 +106,7 @@ function Dashboard() {
         {tab === 'clients' && <Clients />}
         {tab === 'skills' && <Skills />}
         {tab === 'notifications' && <Notifications notif={notif} onGoto={t => setTab(t as Tab)} />}
+        {tab === 'settings' && <SettingsView />}
       </main>
 
       {/* Toasts */}

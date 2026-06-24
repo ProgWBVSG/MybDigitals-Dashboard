@@ -98,6 +98,8 @@ export default function Onboarding() {
         updateStep={ob.updateStep}
         updatePayment={ob.updatePayment}
         updateDocument={ob.updateDocument}
+        addStep={ob.addStep}
+        removeStep={ob.removeStep}
         remove={async (id) => { await ob.remove(id); setDetailId(null); }}
       />
     );
