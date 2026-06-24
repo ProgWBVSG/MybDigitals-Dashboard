@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client, type Expense, type Goal, type ClientProject, type ClientNote,
   type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type ServiceType, type Prospect,
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
-  type AppSettings, APP_SETTINGS_DEFAULTS } from './utils';
+  type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry } from './utils';
 import { getPlaybook } from './playbooks';
 import { supabase } from './supabase';
 
@@ -784,6 +784,47 @@ export function useNotifications() {
   };
 
   return { items, unread, reminders, settings, setSettings, isRead, markRead, markAllRead, addReminder, completeReminder, enableBrowserPush };
+}
+
+// ─── HISTORIAL / LEDGER ───
+export function useHistory() {
+  const [entries, setEntries] = useState<HistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('history').select('*').order('happened_at', { ascending: false });
+    if (data) setEntries(data.map(mapToCamel) as HistoryEntry[]);
+    setLoading(false);
+  }, []);
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('history_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'history' }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+
+  const add = async (e: Omit<HistoryEntry, 'id' | 'createdAt'>) => {
+    const { error } = await supabase.from('history').insert(mapToSnake({ ...e, createdAt: Date.now() }));
+    if (error) toast('No se pudo guardar en el historial', 'error'); else toast('Registrado en el historial');
+  };
+  const update = async (id: string, updates: Partial<HistoryEntry>) => {
+    const { error } = await supabase.from('history').update(mapToSnake(updates)).eq('id', id);
+    if (error) toast('Error al actualizar', 'error');
+  };
+  const remove = async (id: string) => { await supabase.from('history').delete().eq('id', id); };
+
+  const uploadReceipt = async (file: File): Promise<string | null> => {
+    if (file.size > 10 * 1024 * 1024) { toast('El comprobante supera los 10 MB', 'error'); return null; }
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${uuid()}.${ext}`;
+    const { error } = await supabase.storage.from('receipts').upload(path, file, { upsert: false });
+    if (error) { toast('No se pudo subir el comprobante: ' + error.message, 'error'); return null; }
+    return path;
+  };
+  const signedUrl = async (path: string): Promise<string | null> => {
+    const { data } = await supabase.storage.from('receipts').createSignedUrl(path, 3600);
+    return data?.signedUrl || null;
+  };
+
+  return { entries, loading, add, update, remove, uploadReceipt, signedUrl, refresh: load };
 }
 
 // ─── EXCHANGE RATE HOOK ───

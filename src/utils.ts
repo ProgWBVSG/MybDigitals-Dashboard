@@ -281,6 +281,38 @@ export interface AppSettings {
 }
 export const APP_SETTINGS_DEFAULTS: AppSettings = { stepDeadlineDays: 3, clientDeadlineDays: 2, paymentDeadlineDays: 3 };
 
+// ─── HISTORIAL / LEDGER ───
+export type HistoryKind = 'pago' | 'entrega' | 'recibido' | 'nota';
+export interface HistoryEntry {
+  id: string;
+  clientId: string | null;
+  kind: HistoryKind;
+  title: string;
+  detail: string;
+  amount: number;
+  currency: 'ARS' | 'USD';
+  receiptPath: string | null;  // path en el bucket privado 'receipts'
+  happenedAt: number;
+  createdAt: number;
+}
+export const HISTORY_KINDS: { key: HistoryKind; label: string; color: string }[] = [
+  { key: 'pago', label: 'Cobro recibido', color: '#10b981' },
+  { key: 'entrega', label: 'Entrega / lo que hicimos', color: '#6366f1' },
+  { key: 'recibido', label: 'Recibido del cliente', color: '#0ea5e9' },
+  { key: 'nota', label: 'Nota', color: '#64748b' },
+];
+export const HISTORY_KIND_LABELS: Record<HistoryKind, string> = Object.fromEntries(HISTORY_KINDS.map(k => [k.key, k.label])) as Record<HistoryKind, string>;
+
+// Presets de rango de fechas (días hacia atrás; null = todo, 0 = hoy)
+export const DATE_RANGES: { key: string; label: string; days: number | null }[] = [
+  { key: 'hoy', label: 'Hoy', days: 0 },
+  { key: '7', label: 'Últimos 7 días', days: 7 },
+  { key: '15', label: 'Últimos 15 días', days: 15 },
+  { key: '30', label: 'Últimos 30 días', days: 30 },
+  { key: '90', label: 'Últimos 90 días', days: 90 },
+  { key: 'all', label: 'Todo el historial', days: null },
+];
+
 export interface OnboardingDocument {
   id: string;
   onboardingId: string;
