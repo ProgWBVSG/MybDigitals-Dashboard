@@ -162,16 +162,17 @@ export default function ProposalDeck({ proposal, brand, onClose }: { proposal: P
         )}
 
         {s.kind === 'cierre' && (
-          <div className="deck-slide deck-cover" key={`s${i}`}>
+          <div className="deck-slide deck-cover deck-closing" key={`s${i}`}>
             <div className="deck-cover-inner">
               <div className="deck-eyebrow deck-center">Próximos pasos</div>
-              <h2 style={{ maxWidth: 760 }}>{proposal.proximosPasos}</h2>
+              <h2>Hagamos crecer a {proposal.cliente}</h2>
+              <p className="deck-lead deck-center-text">{proposal.proximosPasos}</p>
               {waHref && (
                 <a className="deck-cta" href={waHref} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
                   <MessageCircle size={20} /> Quiero avanzar
                 </a>
               )}
-              <div className="deck-by" style={{ marginTop: 22 }}>Gracias · <strong>MYB Digitals</strong></div>
+              <div className="deck-by" style={{ marginTop: 26 }}>Gracias · <strong>MYB Digitals</strong></div>
             </div>
           </div>
         )}

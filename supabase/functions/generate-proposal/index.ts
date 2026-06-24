@@ -41,6 +41,7 @@ Devolvé ÚNICAMENTE un JSON válido con EXACTAMENTE esta forma:
 - Cada sección: 3 a 4 bullets concretos y CORTOS (una sola línea, máximo ~10 palabras cada uno; sin punto final).
 - "descripcion": 2 a 3 frases, no más (va a leerse en pantalla, tiene que respirar).
 - "diagnostico.texto": 2 a 3 frases.
+- "proximosPasos": 1 sola frase corta y cálida invitando a avanzar (máximo ~20 palabras). NO repitas el nombre del cliente, NO armes un párrafo largo (ya hay un titular arriba).
 - Si no hay monto, dejá "inversion.items" vacío y un texto general.`;
 
 const GEN_CONFIG = { temperature: 0.6, maxOutputTokens: 6144, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 1024 } };
