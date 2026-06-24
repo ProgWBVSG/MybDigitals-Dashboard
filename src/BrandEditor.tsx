@@ -34,9 +34,12 @@ export default function BrandEditor({ brand, prospectId, sectionTitles, onChange
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <p className="be-intro">Esto personaliza la presentación. <strong>Cada elemento ya tiene su lugar fijo</strong> en el deck (te aclaro dónde aparece debajo de cada uno). Todo es opcional: lo que dejes vacío, simplemente no se muestra.</p>
+
       {/* Colores */}
       <div>
         <label className="be-label">Colores de la marca</label>
+        <p className="be-hint">Tiñen toda la presentación: barra de progreso, acentos, botones y el fondo de esporas.</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
           {PROPOSAL_THEMES.map(t => {
             const active = b.primary === t.primary && b.secondary === t.secondary;
@@ -54,9 +57,9 @@ export default function BrandEditor({ brand, prospectId, sectionTitles, onChange
 
       {/* Logo + portada */}
       <div style={{ display: 'flex', gap: 12 }}>
-        <AssetSlot label="Logo del cliente" url={b.logoUrl} busy={busy === 'logo'}
+        <AssetSlot label="Logo del cliente" hint="Portada (arriba) y pie de cada slide." url={b.logoUrl} busy={busy === 'logo'}
           onPick={onPick('logo', url => set({ logoUrl: url }))} onClear={() => set({ logoUrl: undefined })} />
-        <AssetSlot label="Foto de portada" url={b.coverUrl} busy={busy === 'cover'}
+        <AssetSlot label="Foto de portada" hint="Fondo de la primera pantalla." url={b.coverUrl} busy={busy === 'cover'}
           onPick={onPick('cover', url => set({ coverUrl: url }))} onClear={() => set({ coverUrl: undefined })} />
       </div>
 
@@ -64,15 +67,18 @@ export default function BrandEditor({ brand, prospectId, sectionTitles, onChange
       <div className="input-group">
         <label>Video personalizado (Loom o YouTube) — opcional</label>
         <input className="input" placeholder="https://www.loom.com/share/..." value={b.videoUrl || ''} onChange={e => set({ videoUrl: e.target.value })} />
+        <p className="be-hint">Si lo cargás, se muestra como una pantalla propia justo después de la portada.</p>
       </div>
       <div className="input-group">
         <label>Tu WhatsApp para el botón "Quiero avanzar"</label>
         <input className="input" placeholder="+54 9 351 ..." value={b.waMyb || ''} onChange={e => set({ waMyb: e.target.value })} />
+        <p className="be-hint">Pone un botón en la última pantalla que te escribe a vos por WhatsApp.</p>
       </div>
 
       {/* Métricas */}
       <div>
         <label className="be-label">Métricas (prueba social)</label>
+        <p className="be-hint">Aparecen en una pantalla "Por qué confiar en nosotros" (junto con los testimonios).</p>
         {metricas.map((m, k) => (
           <div key={k} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
             <input className="input" style={{ flex: '0 0 90px' }} placeholder="+8500" value={m.valor}
@@ -106,6 +112,7 @@ export default function BrandEditor({ brand, prospectId, sectionTitles, onChange
       {sectionTitles.length > 0 && (
         <div>
           <label className="be-label">Foto por sección</label>
+          <p className="be-hint">Cada foto aparece al lado del texto de ese pilar de la propuesta.</p>
           {sectionTitles.map((title, k) => {
             const url = b.sectionImages?.[k];
             return (
@@ -126,10 +133,11 @@ export default function BrandEditor({ brand, prospectId, sectionTitles, onChange
   );
 }
 
-function AssetSlot({ label, url, busy, onPick, onClear }: { label: string; url?: string; busy: boolean; onPick: (e: React.ChangeEvent<HTMLInputElement>) => void; onClear: () => void; }) {
+function AssetSlot({ label, hint, url, busy, onPick, onClear }: { label: string; hint?: string; url?: string; busy: boolean; onPick: (e: React.ChangeEvent<HTMLInputElement>) => void; onClear: () => void; }) {
   return (
     <div style={{ flex: 1 }}>
       <label className="be-label">{label}</label>
+      {hint && <p className="be-hint">{hint}</p>}
       <div className="be-thumb" style={url ? { backgroundImage: `url(${url})` } : undefined}>
         {!url && <ImageIcon size={20} />}
       </div>

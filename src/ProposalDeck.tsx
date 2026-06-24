@@ -58,6 +58,10 @@ export default function ProposalDeck({ proposal, brand, onClose }: { proposal: P
 
   return (
     <div className="deck-overlay" style={themeVars} onClick={() => go(1)} data-key={i}>
+      {/* Fondo ambiente: esporas/círculos difuminados, temados con la marca */}
+      <div className="deck-aura" aria-hidden="true">
+        <span className="deck-blob b1" /><span className="deck-blob b2" /><span className="deck-blob b3" /><span className="deck-blob b4" />
+      </div>
       <div className="deck-progress"><div style={{ width: `${((i + 1) / slides.length) * 100}%` }} /></div>
       {onClose && <button className="deck-close" onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Cerrar"><X size={20} /></button>}
 
