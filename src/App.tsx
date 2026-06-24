@@ -14,7 +14,7 @@ import './index.css';
 type Tab = 'metrics' | 'preventa' | 'onboarding' | 'tasks' | 'calendar' | 'clients' | 'skills';
 
 // Llave de acceso al dashboard. Cambiable en Vercel con VITE_DASH_KEY sin tocar código.
-const ACCESS_KEY = import.meta.env.VITE_DASH_KEY || 'mybd-acceso';
+const ACCESS_KEY = import.meta.env.VITE_DASH_KEY || 'mybmatiybenja1717.OK';
 const LS_KEY = 'myb_dash_key';
 
 function readUrl() {
