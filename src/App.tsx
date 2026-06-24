@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target, LogOut } from 'lucide-react';
+import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target, LogOut, Bell } from 'lucide-react';
 import { supabase } from './supabase';
-import { useToastProvider } from './hooks';
+import { useToastProvider, useNotifications } from './hooks';
 import Skills from './Skills';
 import Tasks from './Tasks';
 import CalendarView from './Calendar';
@@ -11,10 +11,11 @@ import Clients from './Clients';
 import Onboarding from './Onboarding';
 import PreVenta from './PreVenta';
 import ProposalView from './ProposalView';
+import Notifications from './Notifications';
 import Login from './Login';
 import './index.css';
 
-type Tab = 'metrics' | 'preventa' | 'onboarding' | 'tasks' | 'calendar' | 'clients' | 'skills';
+type Tab = 'metrics' | 'preventa' | 'onboarding' | 'tasks' | 'calendar' | 'clients' | 'skills' | 'notifications';
 
 export default function App() {
   // Link público de propuesta: muestra SOLO el deck, sin sesión ni acceso al dashboard.
@@ -39,6 +40,7 @@ export default function App() {
 function Dashboard() {
   const toasts = useToastProvider();
   const [tab, setTab] = useState<Tab>('metrics');
+  const notif = useNotifications();
 
   return (
     <>
@@ -80,6 +82,10 @@ function Dashboard() {
         </nav>
 
         <div className="header-actions">
+          <button className={`btn btn-ghost btn-icon notif-bell${tab === 'notifications' ? ' active' : ''}`} onClick={() => setTab('notifications')} title="Notificaciones">
+            <Bell size={18} />
+            {notif.unread > 0 && <span className="notif-bell-badge">{notif.unread > 99 ? '99+' : notif.unread}</span>}
+          </button>
           <button className="btn btn-ghost btn-sm" onClick={() => supabase.auth.signOut()} title="Cerrar sesión">
             <LogOut size={16} /> Salir
           </button>
@@ -95,6 +101,7 @@ function Dashboard() {
         {tab === 'calendar' && <CalendarView />}
         {tab === 'clients' && <Clients />}
         {tab === 'skills' && <Skills />}
+        {tab === 'notifications' && <Notifications notif={notif} onGoto={t => setTab(t as Tab)} />}
       </main>
 
       {/* Toasts */}

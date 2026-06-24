@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client, type Expense, type Goal, type ClientProject, type ClientNote,
-  type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type ServiceType, type Prospect } from './utils';
+  type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type ServiceType, type Prospect,
+  type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel } from './utils';
 import { getPlaybook } from './playbooks';
 import { supabase } from './supabase';
 
@@ -608,6 +609,132 @@ export function useProspects() {
   };
 
   return { prospects, loading, create, update, remove, refresh: load };
+}
+
+// ─── NOTIFICACIONES (centro / "secretario" que vigila lo pendiente) ───
+const LS_NOTIF_SETTINGS = 'myb_notif_settings';
+const LS_NOTIF_READ = 'myb_notif_read';
+const LS_NOTIF_PUSHED = 'myb_notif_pushed';
+const DAY = 86400000;
+
+export function useNotifications() {
+  const { onboardings } = useOnboardings();
+  const { events } = useCalendar();
+  const { prospects } = useProspects();
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [settings, setSettingsState] = useState<NotifSettings>(() => {
+    try { const v = localStorage.getItem(LS_NOTIF_SETTINGS); return v ? { ...NOTIF_DEFAULTS, ...JSON.parse(v) } : NOTIF_DEFAULTS; } catch { return NOTIF_DEFAULTS; }
+  });
+  const [readIds, setReadIds] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(LS_NOTIF_READ) || '[]'); } catch { return []; } });
+  const [tick, setTick] = useState(0);
+
+  const loadRem = useCallback(async () => {
+    const { data } = await supabase.from('reminders').select('*').eq('done', false);
+    if (data) setReminders(data.map(mapToCamel) as Reminder[]);
+  }, []);
+  useEffect(() => {
+    loadRem();
+    const ch = supabase.channel('reminders_ch').on('postgres_changes', { event: '*', schema: 'public', table: 'reminders' }, loadRem).subscribe();
+    const t = setInterval(() => setTick(x => x + 1), 60000); // re-evalúa tiempos cada minuto
+    return () => { supabase.removeChannel(ch); clearInterval(t); };
+  }, [loadRem]);
+
+  const setSettings = (patch: Partial<NotifSettings>) =>
+    setSettingsState(prev => { const next = { ...prev, ...patch }; localStorage.setItem(LS_NOTIF_SETTINGS, JSON.stringify(next)); return next; });
+
+  const items = useMemo<NotifItem[]>(() => {
+    void tick;
+    const now = Date.now();
+    const lead = (settings.leadDays || 7) * DAY;
+    const out: NotifItem[] = [];
+
+    if (settings.payments) for (const o of onboardings) {
+      if (o.status === 'archived') continue;
+      for (const p of (o.payments || [])) if (!p.paid) out.push({
+        id: `pay:${p.id}`, kind: 'payment', priority: o.status === 'launched' ? 'high' : 'normal',
+        title: `Cobro pendiente: ${p.label}`, body: `${o.clientName || o.title}${p.percentage ? ` · ${p.percentage}%` : ''}`, goto: 'onboarding',
+      });
+    }
+
+    if (settings.steps) for (const o of onboardings) {
+      if (o.status !== 'active') continue;
+      const next = (o.steps || []).find(s => !s.isOptional && (s.status === 'pending' || s.status === 'in_progress') && s.owner !== 'client');
+      if (next) {
+        const overdue = !!(next.dueDate && next.dueDate < now);
+        out.push({ id: `step:${next.id}`, kind: 'step', priority: overdue ? 'high' : 'low',
+          title: `${overdue ? 'Atrasado: ' : 'Seguir: '}${next.title}`, body: `${o.clientName || o.title} · ${next.phaseName}`,
+          dueAt: next.dueDate || undefined, goto: 'onboarding' });
+      }
+    }
+
+    if (settings.calendar) for (const e of events) {
+      const t = e.startDate;
+      if (t > now && t <= now + lead) out.push({ id: `evt:${e.id}`, kind: 'calendar', priority: t <= now + DAY ? 'high' : 'normal',
+        title: e.title, body: `${fmtRel(t)} · ${new Date(t).toLocaleString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`, dueAt: t, goto: 'calendar' });
+      else if (t < now && t > now - DAY) out.push({ id: `evt:${e.id}`, kind: 'calendar', priority: 'normal', title: `Pasó: ${e.title}`, body: fmtRel(t), dueAt: t, goto: 'calendar' });
+    }
+
+    if (settings.meetings) for (const p of prospects) {
+      if (p.meetingAt && p.meetingAt > now && p.meetingAt <= now + lead) out.push({
+        id: `mtg:${p.id}`, kind: 'meeting', priority: p.meetingAt <= now + DAY ? 'high' : 'normal',
+        title: `Reunión con ${p.name}`, body: `${p.business || ''} · ${fmtRel(p.meetingAt)}`, dueAt: p.meetingAt, goto: 'preventa' });
+    }
+
+    if (settings.proposals) for (const p of prospects) {
+      if (p.proposal && p.shareToken && p.stage === 'propuesta' && !p.clientId && (now - p.updatedAt) > 3 * DAY) out.push({
+        id: `prop:${p.id}`, kind: 'proposal', priority: 'normal',
+        title: `Seguí a ${p.name}`, body: `Propuesta enviada ${fmtRel(p.updatedAt)}, todavía sin cerrar`, goto: 'preventa' });
+    }
+
+    if (settings.reminders) for (const r of reminders) {
+      if (!r.dueAt || r.dueAt <= now + DAY) out.push({
+        id: `rem:${r.id}`, kind: 'reminder', priority: r.dueAt && r.dueAt < now ? 'high' : 'normal',
+        title: r.title, body: r.dueAt ? fmtRel(r.dueAt) : 'Sin fecha', dueAt: r.dueAt || undefined, goto: 'notifications' });
+    }
+
+    const rank = { high: 0, normal: 1, low: 2 };
+    out.sort((a, b) => rank[a.priority] - rank[b.priority] || (a.dueAt || Infinity) - (b.dueAt || Infinity));
+    return out;
+  }, [onboardings, events, prospects, reminders, settings, tick]);
+
+  const unread = useMemo(() => items.filter(i => !readIds.includes(i.id)).length, [items, readIds]);
+  const isRead = (id: string) => readIds.includes(id);
+  const markRead = (id: string) => setReadIds(prev => { if (prev.includes(id)) return prev; const next = [...prev, id]; localStorage.setItem(LS_NOTIF_READ, JSON.stringify(next.slice(-800))); return next; });
+  const markAllRead = () => setReadIds(() => { const next = items.map(i => i.id); localStorage.setItem(LS_NOTIF_READ, JSON.stringify(next.slice(-800))); return next; });
+
+  const addReminder = async (title: string, dueAt: number | null) => {
+    if (!title.trim()) return;
+    const { error } = await supabase.from('reminders').insert(mapToSnake({ title: title.trim(), dueAt, done: false, createdAt: Date.now() }));
+    if (error) toast('No se pudo crear el recordatorio', 'error'); else { toast('Recordatorio agregado'); loadRem(); }
+  };
+  const completeReminder = async (id: string) => { await supabase.from('reminders').update({ done: true }).eq('id', id); loadRem(); };
+
+  // Pop-ups del navegador para lo urgente/vencido (sin repetir)
+  const pushedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!settings.browserPush || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    let pushed: Record<string, number> = {};
+    try { pushed = JSON.parse(localStorage.getItem(LS_NOTIF_PUSHED) || '{}'); } catch { /* noop */ }
+    const now = Date.now();
+    for (const k of Object.keys(pushed)) if (now - pushed[k] > 2 * DAY) delete pushed[k];
+    for (const it of items) {
+      const urgent = it.priority === 'high' || (it.kind === 'reminder' && !!it.dueAt && it.dueAt <= now);
+      if (urgent && !pushed[it.id] && !pushedRef.current.has(it.id)) {
+        try { new Notification(it.title, { body: it.body || '' }); } catch { /* noop */ }
+        pushed[it.id] = now; pushedRef.current.add(it.id);
+      }
+    }
+    localStorage.setItem(LS_NOTIF_PUSHED, JSON.stringify(pushed));
+  }, [items, settings.browserPush]);
+
+  const enableBrowserPush = async () => {
+    if (typeof Notification === 'undefined') { toast('Tu navegador no soporta notificaciones', 'error'); return; }
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') { setSettings({ browserPush: true }); toast('Notificaciones del navegador activadas 🔔'); }
+    else toast('El navegador bloqueó el permiso', 'error');
+  };
+
+  return { items, unread, reminders, settings, setSettings, isRead, markRead, markAllRead, addReminder, completeReminder, enableBrowserPush };
 }
 
 // ─── EXCHANGE RATE HOOK ───

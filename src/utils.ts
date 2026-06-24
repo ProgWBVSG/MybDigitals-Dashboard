@@ -393,3 +393,35 @@ export interface Prospect {
   createdAt: number;
   updatedAt: number;
 }
+
+// ─── NOTIFICACIONES / RECORDATORIOS ───
+export interface Reminder { id: string; title: string; dueAt: number | null; done: boolean; createdAt: number; }
+
+export type NotifKind = 'payment' | 'step' | 'calendar' | 'meeting' | 'proposal' | 'reminder';
+export interface NotifItem {
+  id: string;            // clave estable (ej: "pay:<id>") para marcar como leído
+  kind: NotifKind;
+  title: string;
+  body?: string;
+  dueAt?: number | null; // cuándo aplica (orden / "vencido")
+  priority: 'high' | 'normal' | 'low';
+  goto?: string;         // pestaña a la que lleva al tocarla
+}
+export interface NotifSettings {
+  payments: boolean; steps: boolean; calendar: boolean; meetings: boolean; proposals: boolean; reminders: boolean;
+  leadDays: number;      // ventana de anticipación para eventos del calendario
+  browserPush: boolean;  // notificaciones del navegador (pop-ups)
+}
+export const NOTIF_DEFAULTS: NotifSettings = { payments: true, steps: true, calendar: true, meetings: true, proposals: true, reminders: true, leadDays: 7, browserPush: false };
+export const NOTIF_KIND_LABELS: Record<NotifKind, string> = { payment: 'Pago', step: 'Onboarding', calendar: 'Calendario', meeting: 'Reunión', proposal: 'Propuesta', reminder: 'Recordatorio' };
+
+// Tiempo relativo en español ("en 2 h", "hace 3 días")
+export function fmtRel(ms: number): string {
+  const diff = ms - Date.now();
+  const abs = Math.abs(diff);
+  let unit: string;
+  if (abs < 3600000) unit = `${Math.max(1, Math.round(abs / 60000))} min`;
+  else if (abs < 86400000) unit = `${Math.round(abs / 3600000)} h`;
+  else { const d = Math.round(abs / 86400000); unit = `${d} día${d === 1 ? '' : 's'}`; }
+  return diff < 0 ? `hace ${unit}` : `en ${unit}`;
+}
