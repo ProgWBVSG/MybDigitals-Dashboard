@@ -389,6 +389,7 @@ export interface Prospect {
   brand?: Brand;
   shareToken?: string | null;
   shareExpires?: number | null;
+  clientId?: string | null;   // si ya se convirtió en cliente
   createdAt: number;
   updatedAt: number;
 }

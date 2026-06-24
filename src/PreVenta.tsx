@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Search, X, Trash2, Target, CalendarPlus, MessageCircle, Sparkles, Presentation, Share2, Eye } from 'lucide-react';
-import { useProspects, toast } from './hooks';
+import { Plus, Search, X, Trash2, Target, CalendarPlus, MessageCircle, Sparkles, Presentation, Share2, Eye, UserCheck } from 'lucide-react';
+import { useProspects, useClients, toast } from './hooks';
 import { supabase } from './supabase';
 import ProposalDeck from './ProposalDeck';
 import BrandEditor from './BrandEditor';
@@ -18,6 +18,8 @@ const emptyProspect: Omit<Prospect, 'id' | 'createdAt' | 'updatedAt'> = {
 
 export default function PreVenta() {
   const { prospects, create, update, remove } = useProspects();
+  const { create: createClient } = useClients();
+  const [converting, setConverting] = useState(false);
   const [search, setSearch] = useState('');
   const [detail, setDetail] = useState<Prospect | null>(null);
   const [modal, setModal] = useState(false);
@@ -103,6 +105,49 @@ export default function PreVenta() {
   };
 
   const shareLink = (token: string) => `${window.location.origin}/?p=${token}`;
+
+  // Pasa el prospecto a la sección Clientes con todo lo cargado (sin re-tipear nada).
+  const convertirEnCliente = async (p: Prospect) => {
+    if (p.clientId) { toast('Este prospecto ya es cliente', 'info'); return; }
+    setConverting(true);
+    try {
+      const d = p.discovery || {};
+      const c = p.contact || {};
+      const lines: string[] = [`Convertido desde Pre-venta el ${fmt(Date.now())}.`, ''];
+      const add = (lbl: string, v?: string) => { if (v && v.trim()) lines.push(`${lbl}: ${v.trim()}`); };
+      if (p.business?.trim()) add('Negocio', p.business);
+      add('Qué hace', d.queHace); add('Cliente ideal', d.publico); add('Dolor', d.dolor);
+      add('Objetivo', d.objetivo); add('Situación actual', d.situacion);
+      add('Servicio propuesto', d.servicio); add('Diferencial', d.diferencial); add('Qué probó', d.queProbo);
+      const cont = [c.whatsapp && `WhatsApp ${c.whatsapp}`, c.email && `Email ${c.email}`, c.instagram && `IG ${c.instagram}`].filter(Boolean).join(' · ');
+      if (cont) lines.push('', 'Contacto: ' + cont);
+      if (p.notes?.trim()) lines.push('', 'Notas de pre-venta: ' + p.notes.trim());
+      if (p.shareToken) lines.push('', 'Propuesta: ' + shareLink(p.shareToken));
+
+      const projects = d.servicio?.trim() ? [{
+        id: crypto.randomUUID(), name: d.servicio.trim(), description: 'Servicio acordado en la propuesta de pre-venta.',
+        status: 'pending' as const, value: 0, currency: 'ARS' as const, paidPercentage: 0,
+        startDate: Date.now(), endDate: null, links: '',
+      }] : [];
+
+      const clientId = await createClient({
+        name: p.business?.trim() || p.name,
+        contact: { email: c.email || '', whatsapp: c.whatsapp || '', instagram: c.instagram || '' },
+        status: 'active',
+        totalRevenue: 0,
+        projects,
+      } as Parameters<typeof createClient>[0]);
+      if (!clientId) return; // createClient ya mostró el error
+
+      await supabase.from('client_notes').insert({ id: crypto.randomUUID(), client_id: clientId, content: lines.join('\n'), created_at: Date.now() });
+      await update(p.id, { clientId, stage: 'ganado' });
+      toast('¡Cliente creado! Lo encontrás en la pestaña Clientes 🎉');
+    } catch (e) {
+      toast('No se pudo convertir: ' + ((e as Error)?.message || e), 'error');
+    } finally {
+      setConverting(false);
+    }
+  };
 
   const compartirPropuesta = async (p: Prospect) => {
     if (!p.proposal) { toast('Primero generá la propuesta', 'error'); return; }
@@ -222,12 +267,24 @@ export default function PreVenta() {
 
           <div style={{ padding: '18px 22px' }}>
             {/* Etapa */}
-            <div className="input-group" style={{ marginBottom: 18 }}>
+            <div className="input-group" style={{ marginBottom: 14 }}>
               <label>Etapa del pipeline</label>
               <select className="select" value={detail.stage} onChange={e => update(detail.id, { stage: e.target.value as PresaleStage })}>
                 {PRESALE_STAGES.map(s => <option key={s} value={s}>{PRESALE_STAGE_LABELS[s]}</option>)}
               </select>
             </div>
+
+            {/* Convertir en cliente (cierra el ciclo de pre-venta) */}
+            {detail.clientId ? (
+              <div className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', marginBottom: 18, cursor: 'default', color: 'var(--secondary)', borderColor: 'var(--secondary)' }}>
+                <UserCheck size={15} /> Ya es cliente
+              </div>
+            ) : (
+              <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginBottom: 18, background: 'var(--secondary)' }}
+                onClick={() => convertirEnCliente(detail)} disabled={converting}>
+                <UserCheck size={15} /> {converting ? 'Pasando a Clientes…' : 'Cerrar y pasar a Clientes'}
+              </button>
+            )}
 
             {/* Contacto */}
             <Section title="Contacto">
