@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     if (!token) return json({ ok: false, error: 'Link inválido.' }, 400);
 
     const res = await fetch(
-      `${SUPA_URL}/rest/v1/prospects?share_token=eq.${encodeURIComponent(token)}&select=name,proposal,share_expires`,
+      `${SUPA_URL}/rest/v1/prospects?share_token=eq.${encodeURIComponent(token)}&select=name,proposal,brand,share_expires`,
       { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } },
     );
     const rows = await res.json();
@@ -35,7 +35,13 @@ Deno.serve(async (req) => {
     if (row.share_expires && Number(row.share_expires) < Date.now()) {
       return json({ ok: false, error: 'Este link expiró. Pedile a MYB Digitals uno nuevo.' }, 410);
     }
-    return json({ ok: true, proposal: row.proposal, cliente: row.name });
+    // Registrar la apertura (tracking). No bloquea la respuesta.
+    fetch(`${SUPA_URL}/rest/v1/proposal_views`, {
+      method: 'POST',
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ token }),
+    }).catch(() => {});
+    return json({ ok: true, proposal: row.proposal, brand: row.brand || {}, cliente: row.name });
   } catch (e) {
     return json({ ok: false, error: 'No se pudo cargar la propuesta. ' + String((e as Error)?.message || '') }, 500);
   }

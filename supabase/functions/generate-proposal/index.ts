@@ -38,7 +38,9 @@ Devolvé ÚNICAMENTE un JSON válido con EXACTAMENTE esta forma:
   "proximosPasos": "cierre cálido invitando a avanzar (por WhatsApp)"
 }
 - "secciones" debe tener una entrada por cada pilar de "diagnostico.pilares".
-- Cada sección: 4 a 6 bullets concretos.
+- Cada sección: 3 a 4 bullets concretos y CORTOS (una sola línea, máximo ~10 palabras cada uno; sin punto final).
+- "descripcion": 2 a 3 frases, no más (va a leerse en pantalla, tiene que respirar).
+- "diagnostico.texto": 2 a 3 frases.
 - Si no hay monto, dejá "inversion.items" vacío y un texto general.`;
 
 const GEN_CONFIG = { temperature: 0.6, maxOutputTokens: 6144, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 1024 } };

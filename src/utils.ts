@@ -348,6 +348,31 @@ export interface Proposal {
   proximosPasos: string;
 }
 
+// Personalización de marca y contenido de la presentación (lo carga MYB, no la IA)
+export interface Brand {
+  primary?: string;       // color principal
+  secondary?: string;     // color de acento
+  logoUrl?: string;       // logo de la marca del cliente
+  coverUrl?: string;      // foto de portada (hero)
+  videoUrl?: string;      // link de video (Loom / YouTube)
+  waMyb?: string;         // WhatsApp de MYB para el botón "Quiero avanzar"
+  sectionImages?: Record<number, string>; // foto por sección (índice del pilar)
+  metricas?: { valor: string; label: string }[];
+  testimonios?: { texto: string; autor: string }[];
+}
+
+// Paletas listas para elegir al armar la propuesta
+export const PROPOSAL_THEMES: { name: string; primary: string; secondary: string }[] = [
+  { name: 'MYB (índigo)', primary: '#6366f1', secondary: '#10b981' },
+  { name: 'Esmeralda', primary: '#10b981', secondary: '#6366f1' },
+  { name: 'Océano', primary: '#0ea5e9', secondary: '#22d3ee' },
+  { name: 'Atardecer', primary: '#f59e0b', secondary: '#ef4444' },
+  { name: 'Magenta', primary: '#d946ef', secondary: '#8b5cf6' },
+  { name: 'Rubí', primary: '#e11d48', secondary: '#f59e0b' },
+  { name: 'Bosque', primary: '#16a34a', secondary: '#84cc16' },
+  { name: 'Grafito', primary: '#64748b', secondary: '#0ea5e9' },
+];
+
 export interface Prospect {
   id: string;
   name: string;
@@ -361,6 +386,7 @@ export interface Prospect {
   discovery: Record<string, string>;
   notes: string;
   proposal: Proposal | null;
+  brand?: Brand;
   shareToken?: string | null;
   shareExpires?: number | null;
   createdAt: number;

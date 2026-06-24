@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import ProposalDeck from './ProposalDeck';
-import type { Proposal } from './utils';
+import type { Proposal, Brand } from './utils';
 import './index.css';
 
 // Visor PÚBLICO de una propuesta (link que se le manda al prospecto): /?p=TOKEN
@@ -8,6 +8,7 @@ import './index.css';
 // completa. No tiene ningún acceso ni link al dashboard.
 export default function ProposalView({ token }: { token: string }) {
   const [proposal, setProposal] = useState<Proposal | null>(null);
+  const [brand, setBrand] = useState<Brand>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -18,13 +19,13 @@ export default function ProposalView({ token }: { token: string }) {
     })
       .then(async r => {
         const d = await r.json().catch(() => ({ ok: false, error: 'Respuesta inválida' }));
-        if (d?.ok && d.proposal) setProposal({ ...d.proposal, cliente: d.proposal.cliente || d.cliente });
+        if (d?.ok && d.proposal) { setProposal({ ...d.proposal, cliente: d.proposal.cliente || d.cliente }); setBrand(d.brand || {}); }
         else setError(d?.error || 'No se pudo cargar la propuesta.');
       })
       .catch(() => setError('No se pudo cargar la propuesta. Revisá tu conexión.'));
   }, [token]);
 
-  if (proposal) return <ProposalDeck proposal={proposal} />;
+  if (proposal) return <ProposalDeck proposal={proposal} brand={brand} />;
 
   return (
     <div style={{ margin: 0, fontFamily: 'Inter, system-ui, sans-serif', background: '#0a0f1e', color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', textAlign: 'center', padding: 24 }}>

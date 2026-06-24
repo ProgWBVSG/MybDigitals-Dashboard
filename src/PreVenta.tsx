@@ -1,12 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Search, X, Trash2, Target, CalendarPlus, MessageCircle, Sparkles, Presentation, Share2 } from 'lucide-react';
+import { Plus, Search, X, Trash2, Target, CalendarPlus, MessageCircle, Sparkles, Presentation, Share2, Eye } from 'lucide-react';
 import { useProspects, toast } from './hooks';
 import { supabase } from './supabase';
 import ProposalDeck from './ProposalDeck';
+import BrandEditor from './BrandEditor';
 import {
   PRESALE_PIPELINE, PRESALE_STAGES, PRESALE_STAGE_LABELS, PRESALE_STAGE_COLORS,
   MINT_FIELDS, PREP_ITEMS, PROSPECT_DISCOVERY_FIELDS, PROSPECT_DISCOVERY_REQUIRED, fmt, fmtDTLocal,
-  type Prospect, type PresaleStage, type Proposal,
+  type Prospect, type PresaleStage, type Proposal, type Brand,
 } from './utils';
 
 const emptyProspect: Omit<Prospect, 'id' | 'createdAt' | 'updatedAt'> = {
@@ -24,11 +25,14 @@ export default function PreVenta() {
   const [confirm, setConfirm] = useState<string | null>(null);
   const [generatingProp, setGeneratingProp] = useState(false);
   const [deck, setDeck] = useState<Proposal | null>(null);
+  const [deckBrand, setDeckBrand] = useState<Brand>({});
   // Estado local de los campos editables (evita que un guardado pise a otro)
   const [disc, setDisc] = useState<Record<string, string>>({});
   const [mintL, setMintL] = useState<Record<string, string>>({});
   const [contactL, setContactL] = useState<{ whatsapp?: string; email?: string; instagram?: string }>({});
   const [prepL, setPrepL] = useState<Record<string, boolean>>({});
+  const [brandL, setBrandL] = useState<Brand>({});
+  const [views, setViews] = useState<{ count: number; last: string | null } | null>(null);
 
   // Mantener el panel sincronizado con datos frescos
   useEffect(() => {
@@ -44,8 +48,20 @@ export default function PreVenta() {
     setMintL(detail?.mint || {});
     setContactL(detail?.contact || {});
     setPrepL(detail?.prep || {});
+    setBrandL(detail?.brand || {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail?.id]);
+
+  // Aperturas de la propuesta (tracking)
+  useEffect(() => {
+    if (!detail?.shareToken) { setViews(null); return; }
+    supabase.from('proposal_views').select('viewed_at', { count: 'exact' })
+      .eq('token', detail.shareToken).order('viewed_at', { ascending: false }).limit(1)
+      .then(({ data, count }) => setViews({ count: count || 0, last: data?.[0]?.viewed_at || null }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail?.shareToken]);
+
+  const saveBrand = (next: Brand) => { setBrandL(next); if (detail) update(detail.id, { brand: next }); };
 
   const missing = PROSPECT_DISCOVERY_REQUIRED.filter(f => !(disc[f.key] || '').trim());
 
@@ -120,6 +136,7 @@ export default function PreVenta() {
       const expires = vigente ? p.shareExpires! : Date.now() + 30 * 24 * 3600 * 1000;
       await update(p.id, { proposal: data.proposal, shareToken: token, shareExpires: expires });
       setDeck(data.proposal);
+      setDeckBrand(brandL);
       try { await navigator.clipboard.writeText(shareLink(token)); toast('Propuesta lista ✨ Link copiado (30 días)'); }
       catch { toast('Propuesta generada ✨'); }
     } catch (e: any) {
@@ -270,7 +287,7 @@ export default function PreVenta() {
               {detail.proposal ? (
                 <>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setDeck(detail.proposal)}>
+                    <button className="btn btn-primary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { setDeck(detail.proposal); setDeckBrand(brandL); }}>
                       <Presentation size={14} /> Ver presentación
                     </button>
                     <button className="btn btn-secondary btn-sm" title="Regenerar con IA" onClick={() => generarPropuesta(detail)} disabled={generatingProp}>
@@ -285,6 +302,13 @@ export default function PreVenta() {
                       style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer' }} title="Click para copiar" />
                   )}
                   {detail.shareExpires && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>🔗 Aislado del dashboard · vence el {fmt(detail.shareExpires)}</div>}
+                  {views && (
+                    <div style={{ fontSize: 11, marginTop: 6, display: 'flex', alignItems: 'center', gap: 5, color: views.count ? 'var(--secondary)' : 'var(--text-muted)' }}>
+                      <Eye size={12} /> {views.count
+                        ? `La abrió ${views.count} ${views.count === 1 ? 'vez' : 'veces'}${views.last ? ' · última: ' + fmt(new Date(views.last).getTime()) : ''}`
+                        : 'Todavía no la abrió'}
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -298,6 +322,16 @@ export default function PreVenta() {
                   )}
                 </>
               )}
+            </Section>
+
+            {/* Diseño de la presentación */}
+            <Section title="Diseño de la presentación">
+              <BrandEditor
+                brand={brandL}
+                prospectId={detail.id}
+                sectionTitles={detail.proposal?.secciones?.map(s => s.titulo) || []}
+                onChange={saveBrand}
+              />
             </Section>
 
             {/* Preparación */}
@@ -336,7 +370,7 @@ export default function PreVenta() {
       <button className="btn-fab" onClick={openNew}><Plus size={24} /></button>
 
       {/* Presentación de la propuesta */}
-      {deck && <ProposalDeck proposal={deck} onClose={() => setDeck(null)} />}
+      {deck && <ProposalDeck proposal={deck} brand={deckBrand} onClose={() => setDeck(null)} />}
 
       {/* Modal nuevo prospecto */}
       {modal && (
