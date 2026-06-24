@@ -229,7 +229,7 @@ export function useCalendar() {
 
   useEffect(() => {
     load();
-    const sub = supabase.channel('cal_changes')
+    const sub = supabase.channel('cal_changes_' + uuid())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, load)
       .subscribe();
     return () => { supabase.removeChannel(sub); };
@@ -475,7 +475,7 @@ export function useOnboardings() {
 
   useEffect(() => {
     load();
-    const ch = supabase.channel('onboarding_all')
+    const ch = supabase.channel('onboarding_all_' + uuid())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'onboardings' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'onboarding_steps' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'onboarding_payments' }, load)
@@ -584,7 +584,7 @@ export function useProspects() {
 
   useEffect(() => {
     load();
-    const ch = supabase.channel('prospects_ch')
+    const ch = supabase.channel('prospects_ch_' + uuid())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'prospects' }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
