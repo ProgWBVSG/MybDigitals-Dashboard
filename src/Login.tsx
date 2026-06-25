@@ -34,16 +34,17 @@ export default function Login() {
         <h1 style={{ color: '#f8fafc', fontSize: 22, margin: '0 0 6px' }}>MYB Digitals</h1>
         <p style={{ fontSize: 14, opacity: 0.7, margin: '0 0 22px' }}>Panel interno · acceso privado</p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <input className="input" type="email" placeholder="Email" value={email} autoFocus
-            onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} />
-          <input className="input" type="password" placeholder="Contraseña" value={pass}
-            onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} />
+        <form style={{ display: 'flex', flexDirection: 'column', gap: 10 }} onSubmit={e => { e.preventDefault(); submit(); }}>
+          <input className="input" type="email" name="email" placeholder="Email" value={email} autoFocus autoComplete="username"
+            onChange={e => setEmail(e.target.value)} />
+          <input className="input" type="password" name="password" placeholder="Contraseña" value={pass}
+            autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
+            onChange={e => setPass(e.target.value)} />
           {err && <div style={{ color: '#f87171', fontSize: 13, textAlign: 'left' }}>{err}</div>}
-          <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={submit} disabled={busy}>
+          <button className="btn btn-primary" type="submit" style={{ width: '100%', justifyContent: 'center' }} disabled={busy}>
             <LogIn size={16} /> {busy ? 'Entrando…' : (mode === 'in' ? 'Entrar' : 'Crear cuenta')}
           </button>
-        </div>
+        </form>
 
         <button onClick={() => { setMode(m => m === 'in' ? 'up' : 'in'); setErr(''); }}
           style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 13, marginTop: 16, cursor: 'pointer' }}>
