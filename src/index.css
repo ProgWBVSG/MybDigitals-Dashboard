@@ -857,6 +857,44 @@ input[type="number"] {
 .hist-receipt { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--text-muted); background: rgba(255,255,255,0.03); }
 .hist-receipt.loading { background: rgba(255,255,255,0.04); }
 
+/* ─── GUÍA ─── */
+.guide-toggle { display: inline-flex; background: var(--bg-card); border: 1px solid var(--border); border-radius: 9px; padding: 3px; }
+.guide-toggle button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: none; background: none; color: var(--text-muted); font-size: 13px; font-weight: 600; border-radius: 7px; cursor: pointer; }
+.guide-toggle button.active { background: var(--primary); color: #fff; }
+.guide-cats { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.guide-cat-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px; }
+.guide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.guide-card { display: flex; gap: 12px; padding: 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: transform 0.12s, border-color 0.15s; }
+.guide-card:hover { transform: translateY(-2px); border-color: var(--primary); }
+.guide-card.seen { opacity: 0.7; }
+.guide-card-emoji { font-size: 26px; line-height: 1; flex-shrink: 0; }
+.guide-card-title { font-size: 14px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+.guide-seen-tick { color: var(--secondary); }
+.guide-card-sum { font-size: 12px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+.guide-card-vids { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #f87171; margin-top: 6px; font-weight: 600; }
+.guide-detail { width: 460px; flex-shrink: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; overflow: auto; animation: slideIn 0.2s ease; }
+.guide-detail-head { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.guide-detail-cat { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+.guide-detail-body { padding: 18px 22px; }
+.guide-res-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.guide-video { width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+.guide-video iframe { width: 100%; height: 100%; border: 0; display: block; }
+.guide-res { display: flex; align-items: center; gap: 9px; padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 9px; color: var(--text-secondary); text-decoration: none; font-size: 13px; margin-bottom: 6px; }
+.guide-res:hover { border-color: var(--primary); color: #fff; }
+@media (max-width: 900px) { .guide-detail { position: fixed; inset: 0; z-index: 300; width: auto; border-radius: 0; } }
+
+/* Markdown */
+.md { font-size: 14px; line-height: 1.65; color: var(--text-secondary); }
+.md-h { color: var(--text-primary); font-weight: 700; line-height: 1.25; margin: 18px 0 8px; }
+.md-h1, .md-h2 { font-size: 17px; } .md-h3 { font-size: 15px; } .md-h4 { font-size: 14px; }
+.md-h:first-child { margin-top: 0; }
+.md-p { margin: 0 0 10px; }
+.md-ul, .md-ol { margin: 0 0 12px; padding-left: 20px; }
+.md-ul li, .md-ol li { margin-bottom: 5px; }
+.md a { color: var(--primary-light); }
+.md-code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 5px; font-size: 12.5px; }
+.md strong { color: var(--text-primary); }
+
 /* ─── CONFIGURACIÓN ─── */
 .cfg-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
 .cfg-card-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 16px; }

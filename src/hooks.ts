@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client, type Expense, type Goal, type ClientProject, type ClientNote,
   type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type ServiceType, type Prospect,
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
-  type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry } from './utils';
+  type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic } from './utils';
 import { getPlaybook } from './playbooks';
+import { GUIDE_SEED } from './guideSeed';
 import { supabase } from './supabase';
 
 // ─── TOAST ───
@@ -825,6 +826,50 @@ export function useHistory() {
   };
 
   return { entries, loading, add, update, remove, uploadReceipt, signedUrl, refresh: load };
+}
+
+// ─── GUÍA / CENTRO DE CONOCIMIENTO ───
+export function useGuide() {
+  const [topics, setTopics] = useState<GuideTopic[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const seedIfEmpty = useCallback(async (current: GuideTopic[]) => {
+    if (current.length > 0 || localStorage.getItem('myb_guide_seeded')) return;
+    localStorage.setItem('myb_guide_seeded', '1');
+    const now = Date.now();
+    const rows = GUIDE_SEED.map(s => mapToSnake({ ...s, createdAt: now, updatedAt: now }));
+    const { error } = await supabase.from('guide_topics').insert(rows);
+    if (error) { localStorage.removeItem('myb_guide_seeded'); console.error('seed guide:', error); }
+  }, []);
+
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('guide_topics').select('*');
+    const list = ((data || []).map(mapToCamel) as GuideTopic[])
+      .map(t => ({ ...t, resources: Array.isArray(t.resources) ? t.resources : [] }))
+      .sort((a, b) => (a.category < b.category ? -1 : a.category > b.category ? 1 : a.order - b.order));
+    setTopics(list);
+    setLoading(false);
+    seedIfEmpty(list);
+  }, [seedIfEmpty]);
+
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('guide_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'guide_topics' }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+
+  const add = async (t: Omit<GuideTopic, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = Date.now();
+    const { error } = await supabase.from('guide_topics').insert(mapToSnake({ ...t, createdAt: now, updatedAt: now }));
+    if (error) toast('No se pudo guardar el tema', 'error'); else toast('Tema guardado');
+  };
+  const update = async (id: string, updates: Partial<GuideTopic>) => {
+    const { error } = await supabase.from('guide_topics').update(mapToSnake({ ...updates, updatedAt: Date.now() })).eq('id', id);
+    if (error) toast('Error al guardar', 'error'); else toast('Guardado');
+  };
+  const remove = async (id: string) => { await supabase.from('guide_topics').delete().eq('id', id); };
+
+  return { topics, loading, add, update, remove, refresh: load };
 }
 
 // ─── EXCHANGE RATE HOOK ───

@@ -313,6 +313,48 @@ export const DATE_RANGES: { key: string; label: string; days: number | null }[] 
   { key: 'all', label: 'Todo el historial', days: null },
 ];
 
+// ─── GUÍA / CENTRO DE CONOCIMIENTO ───
+export type GuideCategory = 'marca' | 'comercial' | 'entrega' | 'tecnico' | 'crecimiento' | 'finanzas';
+export interface GuideResource { type: 'video' | 'link' | 'app'; title: string; url: string; platform?: string; }
+export interface GuideTopic {
+  id: string;
+  category: GuideCategory;
+  title: string;
+  emoji: string;
+  summary: string;
+  content: string;          // markdown
+  resources: GuideResource[];
+  order: number;
+  createdAt: number;
+  updatedAt: number;
+}
+export const GUIDE_CATEGORIES: { key: GuideCategory; label: string; emoji: string; color: string }[] = [
+  { key: 'marca', label: 'Marca & Posicionamiento', emoji: '🎯', color: '#6366f1' },
+  { key: 'comercial', label: 'Comercial & Ventas', emoji: '💼', color: '#10b981' },
+  { key: 'entrega', label: 'Entrega & Operaciones', emoji: '🚀', color: '#0ea5e9' },
+  { key: 'tecnico', label: 'Técnico & Herramientas', emoji: '🛠️', color: '#f59e0b' },
+  { key: 'crecimiento', label: 'Crecimiento & Marketing', emoji: '📈', color: '#d946ef' },
+  { key: 'finanzas', label: 'Finanzas & Gestión', emoji: '💰', color: '#64748b' },
+];
+export const GUIDE_CAT_MAP = Object.fromEntries(GUIDE_CATEGORIES.map(c => [c.key, c])) as Record<GuideCategory, typeof GUIDE_CATEGORIES[number]>;
+
+// Spline suave (Catmull-Rom → Bézier) que pasa por todos los puntos. Compartido por
+// el mapa del onboarding y el de la guía.
+export function smoothPath(pts: { x: number; y: number }[]): string {
+  if (pts.length < 2) return pts.length ? `M ${pts[0].x},${pts[0].y}` : '';
+  let d = `M ${pts[0].x},${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] || p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x},${p2.y}`;
+  }
+  return d;
+}
+
 export interface OnboardingDocument {
   id: string;
   onboardingId: string;

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Play, MessageCircle } from 'lucide-react';
 import type { Proposal, Brand } from './utils';
+import { toEmbed } from './embed';
 
 type DeckSlide = { kind: 'portada' | 'video' | 'diagnostico' | 'seccion' | 'prueba' | 'inversion' | 'cierre'; idx?: number };
 
@@ -14,15 +15,6 @@ function buildSlides(p: Proposal, b: Brand): DeckSlide[] {
   if (p.inversion && (p.inversion.texto || (p.inversion.items || []).length > 0)) s.push({ kind: 'inversion' });
   s.push({ kind: 'cierre' });
   return s;
-}
-
-// Convierte links de Loom/YouTube a su URL embebible
-function toEmbed(url: string): string {
-  const loom = url.match(/loom\.com\/share\/([a-zA-Z0-9]+)/);
-  if (loom) return `https://www.loom.com/embed/${loom[1]}`;
-  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-  if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
-  return url;
 }
 
 // Deck de la propuesta, temable con la marca del cliente. Con onClose muestra la X

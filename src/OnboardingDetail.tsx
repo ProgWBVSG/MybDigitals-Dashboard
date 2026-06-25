@@ -12,7 +12,7 @@ import {
   SERVICE_LABELS, ONBOARDING_STATUSES, ONBOARDING_STATUS_LABELS,
   STEP_STATUSES, STEP_STATUS_LABELS,
   OWNER_LABELS, OWNER_COLORS, DOC_LABELS, DISCOVERY_FIELDS,
-  onboardingProgress, fmt, fmtMoney, fmtUSD,
+  onboardingProgress, fmt, fmtMoney, fmtUSD, smoothPath,
   type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type StepStatus, type Discovery,
 } from './utils';
 
@@ -516,22 +516,6 @@ function DocEditor({ doc, onClose, onSave }: {
 
 // ─── MAPA DEL PROYECTO (vista "recorrido") ───
 const PHASE_ICONS = [DollarSign, FolderPlus, FileText, Palette, Code2, Search, Rocket, Trophy];
-
-// Spline suave (Catmull-Rom -> Bézier) que pasa por todos los puntos
-function smoothPath(pts: { x: number; y: number }[]): string {
-  if (pts.length < 2) return '';
-  let d = `M ${pts[0].x},${pts[0].y}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[i + 2] || p2;
-    const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
-    const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
-    d += ` C ${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x},${p2.y}`;
-  }
-  return d;
-}
 
 function ProjectMap({ phases, progress, selected, onPick }: {
   phases: { phase: number; name: string; steps: OnboardingStep[] }[];

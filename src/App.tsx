@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target, LogOut, Bell, SlidersHorizontal, History as HistoryIcon } from 'lucide-react';
+import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target, LogOut, Bell, SlidersHorizontal, History as HistoryIcon, BookOpen } from 'lucide-react';
 import { supabase } from './supabase';
 import { useToastProvider, useNotifications } from './hooks';
 import Skills from './Skills';
@@ -14,10 +14,11 @@ import ProposalView from './ProposalView';
 import Notifications from './Notifications';
 import SettingsView from './Settings';
 import History from './History';
+import Guide from './Guide';
 import Login from './Login';
 import './index.css';
 
-type Tab = 'metrics' | 'preventa' | 'onboarding' | 'tasks' | 'calendar' | 'clients' | 'history' | 'skills' | 'notifications' | 'settings';
+type Tab = 'metrics' | 'preventa' | 'onboarding' | 'tasks' | 'calendar' | 'clients' | 'history' | 'guide' | 'skills' | 'notifications' | 'settings';
 
 export default function App() {
   // Link público de propuesta: muestra SOLO el deck, sin sesión ni acceso al dashboard.
@@ -81,6 +82,9 @@ function Dashboard() {
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>
             <HistoryIcon size={16} /> Historial
           </button>
+          <button className={tab === 'guide' ? 'active' : ''} onClick={() => setTab('guide')}>
+            <BookOpen size={16} /> Guía
+          </button>
           <button className={tab === 'skills' ? 'active' : ''} onClick={() => setTab('skills')}>
             <Layers size={16} /> Skills
           </button>
@@ -109,6 +113,7 @@ function Dashboard() {
         {tab === 'calendar' && <CalendarView />}
         {tab === 'clients' && <Clients />}
         {tab === 'history' && <History />}
+        {tab === 'guide' && <Guide />}
         {tab === 'skills' && <Skills />}
         {tab === 'notifications' && <Notifications notif={notif} onGoto={t => setTab(t as Tab)} />}
         {tab === 'settings' && <SettingsView />}
