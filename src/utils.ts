@@ -508,3 +508,28 @@ export function fmtRel(ms: number): string {
   else { const d = Math.round(abs / 86400000); unit = `${d} día${d === 1 ? '' : 's'}`; }
   return diff < 0 ? `hace ${unit}` : `en ${unit}`;
 }
+
+export interface ContentPost {
+  id: string;
+  format: 'Reel' | 'Carrusel' | 'Stories' | 'Ad';
+  objective: string;
+  status: 'draft' | 'ready' | 'published';
+  title: string;
+  content: string;
+  edgeLevel: number;
+  score: number;
+  scheduledFor: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ContentSource {
+  id: string;
+  type: string;
+  title: string;
+  content: string;
+  tags: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
