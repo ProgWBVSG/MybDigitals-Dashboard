@@ -303,6 +303,24 @@ export const HISTORY_KINDS: { key: HistoryKind; label: string; color: string }[]
 ];
 export const HISTORY_KIND_LABELS: Record<HistoryKind, string> = Object.fromEntries(HISTORY_KINDS.map(k => [k.key, k.label])) as Record<HistoryKind, string>;
 
+// ─── IG CONTENT ───
+export type ContentStatus = 'borrador' | 'aprobado' | 'listo';
+export type ContentFormat = 'reel' | 'carrusel' | 'story' | 'ad';
+export interface ContentPost {
+  id: string; format: ContentFormat; objective: string; status: ContentStatus;
+  title: string; content: string; edgeLevel: number; score: number;
+  scheduledFor: number | null; createdAt: string; updatedAt: string;
+}
+export interface ContentSource { id: string; type: string; title: string; content: string; tags: string; createdAt: string; updatedAt: string; }
+export const CONTENT_STATUSES: { key: ContentStatus; label: string }[] = [
+  { key: 'borrador', label: 'Borrador' },
+  { key: 'aprobado', label: 'Aprobado' },
+  { key: 'listo', label: 'Listo para publicar' },
+];
+export const CONTENT_FORMATS: ContentFormat[] = ['reel', 'carrusel', 'story', 'ad'];
+export const CONTENT_FORMAT_LABELS: Record<ContentFormat, string> = { reel: 'Reel', carrusel: 'Carrusel', story: 'Story', ad: 'Ad' };
+export const CONTENT_OBJECTIVES = ['Mensajes (DM)', 'Venta', 'Alcance', 'Seguidores', 'Autoridad'];
+
 // Presets de rango de fechas (días hacia atrás; null = todo, 0 = hoy)
 export const DATE_RANGES: { key: string; label: string; days: number | null }[] = [
   { key: 'hoy', label: 'Hoy', days: 0 },
@@ -507,29 +525,5 @@ export function fmtRel(ms: number): string {
   else if (abs < 86400000) unit = `${Math.round(abs / 3600000)} h`;
   else { const d = Math.round(abs / 86400000); unit = `${d} día${d === 1 ? '' : 's'}`; }
   return diff < 0 ? `hace ${unit}` : `en ${unit}`;
-}
-
-export interface ContentPost {
-  id: string;
-  format: 'Reel' | 'Carrusel' | 'Stories' | 'Ad';
-  objective: string;
-  status: 'draft' | 'ready' | 'published';
-  title: string;
-  content: string;
-  edgeLevel: number;
-  score: number;
-  scheduledFor: number | null;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface ContentSource {
-  id: string;
-  type: string;
-  title: string;
-  content: string;
-  tags: string;
-  createdAt: number;
-  updatedAt: number;
 }
 

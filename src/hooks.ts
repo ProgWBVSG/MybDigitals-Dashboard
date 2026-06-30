@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client, type Expense, type Goal, type ClientProject, type ClientNote,
   type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type ServiceType, type Prospect,
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
-  type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic } from './utils';
+  type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic,
+  type ContentPost, type ContentSource } from './utils';
 import { getPlaybook } from './playbooks';
 import { GUIDE_SEED } from './guideSeed';
 import { supabase } from './supabase';
@@ -870,6 +871,50 @@ export function useGuide() {
   const remove = async (id: string) => { await supabase.from('guide_topics').delete().eq('id', id); };
 
   return { topics, loading, add, update, remove, refresh: load };
+}
+
+// ─── IG CONTENT ───
+export function useContent() {
+  const [posts, setPosts] = useState<ContentPost[]>([]);
+  const [sources, setSources] = useState<ContentSource[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = useCallback(async () => {
+    const { data: p } = await supabase.from('content_posts').select('*').order('updated_at', { ascending: false });
+    const { data: s } = await supabase.from('content_sources').select('*').order('created_at', { ascending: false });
+    if (p) setPosts(p.map(mapToCamel) as ContentPost[]);
+    if (s) setSources(s.map(mapToCamel) as ContentSource[]);
+    setLoading(false);
+  }, []);
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('content_' + uuid())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_posts' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_sources' }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+
+  const addPost = async (p: Partial<ContentPost>) => {
+    const { error } = await supabase.from('content_posts').insert(mapToSnake({
+      format: p.format || 'reel', objective: p.objective || '', status: p.status || 'borrador',
+      title: p.title || '', content: p.content || '', edgeLevel: p.edgeLevel ?? 3, score: p.score ?? 0,
+      scheduledFor: p.scheduledFor ?? null,
+    }));
+    if (error) toast('No se pudo crear la pieza', 'error'); else { toast('Pieza creada'); load(); }
+  };
+  const updatePost = async (id: string, u: Partial<ContentPost>) => {
+    const { error } = await supabase.from('content_posts').update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
+    if (error) toast('Error al actualizar', 'error'); else load();
+  };
+  const removePost = async (id: string) => { await supabase.from('content_posts').delete().eq('id', id); load(); };
+
+  const addSource = async (s: Partial<ContentSource>) => {
+    const { error } = await supabase.from('content_sources').insert(mapToSnake({ type: s.type || 'nota', title: s.title || '', content: s.content || '', tags: s.tags || '' }));
+    if (error) toast('No se pudo guardar la fuente', 'error'); else { toast('Fuente agregada'); load(); }
+  };
+  const removeSource = async (id: string) => { await supabase.from('content_sources').delete().eq('id', id); load(); };
+
+  return { posts, sources, loading, addPost, updatePost, removePost, addSource, removeSource, refresh: load };
 }
 
 // ─── EXCHANGE RATE HOOK ───

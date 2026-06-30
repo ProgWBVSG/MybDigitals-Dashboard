@@ -36,29 +36,31 @@ body {
   background: rgba(15,23,42,0.85);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
-  padding: 0 32px;
-  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 22px;
+  display: flex; align-items: center; gap: 16px;
   height: 64px;
 }
 .header-logo {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 20px; font-weight: 800; color: var(--primary-light);
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  font-size: 19px; font-weight: 800; color: var(--primary-light);
   letter-spacing: -0.5px;
 }
 .header-logo span { color: var(--text-secondary); font-weight: 400; font-size: 14px; }
-.header-nav { display: flex; gap: 4px; }
+/* Nav: ocupa el espacio libre y scrollea en vez de amontonarse */
+.header-nav { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.header-nav::-webkit-scrollbar { display: none; }
 .header-nav button {
   background: none; border: none; color: var(--text-secondary);
-  padding: 10px 20px; border-radius: var(--radius-sm);
-  font-size: 14px; font-weight: 500; cursor: pointer;
-  display: flex; align-items: center; gap: 8px;
-  transition: all 0.2s;
+  padding: 8px 13px; border-radius: var(--radius-sm);
+  font-size: 13.5px; font-weight: 500; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  display: flex; align-items: center; gap: 7px;
+  transition: background 0.15s, color 0.15s;
 }
 .header-nav button:hover { background: var(--bg-hover); color: var(--text-primary); }
 .header-nav button.active {
   background: var(--primary); color: #fff; font-weight: 600;
 }
-.header-actions { display: flex; gap: 8px; }
+.header-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
 /* ─── LAYOUT ─── */
 .main { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
