@@ -901,6 +901,14 @@ input[type="number"] {
 .lead-search { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .lead-search .select, .lead-search .input { flex: 1; min-width: 150px; }
 .lead-error { background: color-mix(in srgb, var(--warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); color: var(--text-secondary); border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px; }
+.lead-segments { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.lead-segments button { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 999px; padding: 7px 13px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+.lead-segments button.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.lead-segments button b { font-size: 11px; font-weight: 800; background: rgba(255,255,255,0.14); padding: 1px 7px; border-radius: 8px; }
+.lead-segments button:not(.active) b { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+.lead-tag { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; padding: 2px 7px; border-radius: 6px; margin-left: 8px; vertical-align: middle; }
+.lead-tag.sin { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning); }
+.lead-tag.con { background: color-mix(in srgb, var(--secondary) 18%, transparent); color: var(--secondary); }
 .lead-count { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
 .lead-list { display: flex; flex-direction: column; gap: 8px; }
 .lead-item { display: flex; align-items: center; gap: 14px; padding: 13px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 11px; }

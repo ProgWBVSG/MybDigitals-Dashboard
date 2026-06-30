@@ -41,6 +41,7 @@ export default function LeadFinder() {
   const [results, setResults] = useState<Lead[]>([]);
   const [added, setAdded] = useState<Set<string>>(new Set());
   const [error, setError] = useState('');
+  const [webFilter, setWebFilter] = useState<'all' | 'sinweb' | 'conweb'>('all');
 
   const key = (l: Lead) => l.name + '|' + l.address;
 
@@ -67,7 +68,7 @@ export default function LeadFinder() {
         return {
           name: t.name as string,
           phone: (t.phone || t['contact:phone'] || t['contact:mobile'] || '').toString().trim(),
-          website: (t.website || t['contact:website'] || t['contact:instagram'] || '').toString().trim(),
+          website: (t.website || t['contact:website'] || t.url || '').toString().trim(),
           address: address.trim(),
         };
       }).filter((l: Lead) => l.name);
@@ -94,6 +95,9 @@ export default function LeadFinder() {
     });
     if (id) { setAdded(s => new Set(s).add(key(l))); toast(`${l.name} agregado a Pre-venta`); }
   };
+
+  const shown = results.filter(l => webFilter === 'all' || (webFilter === 'sinweb' ? !l.website : !!l.website));
+  const sinWeb = results.filter(l => !l.website).length;
 
   return (
     <div style={{ maxWidth: 920, margin: '0 auto' }}>
@@ -123,14 +127,24 @@ export default function LeadFinder() {
 
       {results.length > 0 && (
         <>
-          <div className="lead-count">{results.length} negocios encontrados · ordenados por los que tienen contacto</div>
+          <div className="lead-segments">
+            <button className={webFilter === 'all' ? 'active' : ''} onClick={() => setWebFilter('all')}>Todos <b>{results.length}</b></button>
+            <button className={webFilter === 'sinweb' ? 'active' : ''} onClick={() => setWebFilter('sinweb')}>Sin web · venderles página <b>{sinWeb}</b></button>
+            <button className={webFilter === 'conweb' ? 'active' : ''} onClick={() => setWebFilter('conweb')}>Con web · automatización <b>{results.length - sinWeb}</b></button>
+          </div>
+          <div className="lead-count">{shown.length} {shown.length === 1 ? 'negocio' : 'negocios'} · los que tienen teléfono/web aparecen primero</div>
           <div className="lead-list">
-            {results.map((l, i) => {
+            {shown.map((l, i) => {
               const isAdded = added.has(key(l));
               return (
                 <div key={i} className="lead-item">
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="lead-name">{l.name}</div>
+                    <div className="lead-name">
+                      {l.name}
+                      {l.website
+                        ? <span className="lead-tag con">Con web</span>
+                        : <span className="lead-tag sin">Sin web</span>}
+                    </div>
                     <div className="lead-meta">
                       {l.address && <span><MapPin size={12} /> {l.address}</span>}
                       {l.phone && <span><Phone size={12} /> {l.phone}</span>}
