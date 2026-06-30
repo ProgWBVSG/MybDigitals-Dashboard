@@ -321,6 +321,20 @@ export const CONTENT_FORMATS: ContentFormat[] = ['reel', 'carrusel', 'story', 'a
 export const CONTENT_FORMAT_LABELS: Record<ContentFormat, string> = { reel: 'Reel', carrusel: 'Carrusel', story: 'Story', ad: 'Ad' };
 export const CONTENT_OBJECTIVES = ['Mensajes (DM)', 'Venta', 'Alcance', 'Seguidores', 'Autoridad'];
 
+// ─── ANÁLISIS DE COMPETENCIA ───
+export interface CompetitorAnalysis {
+  posicionamiento: string;
+  fortalezas: string[];
+  debilidades: string[];
+  oportunidades: string[];
+  recomendaciones: string[];
+}
+export interface Competitor {
+  id: string; clientId: string | null; name: string; instagram: string; website: string;
+  rubro: string; notes: string; analysis: CompetitorAnalysis | null; analyzedAt: number | null;
+  createdAt: number; updatedAt: number;
+}
+
 // Presets de rango de fechas (días hacia atrás; null = todo, 0 = hoy)
 export const DATE_RANGES: { key: string; label: string; days: number | null }[] = [
   { key: 'hoy', label: 'Hoy', days: 0 },

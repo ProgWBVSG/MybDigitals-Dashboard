@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target, LogOut, Bell, SlidersHorizontal, History as HistoryIcon, BookOpen, Smartphone, MapPin } from 'lucide-react';
+import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target, LogOut, Bell, SlidersHorizontal, History as HistoryIcon, BookOpen, Smartphone, MapPin, Swords } from 'lucide-react';
 import { supabase } from './supabase';
 import { useToastProvider, useNotifications } from './hooks';
 import Skills from './Skills';
@@ -18,9 +18,10 @@ import Guide from './Guide';
 import Login from './Login';
 import Content from './Content';
 import LeadFinder from './LeadFinder';
+import Competitors from './Competitors';
 import './index.css';
 
-type Tab = 'metrics' | 'preventa' | 'buscar' | 'onboarding' | 'tasks' | 'calendar' | 'clients' | 'history' | 'guide' | 'skills' | 'notifications' | 'settings' | 'content';
+type Tab = 'metrics' | 'preventa' | 'buscar' | 'competencia' | 'onboarding' | 'tasks' | 'calendar' | 'clients' | 'history' | 'guide' | 'skills' | 'notifications' | 'settings' | 'content';
 
 export default function App() {
   // Link público de propuesta: muestra SOLO el deck, sin sesión ni acceso al dashboard.
@@ -72,6 +73,9 @@ function Dashboard() {
           <button className={tab === 'buscar' ? 'active' : ''} onClick={() => setTab('buscar')}>
             <MapPin size={16} /> Buscar
           </button>
+          <button className={tab === 'competencia' ? 'active' : ''} onClick={() => setTab('competencia')}>
+            <Swords size={16} /> Competencia
+          </button>
           <button className={tab === 'onboarding' ? 'active' : ''} onClick={() => setTab('onboarding')}>
             <Rocket size={16} /> Onboarding
           </button>
@@ -117,6 +121,7 @@ function Dashboard() {
         {tab === 'metrics' && <Metrics />}
         {tab === 'preventa' && <PreVenta />}
         {tab === 'buscar' && <LeadFinder />}
+        {tab === 'competencia' && <Competitors />}
         {tab === 'onboarding' && <Onboarding />}
         {tab === 'tasks' && <Tasks />}
         {tab === 'calendar' && <CalendarView />}

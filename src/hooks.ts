@@ -3,7 +3,7 @@ import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client
   type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type ServiceType, type Prospect,
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
   type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic,
-  type ContentPost, type ContentSource } from './utils';
+  type ContentPost, type ContentSource, type Competitor } from './utils';
 import { getPlaybook } from './playbooks';
 import { GUIDE_SEED } from './guideSeed';
 import { supabase } from './supabase';
@@ -915,6 +915,52 @@ export function useContent() {
   const removeSource = async (id: string) => { await supabase.from('content_sources').delete().eq('id', id); load(); };
 
   return { posts, sources, loading, addPost, updatePost, removePost, addSource, removeSource, refresh: load };
+}
+
+// ─── ANÁLISIS DE COMPETENCIA ───
+export function useCompetitors() {
+  const [competitors, setCompetitors] = useState<Competitor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('competitors').select('*').order('updated_at', { ascending: false });
+    if (data) setCompetitors(data.map(mapToCamel) as Competitor[]);
+    setLoading(false);
+  }, []);
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('competitors_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'competitors' }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+
+  const add = async (c: Partial<Competitor>) => {
+    const { data, error } = await supabase.from('competitors').insert(mapToSnake({
+      clientId: c.clientId ?? null, name: c.name || '', instagram: c.instagram || '', website: c.website || '',
+      rubro: c.rubro || '', notes: c.notes || '',
+    })).select().single();
+    if (error) { toast('No se pudo agregar el competidor', 'error'); return null; }
+    toast('Competidor agregado'); load();
+    return data?.id as string;
+  };
+  const update = async (id: string, u: Partial<Competitor>) => {
+    const { error } = await supabase.from('competitors').update(mapToSnake({ ...u, updatedAt: Date.now() })).eq('id', id);
+    if (error) toast('Error al actualizar', 'error'); else load();
+  };
+  const remove = async (id: string) => { await supabase.from('competitors').delete().eq('id', id); load(); };
+
+  const analyze = async (c: Competitor): Promise<boolean> => {
+    const { data, error } = await supabase.functions.invoke('analyze-competitor', {
+      body: { competitor: { nombre: c.name, instagram: c.instagram, website: c.website, rubro: c.rubro, observaciones: c.notes } },
+    });
+    let err = '';
+    if (error) { err = error.message; try { const b = await (error as { context?: { json?: () => Promise<{ error?: string }> } }).context?.json?.(); if (b?.error) err = b.error; } catch { /* noop */ } }
+    else if (!data?.ok) err = data?.error || 'Respuesta inesperada';
+    if (err) { toast('Error al analizar: ' + err, 'error'); return false; }
+    await supabase.from('competitors').update(mapToSnake({ analysis: data.analysis, analyzedAt: Date.now(), updatedAt: Date.now() })).eq('id', c.id);
+    toast('Análisis listo ✨'); load();
+    return true;
+  };
+
+  return { competitors, loading, add, update, remove, analyze, refresh: load };
 }
 
 // ─── EXCHANGE RATE HOOK ───
