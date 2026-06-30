@@ -97,6 +97,19 @@
 .ig-source-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .ig-source-head strong { margin-bottom: 8px; }
 
+/* Gráficos */
+.ig-charts { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
+.ig-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; justify-content: center; }
+.ig-legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+.ig-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.ig-funnel { display: flex; flex-direction: column; gap: 12px; }
+.ig-funnel-row { display: grid; grid-template-columns: 90px 1fr 36px; align-items: center; gap: 12px; }
+.ig-funnel-label { font-size: 13px; color: var(--text-secondary); font-weight: 600; }
+.ig-funnel-bar { height: 22px; background: rgba(255,255,255,0.04); border-radius: 7px; overflow: hidden; }
+.ig-funnel-bar > div { height: 100%; border-radius: 7px; min-width: 2px; transition: width 0.4s ease; }
+.ig-funnel-val { font-size: 14px; font-weight: 800; color: var(--text-primary); text-align: right; }
+@media (max-width: 900px) { .ig-charts { grid-template-columns: 1fr; } }
+
 @media (max-width: 900px) {
   .ig-metrics { grid-template-columns: repeat(2, 1fr); }
   .ig-grid-2 { grid-template-columns: 1fr; }

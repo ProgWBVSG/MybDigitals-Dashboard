@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Sparkles, Plug, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Send } from 'lucide-react';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useContent } from './hooks';
 import {
   CONTENT_STATUSES, CONTENT_FORMATS, CONTENT_FORMAT_LABELS, CONTENT_OBJECTIVES,
@@ -48,6 +49,7 @@ export default function Content() {
 }
 
 const fmtBadge = (f: ContentFormat) => <span className={`ig-badge ${f}`}>{CONTENT_FORMAT_LABELS[f]}</span>;
+const FORMAT_COLOR: Record<ContentFormat, string> = { reel: '#f9587a', carrusel: '#a64bf4', story: '#ffaa3a', ad: '#6366f1' };
 
 function Resumen({ posts, onGo }: { posts: ContentPost[]; onGo: (t: Tab) => void }) {
   const by = (s: ContentStatus) => posts.filter(p => p.status === s).length;
@@ -58,6 +60,30 @@ function Resumen({ posts, onGo }: { posts: ContentPost[]; onGo: (t: Tab) => void
     { label: 'Total de piezas', value: posts.length },
   ];
   const listas = posts.filter(p => p.status === 'listo');
+
+  // Distribución por formato (gráfico de torta)
+  const formatData = useMemo(() => CONTENT_FORMATS
+    .map(f => ({ name: CONTENT_FORMAT_LABELS[f], value: posts.filter(p => p.format === f).length, color: FORMAT_COLOR[f] }))
+    .filter(d => d.value > 0), [posts]);
+
+  // Producción por semana (últimas 6, gráfico de barras)
+  const weekData = useMemo(() => {
+    const now = new Date(); const monday = new Date(now); monday.setHours(0, 0, 0, 0); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    return Array.from({ length: 6 }, (_, i) => {
+      const start = new Date(monday); start.setDate(monday.getDate() - (5 - i) * 7);
+      const end = new Date(start); end.setDate(start.getDate() + 7);
+      const count = posts.filter(p => { const t = new Date(p.createdAt).getTime(); return t >= start.getTime() && t < end.getTime(); }).length;
+      return { label: start.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }), piezas: count };
+    });
+  }, [posts]);
+
+  const funnel = [
+    { label: 'Borrador', value: by('borrador'), color: '#64748b' },
+    { label: 'Aprobado', value: by('aprobado'), color: '#6366f1' },
+    { label: 'Listo', value: by('listo'), color: '#10b981' },
+  ];
+  const maxF = Math.max(1, ...funnel.map(f => f.value));
+
   return (
     <div className="ig-stack">
       <div className="ig-metrics">
@@ -67,6 +93,52 @@ function Resumen({ posts, onGo }: { posts: ContentPost[]; onGo: (t: Tab) => void
             <strong>{m.value}</strong>
           </div>
         ))}
+      </div>
+
+      <div className="ig-charts">
+        <div className="ig-card">
+          <div className="ig-card-head"><div><p className="ig-eyebrow">Producción</p><h3>Piezas por semana</h3></div></div>
+          <ResponsiveContainer width="100%" height={210}>
+            <BarChart data={weekData} barCategoryGap="28%">
+              <XAxis dataKey="label" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} width={24} />
+              <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, fontSize: 13 }} />
+              <Bar dataKey="piezas" fill="#a64bf4" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="ig-card">
+          <div className="ig-card-head"><div><p className="ig-eyebrow">Mix</p><h3>Por formato</h3></div></div>
+          {formatData.length === 0 ? (
+            <div className="ig-empty-inline" style={{ height: 200 }}>Cargá piezas para ver el mix.</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={210}>
+              <PieChart>
+                <Pie data={formatData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={85} paddingAngle={3}>
+                  {formatData.map((d, i) => <Cell key={i} fill={d.color} stroke="none" />)}
+                </Pie>
+                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, fontSize: 13 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+          <div className="ig-legend">
+            {formatData.map(d => <span key={d.name}><i style={{ background: d.color }} />{d.name} ({d.value})</span>)}
+          </div>
+        </div>
+      </div>
+
+      <div className="ig-card">
+        <div className="ig-card-head"><div><p className="ig-eyebrow">Pipeline</p><h3>Embudo de producción</h3></div></div>
+        <div className="ig-funnel">
+          {funnel.map(f => (
+            <div key={f.label} className="ig-funnel-row">
+              <span className="ig-funnel-label">{f.label}</span>
+              <div className="ig-funnel-bar"><div style={{ width: `${(f.value / maxF) * 100}%`, background: f.color }} /></div>
+              <span className="ig-funnel-val">{f.value}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="ig-card">
@@ -80,8 +152,8 @@ function Resumen({ posts, onGo }: { posts: ContentPost[]; onGo: (t: Tab) => void
       </div>
 
       <div className="ig-card ig-note">
-        <strong>📊 Métricas en vivo de Instagram</strong>
-        <p>Seguidores, alcance y engagement aparecen acá cuando conectes la cuenta (pestaña "Conexión IG"). Por ahora el módulo gestiona la producción de contenido.</p>
+        <strong>📈 Métricas de la cuenta (seguidores, alcance, engagement)</strong>
+        <p>Se cargan al conectar Instagram (pestaña "Conexión IG", Fase 4). Por ahora el módulo mide y grafica tu producción de contenido, que es lo que controlás vos.</p>
       </div>
     </div>
   );
