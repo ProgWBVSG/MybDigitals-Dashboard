@@ -897,6 +897,20 @@ input[type="number"] {
 .md-code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 5px; font-size: 12.5px; }
 .md strong { color: var(--text-primary); }
 
+/* ─── BUSCADOR DE CLIENTES ─── */
+.lead-search { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.lead-search .select, .lead-search .input { flex: 1; min-width: 150px; }
+.lead-error { background: color-mix(in srgb, var(--warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent); color: var(--text-secondary); border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px; }
+.lead-count { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+.lead-list { display: flex; flex-direction: column; gap: 8px; }
+.lead-item { display: flex; align-items: center; gap: 14px; padding: 13px 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 11px; }
+.lead-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.lead-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
+.lead-meta span { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-muted); }
+.lead-added { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--secondary); flex-shrink: 0; }
+.lead-spin { animation: leadSpin 0.9s linear infinite; }
+@keyframes leadSpin { to { transform: rotate(360deg); } }
+
 /* ─── CONFIGURACIÓN ─── */
 .cfg-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
 .cfg-card-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 16px; }
