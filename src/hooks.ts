@@ -914,7 +914,17 @@ export function useContent() {
   };
   const removeSource = async (id: string) => { await supabase.from('content_sources').delete().eq('id', id); load(); };
 
-  return { posts, sources, loading, addPost, updatePost, removePost, addSource, removeSource, refresh: load };
+  // Genera una pieza con IA (guion/caption/hashtags). Devuelve el contenido o null.
+  const generateScript = async (input: { format?: string; objective?: string; tema: string; notas?: string }): Promise<any | null> => {
+    const { data, error } = await supabase.functions.invoke('generate-content', { body: input });
+    let err = '';
+    if (error) { err = error.message; try { const b = await (error as { context?: { json?: () => Promise<{ error?: string }> } }).context?.json?.(); if (b?.error) err = b.error; } catch { /* noop */ } }
+    else if (!data?.ok) err = data?.error || 'Respuesta inesperada';
+    if (err) { toast('Error al generar: ' + err, 'error'); return null; }
+    return data.content;
+  };
+
+  return { posts, sources, loading, addPost, updatePost, removePost, addSource, removeSource, generateScript, refresh: load };
 }
 
 // ─── ANÁLISIS DE COMPETENCIA ───

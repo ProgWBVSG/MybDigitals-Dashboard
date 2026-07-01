@@ -250,30 +250,70 @@ function Calendario({ posts }: { posts: ContentPost[] }) {
   );
 }
 
+type GenOut = { titulo: string; hook: string; guion: string[]; caption: string; hashtags: string[]; cta: string };
+
 function Generador({ c, onDone }: { c: ReturnType<typeof useContent>; onDone: () => void }) {
-  const [form, setForm] = useState<Partial<ContentPost>>({ format: 'reel', objective: CONTENT_OBJECTIVES[0], title: '', content: '', edgeLevel: 4 });
-  const crear = () => {
-    if (!(form.title || '').trim()) return;
-    c.addPost({ ...form, status: 'borrador' });
+  const [format, setFormat] = useState<ContentFormat>('reel');
+  const [objective, setObjective] = useState(CONTENT_OBJECTIVES[0]);
+  const [tema, setTema] = useState('');
+  const [notas, setNotas] = useState('');
+  const [gen, setGen] = useState(false);
+  const [out, setOut] = useState<GenOut | null>(null);
+
+  const generar = async () => {
+    if (!tema.trim()) return;
+    setGen(true); setOut(null);
+    const res = await c.generateScript({ format: CONTENT_FORMAT_LABELS[format], objective, tema, notas });
+    setGen(false);
+    if (res) setOut(res as GenOut);
+  };
+
+  const guardar = () => {
+    if (!out) return;
+    const content = [
+      `HOOK: ${out.hook}`, '',
+      'GUION:', ...(out.guion || []).map((g, i) => `${i + 1}. ${g}`), '',
+      `CAPTION: ${out.caption}`, '',
+      `CTA: ${out.cta}`, '',
+      (out.hashtags || []).join(' '),
+    ].join('\n');
+    c.addPost({ format, objective, title: out.titulo || tema, content, status: 'borrador' });
     onDone();
   };
+
   return (
     <div className="ig-grid-2">
       <div className="ig-card">
-        <div className="ig-card-head"><div><p className="ig-eyebrow">Asistente</p><h3>Crear pieza</h3></div></div>
+        <div className="ig-card-head"><div><p className="ig-eyebrow">Asistente IA</p><h3>Generar pieza</h3></div></div>
         <div className="ig-form">
-          <label>Tema / título<input className="input" value={form.title || ''} placeholder="Ej: 3 errores al vender por IG" onChange={e => setForm({ ...form, title: e.target.value })} /></label>
+          <label>Tema<input className="input" value={tema} placeholder="Ej: 3 errores al vender por IG" onChange={e => setTema(e.target.value)} /></label>
           <div style={{ display: 'flex', gap: 10 }}>
-            <label style={{ flex: 1 }}>Formato<select className="select" value={form.format} onChange={e => setForm({ ...form, format: e.target.value as ContentFormat })}>{CONTENT_FORMATS.map(x => <option key={x} value={x}>{CONTENT_FORMAT_LABELS[x]}</option>)}</select></label>
-            <label style={{ flex: 1 }}>Objetivo<select className="select" value={form.objective} onChange={e => setForm({ ...form, objective: e.target.value })}>{CONTENT_OBJECTIVES.map(x => <option key={x} value={x}>{x}</option>)}</select></label>
+            <label style={{ flex: 1 }}>Formato<select className="select" value={format} onChange={e => setFormat(e.target.value as ContentFormat)}>{CONTENT_FORMATS.map(x => <option key={x} value={x}>{CONTENT_FORMAT_LABELS[x]}</option>)}</select></label>
+            <label style={{ flex: 1 }}>Objetivo<select className="select" value={objective} onChange={e => setObjective(e.target.value)}>{CONTENT_OBJECTIVES.map(x => <option key={x} value={x}>{x}</option>)}</select></label>
           </div>
-          <label>Notas / guion<textarea className="input" rows={4} value={form.content || ''} placeholder="Idea, hook, CTA…" onChange={e => setForm({ ...form, content: e.target.value })} /></label>
-          <button className="btn btn-primary" onClick={crear}><Sparkles size={15} /> Crear pieza (queda en Borrador)</button>
+          <label>Notas (opcional)<textarea className="input" rows={3} value={notas} placeholder="Ángulo, dato, lo que quieras que incluya…" onChange={e => setNotas(e.target.value)} /></label>
+          <button className="btn btn-primary" onClick={generar} disabled={gen || !tema.trim()}>
+            <Sparkles size={15} /> {gen ? 'Escribiendo el guion…' : 'Generar con IA'}
+          </button>
         </div>
       </div>
-      <div className="ig-card ig-note">
-        <strong>✨ Generación con IA</strong>
-        <p>Por ahora el "generador" guarda la pieza como borrador en el pipeline con lo que cargues. La redacción automática del guion con IA se conecta en la próxima fase (igual que las propuestas).</p>
+
+      <div className="ig-card">
+        <div className="ig-card-head">
+          <div><p className="ig-eyebrow">Salida</p><h3>Guion generado</h3></div>
+          {out && <button className="btn btn-primary btn-sm" onClick={guardar}><Plus size={14} /> Guardar en Pipeline</button>}
+        </div>
+        {!out ? (
+          <div className="ig-empty-inline" style={{ minHeight: 220 }}>{gen ? 'La IA está escribiendo tu pieza…' : 'Completá el tema y tocá "Generar con IA". El guion aparece acá para revisar y guardar.'}</div>
+        ) : (
+          <div className="ig-gen-out">
+            <div className="ig-gen-block"><span>Hook</span><p>{out.hook}</p></div>
+            <div className="ig-gen-block"><span>Guion</span><ol>{(out.guion || []).map((g, i) => <li key={i}>{g}</li>)}</ol></div>
+            <div className="ig-gen-block"><span>Caption</span><p>{out.caption}</p></div>
+            <div className="ig-gen-block"><span>CTA</span><p>{out.cta}</p></div>
+            {(out.hashtags || []).length > 0 && <div className="ig-gen-tags">{out.hashtags.map((h, i) => <span key={i}>{h.startsWith('#') ? h : '#' + h}</span>)}</div>}
+          </div>
+        )}
       </div>
     </div>
   );

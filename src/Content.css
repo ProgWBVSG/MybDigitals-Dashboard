@@ -97,6 +97,15 @@
 .ig-source-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .ig-source-head strong { margin-bottom: 8px; }
 
+/* Salida del generador IA */
+.ig-gen-out { display: flex; flex-direction: column; gap: 12px; }
+.ig-gen-block span { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--primary-light); margin-bottom: 4px; }
+.ig-gen-block p { margin: 0; font-size: 14px; color: var(--text-primary); line-height: 1.5; }
+.ig-gen-block ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; }
+.ig-gen-block li { font-size: 14px; color: var(--text-primary); line-height: 1.45; }
+.ig-gen-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.ig-gen-tags span { font-size: 12px; font-weight: 600; color: var(--primary-light); background: rgba(99,102,241,0.1); border-radius: 999px; padding: 3px 9px; }
+
 /* Gráficos */
 .ig-charts { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
 .ig-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; justify-content: center; }
