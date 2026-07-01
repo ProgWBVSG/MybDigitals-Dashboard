@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target, LogOut, Bell, SlidersHorizontal, History as HistoryIcon, BookOpen, Smartphone, MapPin, Swords } from 'lucide-react';
+import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target, LogOut, Bell, SlidersHorizontal, History as HistoryIcon, BookOpen, Smartphone, MapPin, Swords, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from './supabase';
 import { useToastProvider, useNotifications } from './hooks';
 import Skills from './Skills';
@@ -47,6 +47,22 @@ function Dashboard() {
   const toasts = useToastProvider();
   const [tab, setTab] = useState<Tab>('metrics');
   const notif = useNotifications();
+  const navRef = useRef<HTMLElement>(null);
+  const [showArrows, setShowArrows] = useState(false);
+
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    const check = () => setShowArrows(el.scrollWidth > el.clientWidth + 4);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  const scrollNav = (dir: number) => navRef.current?.scrollBy({ left: dir * 260, behavior: 'smooth' });
+  // Al cambiar de tab, asegurar que el botón activo quede a la vista
+  useEffect(() => {
+    navRef.current?.querySelector('.active')?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [tab]);
 
   return (
     <>
@@ -63,7 +79,9 @@ function Dashboard() {
           MYB Digitals <span>Dashboard</span>
         </div>
 
-        <nav className="header-nav">
+        <div className="header-nav-wrap">
+          {showArrows && <button className="nav-arrow" onClick={() => scrollNav(-1)} aria-label="Anterior"><ChevronLeft size={18} /></button>}
+        <nav className="header-nav" ref={navRef}>
           <button className={tab === 'metrics' ? 'active' : ''} onClick={() => setTab('metrics')}>
             <BarChart3 size={16} /> Métricas
           </button>
@@ -71,7 +89,7 @@ function Dashboard() {
             <Target size={16} /> Pre-venta
           </button>
           <button className={tab === 'buscar' ? 'active' : ''} onClick={() => setTab('buscar')}>
-            <MapPin size={16} /> Buscar
+            <MapPin size={16} /> Buscar clientes
           </button>
           <button className={tab === 'competencia' ? 'active' : ''} onClick={() => setTab('competencia')}>
             <Swords size={16} /> Competencia
@@ -101,6 +119,8 @@ function Dashboard() {
             <Layers size={16} /> Skills
           </button>
         </nav>
+          {showArrows && <button className="nav-arrow" onClick={() => scrollNav(1)} aria-label="Siguiente"><ChevronRight size={18} /></button>}
+        </div>
 
         <div className="header-actions">
           <button className={`btn btn-ghost btn-icon notif-bell${tab === 'notifications' ? ' active' : ''}`} onClick={() => setTab('notifications')} title="Notificaciones">

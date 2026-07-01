@@ -46,8 +46,11 @@ body {
   letter-spacing: -0.5px;
 }
 .header-logo span { color: var(--text-secondary); font-weight: 400; font-size: 14px; }
-/* Nav: ocupa el espacio libre y scrollea en vez de amontonarse */
-.header-nav { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+/* Nav: ocupa el espacio libre y scrollea, con flechas para desplazarla */
+.header-nav-wrap { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+.nav-arrow { flex-shrink: 0; width: 28px; height: 32px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-secondary); border-radius: 8px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.nav-arrow:hover { color: #fff; background: var(--primary); border-color: var(--primary); }
+.header-nav { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth; }
 .header-nav::-webkit-scrollbar { display: none; }
 .header-nav button {
   background: none; border: none; color: var(--text-secondary);
