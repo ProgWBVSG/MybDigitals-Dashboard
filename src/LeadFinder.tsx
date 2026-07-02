@@ -31,12 +31,28 @@ const CATS: { key: string; label: string; filters: string[] }[] = [
   { key: 'nombre', label: 'Buscar por nombre/rubro', filters: [] },
 ];
 
+// Zonas con coordenadas fijas (evita geocodificar = más rápido). "otra" pide texto.
+const ZONES: { key: string; label: string; lat?: number; lon?: number; radius?: number }[] = [
+  { key: 'cba', label: '📍 Córdoba Capital', lat: -31.4201, lon: -64.1888, radius: 11 },
+  { key: 'cba-gran', label: 'Gran Córdoba', lat: -31.42, lon: -64.18, radius: 22 },
+  { key: 'carlospaz', label: 'Villa Carlos Paz', lat: -31.424, lon: -64.497, radius: 9 },
+  { key: 'rio4', label: 'Río Cuarto', lat: -33.1234, lon: -64.3499, radius: 9 },
+  { key: 'caba', label: 'CABA (Buenos Aires)', lat: -34.6037, lon: -58.3816, radius: 12 },
+  { key: 'gba', label: 'Gran Buenos Aires', lat: -34.62, lon: -58.44, radius: 30 },
+  { key: 'rosario', label: 'Rosario', lat: -32.9587, lon: -60.6931, radius: 12 },
+  { key: 'mendoza', label: 'Mendoza', lat: -32.8895, lon: -68.8458, radius: 12 },
+  { key: 'laplata', label: 'La Plata', lat: -34.9215, lon: -57.9545, radius: 10 },
+  { key: 'mardel', label: 'Mar del Plata', lat: -38.0055, lon: -57.5426, radius: 10 },
+  { key: 'tucuman', label: 'Tucumán', lat: -26.8083, lon: -65.2176, radius: 10 },
+  { key: 'otra', label: 'Otra zona (escribir)…' },
+];
+
 export default function LeadFinder() {
   const { create } = useProspects();
   const [cat, setCat] = useState('estetica');
   const [term, setTerm] = useState('');
-  const [city, setCity] = useState('');
-  const [radius, setRadius] = useState(8);
+  const [zone, setZone] = useState('cba');
+  const [customCity, setCustomCity] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Lead[]>([]);
   const [added, setAdded] = useState<Set<string>>(new Set());
@@ -46,19 +62,24 @@ export default function LeadFinder() {
   const key = (l: Lead) => l.name + '|' + l.address;
 
   const buscar = async () => {
-    if (!city.trim()) { setError('Poné una ciudad o zona (ej: "Córdoba, Argentina").'); return; }
     if (cat === 'nombre' && !term.trim()) { setError('Escribí un nombre o rubro para buscar.'); return; }
+    const z = ZONES.find(x => x.key === zone)!;
     setError(''); setLoading(true); setResults([]); setAdded(new Set());
     try {
-      const geo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(city)}`, { headers: { 'Accept-Language': 'es' } }).then(r => r.json());
-      if (!geo[0]) { setError('No encontré esa zona. Probá con "Ciudad, Provincia".'); return; }
-      const { lat, lon } = geo[0];
+      let lat = z.lat, lon = z.lon, radius = z.radius || 12;
+      // Zonas predefinidas ya traen coordenadas (más rápido). "Otra" geocodifica el texto.
+      if (zone === 'otra') {
+        if (!customCity.trim()) { setError('Escribí la zona (ej: "Rosario" o "Miami").'); return; }
+        const geo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(customCity)}`, { headers: { 'Accept-Language': 'es' } }).then(r => r.json());
+        if (!geo[0]) { setError('No encontré esa zona. Probá "Ciudad, País".'); return; }
+        lat = parseFloat(geo[0].lat); lon = parseFloat(geo[0].lon); radius = 12;
+      }
       const around = `(around:${radius * 1000},${lat},${lon})`;
       const c = CATS.find(x => x.key === cat)!;
       const q = cat === 'nombre'
         ? `nwr["name"~"${term.replace(/["\\]/g, '')}",i]${around};`
         : c.filters.map(f => `nwr[${f}]${around};`).join('');
-      const body = `[out:json][timeout:25];(${q});out center 100;`;
+      const body = `[out:json][timeout:18];(${q});out center 60;`;
       const res = await overpassQuery(body);
 
       const seen = new Set<string>();
@@ -80,7 +101,7 @@ export default function LeadFinder() {
       leads = leads.filter(l => { const k = key(l); if (seen.has(k)) return false; seen.add(k); return true; });
       leads.sort((a, b) => (b.phone ? 1 : 0) - (a.phone ? 1 : 0) || (b.website ? 1 : 0) - (a.website ? 1 : 0));
       setResults(leads.slice(0, 80));
-      if (leads.length === 0) setError('No aparecieron negocios con esos filtros. Probá otro rubro, "Buscar por nombre" o ampliá el radio.');
+      if (leads.length === 0) setError('No aparecieron negocios con esos filtros. Probá otro rubro, "Buscar por nombre" o una zona más grande (ej: "Gran Córdoba").');
     } catch {
       setError('Hubo un error al buscar (el servicio gratuito puede estar ocupado). Probá de nuevo en unos segundos.');
     } finally { setLoading(false); }
@@ -114,10 +135,12 @@ export default function LeadFinder() {
           {CATS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
         </select>
         <input className="input" placeholder={cat === 'nombre' ? 'Nombre o rubro (ej: estética)' : 'Filtrar por nombre (opcional)'} value={term} onChange={e => setTerm(e.target.value)} onKeyDown={e => e.key === 'Enter' && buscar()} />
-        <input className="input" placeholder="Ciudad / zona (ej: Córdoba, Argentina)" value={city} onChange={e => setCity(e.target.value)} onKeyDown={e => e.key === 'Enter' && buscar()} />
-        <select className="select" value={radius} onChange={e => setRadius(Number(e.target.value))} style={{ maxWidth: 110 }}>
-          {[3, 5, 8, 15, 25].map(r => <option key={r} value={r}>{r} km</option>)}
+        <select className="select" value={zone} onChange={e => setZone(e.target.value)}>
+          {ZONES.map(z => <option key={z.key} value={z.key}>{z.label}</option>)}
         </select>
+        {zone === 'otra' && (
+          <input className="input" placeholder="Zona (ej: Rosario, Miami…)" value={customCity} onChange={e => setCustomCity(e.target.value)} onKeyDown={e => e.key === 'Enter' && buscar()} />
+        )}
         <button className="btn btn-primary" onClick={buscar} disabled={loading}>
           {loading ? <Loader size={16} className="lead-spin" /> : <Search size={16} />} Buscar
         </button>
