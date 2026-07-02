@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { MapPin, Search, Plus, Globe, Phone, Check, Loader } from 'lucide-react';
+import { MapPin, Search, Plus, Globe, Phone, Check, Loader, Navigation } from 'lucide-react';
 import { useProspects, toast } from './hooks';
 
-type Lead = { name: string; phone: string; website: string; address: string };
+type Lead = { name: string; phone: string; website: string; address: string; lat?: number; lon?: number };
 
 // Overpass: POST form-encoded (forma canónica). Reintenta en un mirror si el primero falla.
 async function overpassQuery(query: string): Promise<any> {
@@ -16,6 +16,44 @@ async function overpassQuery(query: string): Promise<any> {
     } catch (e) { lastErr = e; }
   }
   throw lastErr || new Error('overpass');
+}
+
+// ── Recorrido óptimo entre varios puntos ──
+function haversine(a: Lead, b: Lead): number {
+  const R = 6371, toRad = (d: number) => d * Math.PI / 180;
+  const dLat = toRad((b.lat!) - (a.lat!)), dLon = toRad((b.lon!) - (a.lon!));
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat!)) * Math.cos(toRad(b.lat!)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+function nearestNeighbor(leads: Lead[]): Lead[] {
+  const rest = [...leads]; const order = [rest.shift()!];
+  while (rest.length) {
+    const last = order[order.length - 1];
+    let bi = 0, bd = Infinity;
+    rest.forEach((l, i) => { const d = haversine(last, l); if (d < bd) { bd = d; bi = i; } });
+    order.push(rest.splice(bi, 1)[0]);
+  }
+  return order;
+}
+async function optimizeRoute(leads: Lead[]): Promise<{ order: Lead[]; km: number; min: number }> {
+  const coords = leads.map(l => `${l.lon},${l.lat}`).join(';');
+  try {
+    const r = await fetch(`https://router.project-osrm.org/trip/v1/driving/${coords}?source=first&roundtrip=false&overview=false`).then(x => x.json());
+    if (r.code === 'Ok' && Array.isArray(r.waypoints)) {
+      const withIdx = leads.map((l, i) => ({ l, idx: r.waypoints[i].waypoint_index as number }));
+      withIdx.sort((a, b) => a.idx - b.idx);
+      const trip = r.trips?.[0];
+      return { order: withIdx.map(x => x.l), km: trip ? trip.distance / 1000 : 0, min: trip ? trip.duration / 60 : 0 };
+    }
+  } catch { /* usa fallback */ }
+  const order = nearestNeighbor(leads);
+  let km = 0; for (let i = 1; i < order.length; i++) km += haversine(order[i - 1], order[i]);
+  return { order, km, min: km / 0.5 }; // ~30 km/h urbano
+}
+function gmapsUrl(order: Lead[]): string {
+  const dest = order[order.length - 1];
+  const wps = order.slice(0, -1).map(p => `${p.lat},${p.lon}`).join('|');
+  return `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${dest.lat},${dest.lon}${wps ? `&waypoints=${encodeURIComponent(wps)}` : ''}`;
 }
 
 // filters = etiquetas OSM; nameRegex = también cazar por nombre (para los mal etiquetados)
@@ -61,13 +99,26 @@ export default function LeadFinder() {
   const [added, setAdded] = useState<Set<string>>(new Set());
   const [error, setError] = useState('');
   const [webFilter, setWebFilter] = useState<'all' | 'sinweb' | 'conweb'>('all');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [route, setRoute] = useState<{ order: Lead[]; km: number; min: number } | null>(null);
+  const [routing, setRouting] = useState(false);
 
   const key = (l: Lead) => l.name + '|' + l.address;
+  const toggleSel = (l: Lead) => setSelected(s => { const n = new Set(s); const k = key(l); n.has(k) ? n.delete(k) : n.add(k); return n; });
+
+  const armarRecorrido = async () => {
+    const pts = results.filter(l => selected.has(key(l)) && l.lat != null && l.lon != null);
+    if (pts.length < 2) { setError('Elegí al menos 2 negocios (con el check ✓) para armar el recorrido.'); return; }
+    if (pts.length > 12) { setError('Máximo 12 paradas por recorrido. Sacá algunas.'); return; }
+    setError(''); setRouting(true);
+    const r = await optimizeRoute(pts);
+    setRoute(r); setRouting(false);
+  };
 
   const buscar = async () => {
     if (cat === 'nombre' && !term.trim()) { setError('Escribí un nombre o rubro para buscar.'); return; }
     const z = ZONES.find(x => x.key === zone)!;
-    setError(''); setLoading(true); setResults([]); setAdded(new Set());
+    setError(''); setLoading(true); setResults([]); setAdded(new Set()); setSelected(new Set()); setRoute(null);
     try {
       let lat = z.lat, lon = z.lon;
       const radius = radiusKm;
@@ -102,11 +153,13 @@ export default function LeadFinder() {
       let leads: Lead[] = (res.elements || []).map((el: any) => {
         const t = el.tags || {};
         const address = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ') + (t['addr:city'] ? `, ${t['addr:city']}` : '');
+        const ll = el.lat != null ? { lat: el.lat, lon: el.lon } : (el.center || {});
         return {
           name: t.name as string,
           phone: (t.phone || t['contact:phone'] || t['contact:mobile'] || '').toString().trim(),
           website: (t.website || t['contact:website'] || t.url || '').toString().trim(),
           address: address.trim(),
+          lat: ll.lat, lon: ll.lon,
         };
       }).filter((l: Lead) => l.name);
 
@@ -175,11 +228,24 @@ export default function LeadFinder() {
             <button className={webFilter === 'conweb' ? 'active' : ''} onClick={() => setWebFilter('conweb')}>Con web · automatización <b>{results.length - sinWeb}</b></button>
           </div>
           <div className="lead-count">{shown.length} {shown.length === 1 ? 'negocio' : 'negocios'} · los que tienen teléfono/web aparecen primero</div>
+          {selected.size > 0 && (
+            <div className="lead-routebar">
+              <span>🚗 {selected.size} para visitar</span>
+              <button className="btn btn-primary btn-sm" onClick={armarRecorrido} disabled={routing || selected.size < 2}>
+                {routing ? <Loader size={14} className="lead-spin" /> : <Navigation size={14} />} Armar recorrido
+              </button>
+            </div>
+          )}
           <div className="lead-list">
             {shown.map((l, i) => {
               const isAdded = added.has(key(l));
               return (
                 <div key={i} className="lead-item">
+                  {l.lat != null && (
+                    <button className={`lead-check ${selected.has(key(l)) ? 'on' : ''}`} onClick={() => toggleSel(l)} title="Sumar al recorrido">
+                      {selected.has(key(l)) && <Check size={13} />}
+                    </button>
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="lead-name">
                       {l.name}
@@ -206,6 +272,24 @@ export default function LeadFinder() {
 
       {!loading && results.length === 0 && !error && (
         <div className="notif-empty"><MapPin size={32} /><p>Elegí un rubro y una zona, y tocá Buscar para encontrar clientes potenciales.</p></div>
+      )}
+
+      {route && (
+        <div className="modal-overlay" onClick={() => setRoute(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 470 }}>
+            <h2><Navigation size={18} style={{ verticalAlign: '-3px', marginRight: 6 }} />Recorrido óptimo</h2>
+            <p className="lead-route-sum">{route.order.length} paradas · ~{route.km.toFixed(1)} km · ~{Math.round(route.min)} min en auto</p>
+            <ol className="lead-route-list">
+              {route.order.map((l, i) => (
+                <li key={i}><span className="lead-route-n">{i + 1}</span><div><strong>{l.name}</strong>{l.address && <span> — {l.address}</span>}</div></li>
+              ))}
+            </ol>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setRoute(null)}>Cerrar</button>
+              <a className="btn btn-primary" href={gmapsUrl(route.order)} target="_blank" rel="noreferrer"><Navigation size={15} /> Abrir en Google Maps</a>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
