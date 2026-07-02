@@ -18,12 +18,13 @@ async function overpassQuery(query: string): Promise<any> {
   throw lastErr || new Error('overpass');
 }
 
-const CATS: { key: string; label: string; filters: string[] }[] = [
-  { key: 'estetica', label: 'Estética / Belleza', filters: ['shop=beauty', 'shop=hairdresser', 'shop=cosmetics', 'leisure=spa'] },
-  { key: 'gimnasio', label: 'Gimnasios / Fitness', filters: ['leisure=fitness_centre', 'leisure=sports_centre'] },
-  { key: 'salud', label: 'Salud / Consultorios', filters: ['amenity=clinic', 'amenity=dentist', 'amenity=doctors'] },
+// filters = etiquetas OSM; nameRegex = también cazar por nombre (para los mal etiquetados)
+const CATS: { key: string; label: string; filters: string[]; nameRegex?: string }[] = [
+  { key: 'estetica', label: 'Estética / Belleza', filters: ['shop=beauty', 'shop=hairdresser', 'shop=cosmetics', 'leisure=spa'], nameRegex: 'estetica|estética|belleza|spa|peluqueria|peluquería|nails|uñas' },
+  { key: 'gimnasio', label: 'Gimnasios / Fitness', filters: ['leisure=fitness_centre', 'leisure=sports_centre', 'sport=fitness'], nameRegex: 'gym|gimnasio|fitness|crossfit|training|entrenamiento' },
+  { key: 'salud', label: 'Salud / Consultorios', filters: ['amenity=clinic', 'amenity=dentist', 'amenity=doctors'], nameRegex: 'consultorio|clinica|clínica|dental|odontolog|kinesiolog|nutricion|nutrición' },
   { key: 'gastronomia', label: 'Gastronomía', filters: ['amenity=restaurant', 'amenity=cafe', 'amenity=bar', 'amenity=fast_food'] },
-  { key: 'inmobiliaria', label: 'Inmobiliarias', filters: ['office=estate_agent'] },
+  { key: 'inmobiliaria', label: 'Inmobiliarias', filters: ['office=estate_agent'], nameRegex: 'inmobiliaria|propiedades' },
   { key: 'indumentaria', label: 'Indumentaria / Tiendas', filters: ['shop=clothes', 'shop=shoes', 'shop=boutique'] },
   { key: 'hoteleria', label: 'Hotelería / Turismo', filters: ['tourism=hotel', 'tourism=guest_house', 'tourism=apartment'] },
   { key: 'automotor', label: 'Automotor', filters: ['shop=car', 'shop=car_repair'] },
@@ -33,7 +34,8 @@ const CATS: { key: string; label: string; filters: string[] }[] = [
 
 // Zonas con coordenadas fijas (evita geocodificar = más rápido). "otra" pide texto.
 const ZONES: { key: string; label: string; lat?: number; lon?: number; radius?: number }[] = [
-  { key: 'cba', label: '📍 Córdoba Capital', lat: -31.4201, lon: -64.1888, radius: 11 },
+  { key: 'mi', label: '📍 Mi ubicación (cerca mío)' },
+  { key: 'cba', label: 'Córdoba Capital', lat: -31.4201, lon: -64.1888, radius: 11 },
   { key: 'cba-gran', label: 'Gran Córdoba', lat: -31.42, lon: -64.18, radius: 22 },
   { key: 'carlospaz', label: 'Villa Carlos Paz', lat: -31.424, lon: -64.497, radius: 9 },
   { key: 'rio4', label: 'Río Cuarto', lat: -33.1234, lon: -64.3499, radius: 9 },
@@ -53,6 +55,7 @@ export default function LeadFinder() {
   const [term, setTerm] = useState('');
   const [zone, setZone] = useState('cba');
   const [customCity, setCustomCity] = useState('');
+  const [radiusKm, setRadiusKm] = useState(10);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Lead[]>([]);
   const [added, setAdded] = useState<Set<string>>(new Set());
@@ -66,20 +69,33 @@ export default function LeadFinder() {
     const z = ZONES.find(x => x.key === zone)!;
     setError(''); setLoading(true); setResults([]); setAdded(new Set());
     try {
-      let lat = z.lat, lon = z.lon, radius = z.radius || 12;
-      // Zonas predefinidas ya traen coordenadas (más rápido). "Otra" geocodifica el texto.
-      if (zone === 'otra') {
+      let lat = z.lat, lon = z.lon;
+      const radius = radiusKm;
+      if (zone === 'mi') {
+        // Geolocalización del navegador (pide permiso)
+        try {
+          const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 9000, enableHighAccuracy: true }));
+          lat = pos.coords.latitude; lon = pos.coords.longitude;
+        } catch { setError('No pude obtener tu ubicación. Activá el permiso de ubicación del navegador o elegí una zona de la lista.'); return; }
+      } else if (zone === 'otra') {
         if (!customCity.trim()) { setError('Escribí la zona (ej: "Rosario" o "Miami").'); return; }
-        const geo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(customCity)}`, { headers: { 'Accept-Language': 'es' } }).then(r => r.json());
+        // Primero busca en Argentina (evita que "Córdoba" agarre la de España); si no, global.
+        let geo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ar&q=${encodeURIComponent(customCity)}`, { headers: { 'Accept-Language': 'es' } }).then(r => r.json());
+        if (!geo[0]) geo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(customCity)}`, { headers: { 'Accept-Language': 'es' } }).then(r => r.json());
         if (!geo[0]) { setError('No encontré esa zona. Probá "Ciudad, País".'); return; }
-        lat = parseFloat(geo[0].lat); lon = parseFloat(geo[0].lon); radius = 12;
+        lat = parseFloat(geo[0].lat); lon = parseFloat(geo[0].lon);
       }
       const around = `(around:${radius * 1000},${lat},${lon})`;
       const c = CATS.find(x => x.key === cat)!;
-      const q = cat === 'nombre'
-        ? `nwr["name"~"${term.replace(/["\\]/g, '')}",i]${around};`
-        : c.filters.map(f => `nwr[${f}]${around};`).join('');
-      const body = `[out:json][timeout:18];(${q});out center 60;`;
+      let q: string;
+      if (cat === 'nombre') {
+        q = `nwr["name"~"${term.replace(/["\\]/g, '')}",i]${around};`;
+      } else {
+        const parts = c.filters.map(f => `nwr[${f}]${around};`);
+        if (c.nameRegex) parts.push(`nwr["name"~"${c.nameRegex}",i]${around};`); // también por nombre
+        q = parts.join('');
+      }
+      const body = `[out:json][timeout:20];(${q});out center 70;`;
       const res = await overpassQuery(body);
 
       const seen = new Set<string>();
@@ -137,6 +153,9 @@ export default function LeadFinder() {
         <input className="input" placeholder={cat === 'nombre' ? 'Nombre o rubro (ej: estética)' : 'Filtrar por nombre (opcional)'} value={term} onChange={e => setTerm(e.target.value)} onKeyDown={e => e.key === 'Enter' && buscar()} />
         <select className="select" value={zone} onChange={e => setZone(e.target.value)}>
           {ZONES.map(z => <option key={z.key} value={z.key}>{z.label}</option>)}
+        </select>
+        <select className="select" value={radiusKm} onChange={e => setRadiusKm(Number(e.target.value))} style={{ maxWidth: 100 }} title="Radio de búsqueda">
+          {[2, 5, 10, 15, 25, 40].map(r => <option key={r} value={r}>{r} km</option>)}
         </select>
         {zone === 'otra' && (
           <input className="input" placeholder="Zona (ej: Rosario, Miami…)" value={customCity} onChange={e => setCustomCity(e.target.value)} onKeyDown={e => e.key === 'Enter' && buscar()} />
