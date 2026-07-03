@@ -1,6 +1,31 @@
 // Optimización de recorrido entre varios puntos (compartido por LeadFinder y Pre-venta).
 export type RoutePoint = { name: string; lat: number; lon: number; address?: string };
 
+// Ubicación del usuario. Intenta el navegador (preciso) y si falla (permiso/OS apagado),
+// cae a geolocalización por IP (funciona siempre, sin permisos). Nivel ciudad, suficiente.
+export async function getMyLocation(): Promise<{ lat: number; lon: number; approx: boolean }> {
+  if ('geolocation' in navigator) {
+    try {
+      const pos = await new Promise<GeolocationPosition>((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 7000, maximumAge: 120000, enableHighAccuracy: false }));
+      return { lat: pos.coords.latitude, lon: pos.coords.longitude, approx: false };
+    } catch { /* cae a IP */ }
+  }
+  try {
+    const r = await fetch('https://ipwho.is/').then(x => x.json());
+    if (r && r.success !== false && r.latitude) return { lat: r.latitude, lon: r.longitude, approx: true };
+  } catch { /* siguiente */ }
+  try {
+    const r = await fetch('https://ipapi.co/json/').then(x => x.json());
+    if (r && r.latitude) return { lat: r.latitude, lon: r.longitude, approx: true };
+  } catch { /* siguiente */ }
+  try {
+    const r = await fetch('https://get.geojs.io/v1/ip/geo.json').then(x => x.json());
+    if (r && r.latitude) return { lat: parseFloat(r.latitude), lon: parseFloat(r.longitude), approx: true };
+  } catch { /* nada */ }
+  throw new Error('no-location');
+}
+
 function haversine(a: RoutePoint, b: RoutePoint): number {
   const R = 6371, toRad = (d: number) => d * Math.PI / 180;
   const dLat = toRad(b.lat - a.lat), dLon = toRad(b.lon - a.lon);

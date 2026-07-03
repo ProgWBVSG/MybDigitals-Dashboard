@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Search, Plus, Globe, Phone, Check, Loader, Navigation } from 'lucide-react';
 import { useProspects, toast } from './hooks';
-import { optimizeRoute, gmapsUrl, type RoutePoint } from './route';
+import { optimizeRoute, gmapsUrl, getMyLocation, type RoutePoint } from './route';
 
 type Lead = { name: string; phone: string; website: string; address: string; lat?: number; lon?: number };
 
@@ -95,17 +95,11 @@ export default function LeadFinder() {
       let lat = z.lat, lon = z.lon;
       const radius = radiusKm;
       if (zone === 'mi') {
-        if (!('geolocation' in navigator)) { setError('Tu navegador no soporta ubicación. Elegí una zona de la lista.'); return; }
         try {
-          const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 15000, maximumAge: 60000, enableHighAccuracy: false }));
-          lat = pos.coords.latitude; lon = pos.coords.longitude;
-        } catch (e) {
-          const code = (e as GeolocationPositionError)?.code;
-          setError(code === 1 ? 'Bloqueaste el permiso de ubicación. Habilitalo en el candado 🔒 de la barra de direcciones y recargá.'
-            : code === 3 ? 'La ubicación tardó demasiado. Reintentá o elegí una zona de la lista.'
-            : 'No pude obtener tu ubicación (puede estar desactivada en tu compu). Elegí una zona de la lista, como "Córdoba Capital".');
-          return;
-        }
+          const loc = await getMyLocation();
+          lat = loc.lat; lon = loc.lon;
+          if (loc.approx) toast('Uso tu ubicación aproximada (por IP). Para más precisión, elegí tu ciudad de la lista.', 'info');
+        } catch { setError('No pude obtener tu ubicación. Elegí una zona de la lista (ej: Córdoba Capital).'); return; }
       } else if (zone === 'otra') {
         if (!customCity.trim()) { setError('Escribí la zona (ej: "Rosario" o "Miami").'); return; }
         // Primero busca en Argentina (evita que "Córdoba" agarre la de España); si no, global.

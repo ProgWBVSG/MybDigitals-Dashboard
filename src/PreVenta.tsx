@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, X, Trash2, Target, CalendarPlus, MessageCircle, Sparkles, Presentation, Share2, Eye, UserCheck, Navigation, MapPin, Loader } from 'lucide-react';
-import { optimizeRoute, gmapsUrl, type RoutePoint } from './route';
+import { optimizeRoute, gmapsUrl, getMyLocation, type RoutePoint } from './route';
 import { useProspects, useClients, toast } from './hooks';
 import { supabase } from './supabase';
 import ProposalDeck from './ProposalDeck';
@@ -96,13 +96,9 @@ export default function PreVenta() {
     setRouting(true);
     if (fromMe) {
       try {
-        const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 15000, maximumAge: 60000, enableHighAccuracy: false }));
-        pts = [{ name: '📍 Mi ubicación', lat: pos.coords.latitude, lon: pos.coords.longitude }, ...pts];
-      } catch (e) {
-        const code = (e as GeolocationPositionError)?.code;
-        toast(code === 1 ? 'Permiso de ubicación bloqueado (habilitalo en el candado 🔒).' : 'No pude obtener tu ubicación. Desactivá "salir desde mi ubicación" y probá.', 'error');
-        setRouting(false); return;
-      }
+        const loc = await getMyLocation();
+        pts = [{ name: '📍 Mi ubicación', lat: loc.lat, lon: loc.lon }, ...pts];
+      } catch { toast('No pude obtener tu ubicación. Desactivá "salir desde mi ubicación" y probá.', 'error'); setRouting(false); return; }
     }
     const r = await optimizeRoute(pts);
     setRouteResult(r); setRouting(false);
