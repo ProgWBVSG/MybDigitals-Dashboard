@@ -8,9 +8,10 @@ import {
 } from './utils';
 import './Content.css';
 
-type Tab = 'resumen' | 'pipeline' | 'calendario' | 'generador' | 'fuentes' | 'conexion';
+type Tab = 'resumen' | 'ideas' | 'pipeline' | 'calendario' | 'generador' | 'fuentes' | 'conexion';
 const TABS: { k: Tab; label: string }[] = [
   { k: 'resumen', label: 'Resumen' },
+  { k: 'ideas', label: 'Ideas ✨' },
   { k: 'pipeline', label: 'Pipeline' },
   { k: 'calendario', label: 'Calendario' },
   { k: 'generador', label: 'Generador' },
@@ -38,6 +39,7 @@ export default function Content() {
 
       <div className="ig-body">
         {tab === 'resumen' && <Resumen posts={c.posts} onGo={setTab} />}
+        {tab === 'ideas' && <Ideas c={c} />}
         {tab === 'pipeline' && <Pipeline c={c} />}
         {tab === 'calendario' && <Calendario posts={c.posts} />}
         {tab === 'generador' && <Generador c={c} onDone={() => setTab('pipeline')} />}
@@ -315,6 +317,114 @@ function Generador({ c, onDone }: { c: ReturnType<typeof useContent>; onDone: ()
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+type GenIdeas = {
+  nota?: string; resumen: string;
+  ideasInstagram: { titulo: string; formato: string; gancho: string; idea: string; cta: string }[];
+  anuncios: { nicho: string; formato: string; gancho: string; oferta: string; porQue: string; adaptar: string }[];
+  tendencias: { titulo: string; detalle: string; uso: string }[];
+  cruzadas: { nicho: string; ideas: string[] }[];
+  acciones: { producir: string[]; testear: string[]; conversion: string[] };
+};
+const IDEA_FMT: Record<string, ContentFormat> = { reel: 'reel', carrusel: 'carrusel', story: 'story', stories: 'story', ad: 'ad', anuncio: 'ad' };
+const toFmt = (s: string): ContentFormat => IDEA_FMT[(s || '').toLowerCase().trim()] || 'reel';
+
+function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
+  const [nichos, setNichos] = useState('');
+  const [foco, setFoco] = useState('');
+  const [gen, setGen] = useState(false);
+  const [out, setOut] = useState<GenIdeas | null>(null);
+
+  const generar = async () => {
+    setGen(true); const r = await c.generateIdeas(nichos, foco); setGen(false);
+    if (r) setOut(r as GenIdeas);
+  };
+  const guardar = (i: GenIdeas['ideasInstagram'][0]) => c.addPost({
+    format: toFmt(i.formato), objective: '', title: i.titulo, status: 'borrador',
+    content: `HOOK: ${i.gancho}\n\n${i.idea}\n\nCTA: ${i.cta}`,
+  });
+
+  return (
+    <div className="ig-stack">
+      <div className="ig-card">
+        <div className="ig-card-head"><div><p className="ig-eyebrow">Agente de ideas</p><h3>Investigá y generá ideas de contenido</h3></div></div>
+        <div className="ig-form">
+          <label>Nichos (separados por coma)<input className="input" value={nichos} placeholder="Ej: estética, inmobiliarias, gastronomía" onChange={e => setNichos(e.target.value)} /></label>
+          <label>Foco / objetivo (opcional)<input className="input" value={foco} placeholder="Ej: reels que generen consultas por DM" onChange={e => setFoco(e.target.value)} /></label>
+          <button className="btn btn-primary" onClick={generar} disabled={gen}>
+            <Sparkles size={15} /> {gen ? 'Investigando y generando…' : 'Generar ideas'}
+          </button>
+        </div>
+      </div>
+
+      {out && (
+        <>
+          {out.nota && <div className="ig-note" style={{ padding: '10px 14px' }}><p style={{ margin: 0, fontSize: 12.5 }}>ℹ️ {out.nota}</p></div>}
+          <div className="ig-card"><div className="ig-card-head"><div><p className="ig-eyebrow">Resumen</p><h3>Oportunidades</h3></div></div><p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)' }}>{out.resumen}</p></div>
+
+          <div className="ig-card">
+            <div className="ig-card-head"><div><p className="ig-eyebrow">Instagram</p><h3>Ideas ({out.ideasInstagram?.length || 0})</h3></div></div>
+            <div className="idea-grid">
+              {(out.ideasInstagram || []).map((i, k) => (
+                <div key={k} className="idea-card">
+                  <div className="idea-top">{fmtBadge(toFmt(i.formato))}<button className="btn btn-ghost btn-sm" title="Guardar como borrador" onClick={() => guardar(i)}><Plus size={13} /> Pipeline</button></div>
+                  <strong>{i.titulo}</strong>
+                  <p className="idea-hook">“{i.gancho}”</p>
+                  <p className="idea-idea">{i.idea}</p>
+                  <p className="idea-cta">CTA: {i.cta}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="ig-card">
+            <div className="ig-card-head"><div><p className="ig-eyebrow">Anuncios</p><h3>Patrones que funcionan</h3></div></div>
+            <div className="idea-list">
+              {(out.anuncios || []).map((a, k) => (
+                <div key={k} className="idea-ad">
+                  <div className="idea-ad-head"><strong>{a.nicho}</strong><span className="ig-badge soft">{a.formato}</span></div>
+                  <p><b>Gancho:</b> {a.gancho}</p>
+                  <p><b>Oferta:</b> {a.oferta}</p>
+                  <p><b>Por qué funciona:</b> {a.porQue}</p>
+                  <p style={{ color: 'var(--primary-light)' }}><b>Adaptar:</b> {a.adaptar}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="ig-card">
+            <div className="ig-card-head"><div><p className="ig-eyebrow">Tecnología</p><h3>Tendencias para aprovechar</h3></div></div>
+            <div className="idea-list">
+              {(out.tendencias || []).map((t, k) => (
+                <div key={k} className="idea-trend"><strong>{t.titulo}</strong><p>{t.detalle}</p><p className="idea-use">💡 {t.uso}</p></div>
+              ))}
+            </div>
+          </div>
+
+          <div className="ig-card">
+            <div className="ig-card-head"><div><p className="ig-eyebrow">Cruzadas</p><h3>Ideas por nicho (tendencia + anuncio + novedad)</h3></div></div>
+            <div className="idea-grid">
+              {(out.cruzadas || []).map((cr, k) => (
+                <div key={k} className="idea-card"><strong>{cr.nicho}</strong><ul className="idea-ul">{(cr.ideas || []).map((x, j) => <li key={j}>{x}</li>)}</ul></div>
+              ))}
+            </div>
+          </div>
+
+          {out.acciones && (
+            <div className="ig-card">
+              <div className="ig-card-head"><div><p className="ig-eyebrow">Acciones</p><h3>Qué hacer primero</h3></div></div>
+              <div className="idea-actions">
+                <div><span className="idea-act-t">🎬 Producir</span><ul className="idea-ul">{(out.acciones.producir || []).map((x, k) => <li key={k}>{x}</li>)}</ul></div>
+                <div><span className="idea-act-t">🧪 Testear en ads</span><ul className="idea-ul">{(out.acciones.testear || []).map((x, k) => <li key={k}>{x}</li>)}</ul></div>
+                <div><span className="idea-act-t">💰 Más conversión</span><ul className="idea-ul">{(out.acciones.conversion || []).map((x, k) => <li key={k}>{x}</li>)}</ul></div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

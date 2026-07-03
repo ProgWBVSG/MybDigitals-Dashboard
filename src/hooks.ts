@@ -924,7 +924,17 @@ export function useContent() {
     return data.content;
   };
 
-  return { posts, sources, loading, addPost, updatePost, removePost, addSource, removeSource, generateScript, refresh: load };
+  // Agente de ideas de contenido (investigación + generación por nicho)
+  const generateIdeas = async (nichos: string, foco: string): Promise<any | null> => {
+    const { data, error } = await supabase.functions.invoke('content-ideas', { body: { nichos, foco } });
+    let err = '';
+    if (error) { err = error.message; try { const b = await (error as { context?: { json?: () => Promise<{ error?: string }> } }).context?.json?.(); if (b?.error) err = b.error; } catch { /* noop */ } }
+    else if (!data?.ok) err = data?.error || 'Respuesta inesperada';
+    if (err) { toast('Error al generar ideas: ' + err, 'error'); return null; }
+    return data.ideas;
+  };
+
+  return { posts, sources, loading, addPost, updatePost, removePost, addSource, removeSource, generateScript, generateIdeas, refresh: load };
 }
 
 // ─── ANÁLISIS DE COMPETENCIA ───

@@ -106,6 +106,27 @@
 .ig-gen-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .ig-gen-tags span { font-size: 12px; font-weight: 600; color: var(--primary-light); background: rgba(99,102,241,0.1); border-radius: 999px; padding: 3px 9px; }
 
+/* Agente de ideas */
+.idea-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.idea-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+.idea-card > strong { display: block; font-size: 14px; color: var(--text-primary); margin-bottom: 6px; }
+.idea-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.idea-hook { margin: 0 0 6px; font-size: 13.5px; font-style: italic; color: var(--primary-light); line-height: 1.4; }
+.idea-idea { margin: 0 0 6px; font-size: 13px; color: var(--text-secondary); line-height: 1.45; }
+.idea-cta { margin: 0; font-size: 12px; color: var(--text-muted); }
+.idea-list { display: flex; flex-direction: column; gap: 10px; }
+.idea-ad, .idea-trend { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: 10px; padding: 12px 14px; }
+.idea-trend { border-left-color: var(--secondary); }
+.idea-ad-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.idea-ad p, .idea-trend p { margin: 0 0 4px; font-size: 13px; color: var(--text-secondary); line-height: 1.45; }
+.idea-ad b, .idea-trend b { color: var(--text-primary); }
+.idea-use { color: var(--secondary) !important; }
+.idea-ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; }
+.idea-ul li { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+.idea-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.idea-act-t { display: block; font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+@media (max-width: 760px) { .idea-grid, .idea-actions { grid-template-columns: 1fr; } }
+
 /* Gráficos */
 .ig-charts { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
 .ig-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; justify-content: center; }
