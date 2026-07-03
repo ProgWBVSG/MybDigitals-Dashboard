@@ -925,8 +925,8 @@ export function useContent() {
   };
 
   // Agente de ideas de contenido (investigación + generación por nicho)
-  const generateIdeas = async (nichos: string, foco: string): Promise<any | null> => {
-    const { data, error } = await supabase.functions.invoke('content-ideas', { body: { nichos, foco } });
+  const generateIdeas = async (input: Record<string, string | boolean>): Promise<any | null> => {
+    const { data, error } = await supabase.functions.invoke('content-ideas', { body: input });
     let err = '';
     if (error) { err = error.message; try { const b = await (error as { context?: { json?: () => Promise<{ error?: string }> } }).context?.json?.(); if (b?.error) err = b.error; } catch { /* noop */ } }
     else if (!data?.ok) err = data?.error || 'Respuesta inesperada';

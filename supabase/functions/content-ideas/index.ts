@@ -77,18 +77,30 @@ async function geminiGrounded(prompt: string): Promise<string> {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const { nichos, foco } = await req.json();
+    const { nichos, foco, publico, objetivo, plataforma, tono, evitar, iaFocus } = await req.json();
     const n = (nichos || '').toString().trim() || 'agencias digitales, estética, gastronomía';
 
     // Paso 1: tendencias REALES por búsqueda web (si el grounding está disponible)
-    const realTrends = await geminiGrounded(
-      `Buscá en la web y listá 5 tendencias o novedades RECIENTES (últimas semanas) de tecnología, IA y marketing digital que sirvan para contenido de Instagram/anuncios en estos nichos: ${n}. Formato: lista corta, cada ítem "Título — 1 frase". Solo lo que encuentres real y reciente.`
-    ).catch(() => '');
+    const searchQ = iaFocus
+      ? `Buscá en la web las novedades MÁS RECIENTES (últimos días/semanas) sobre inteligencia artificial, Claude / Claude Code, agentes de IA, y herramientas nuevas de IA para creadores/marketing. Listá 5, cada una "Título — 1 frase con el dato". Solo lo real y reciente.`
+      : `Buscá en la web y listá 5 tendencias o novedades RECIENTES de tecnología, IA y marketing digital que sirvan para contenido de Instagram/anuncios en estos nichos: ${n}. Formato: "Título — 1 frase". Solo lo real y reciente.`;
+    const realTrends = await geminiGrounded(searchQ).catch(() => '');
+
+    const brief = [
+      `NICHOS: ${n}`,
+      publico ? `PARA QUIÉN (público objetivo): ${publico}` : '',
+      objetivo ? `OBJETIVO del contenido: ${objetivo}` : '',
+      plataforma ? `PLATAFORMA/FORMATO preferido: ${plataforma}` : '',
+      tono ? `TONO/ESTILO: ${tono}` : '',
+      foco ? `FOCO extra: ${foco}` : '',
+      evitar ? `EVITAR (qué NO querés): ${evitar}` : '',
+      iaFocus ? `ENFOQUE ESPECIAL: centrá las ideas en novedades de IA / Claude Code / tecnología y cómo aprovecharlas para contenido.` : '',
+    ].filter(Boolean).join('\n');
 
     const trendsBlock = realTrends
-      ? `\n=== TENDENCIAS REALES (de búsqueda web reciente — usalas en "tendencias" y para las "cruzadas") ===\n${realTrends}\n`
+      ? `\n=== TENDENCIAS REALES (de búsqueda web reciente — usalas en "tendencias" y en las "cruzadas") ===\n${realTrends}\n`
       : '';
-    const prompt = `${SYSTEM_PROMPT}\n\n=== NICHOS ===\n${n}\n${foco ? `\n=== FOCO / OBJETIVO ===\n${foco}\n` : ''}${trendsBlock}\n=== FIN ===\nGenerá las ideas en JSON.${realTrends ? ' En "nota" aclaró que las tendencias vienen de búsqueda web reciente.' : ''}`;
+    const prompt = `${SYSTEM_PROMPT}\n\n=== BRIEF ===\n${brief}\n${trendsBlock}\n=== FIN ===\nGenerá las ideas en JSON, alineadas al público y objetivo indicados.${realTrends ? ' En "nota" aclaró que las tendencias vienen de búsqueda web reciente.' : ''}`;
 
     const data = await geminiGenerate(prompt);
     const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('') || '';

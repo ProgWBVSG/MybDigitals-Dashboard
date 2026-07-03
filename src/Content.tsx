@@ -335,18 +335,30 @@ const IDEA_FMT: Record<string, ContentFormat> = { reel: 'reel', carrusel: 'carru
 const toFmt = (s: string): ContentFormat => IDEA_FMT[(s || '').toLowerCase().trim()] || 'reel';
 const adLibUrl = (q: string) => `https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=AR&media_type=all&q=${encodeURIComponent(q)}`;
 
+const OBJ_IDEAS = ['Alcance / viral', 'Conseguir consultas (DM)', 'Ventas', 'Autoridad / confianza', 'Sumar seguidores'];
+const PLAT_IDEAS = ['Cualquiera', 'Reels', 'Carruseles', 'Stories', 'Anuncios'];
+
 function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
   const [nichos, setNichos] = useState('');
+  const [publico, setPublico] = useState('');
+  const [objetivo, setObjetivo] = useState(OBJ_IDEAS[1]);
+  const [plataforma, setPlataforma] = useState(PLAT_IDEAS[0]);
+  const [tono, setTono] = useState('');
   const [foco, setFoco] = useState('');
+  const [evitar, setEvitar] = useState('');
+  const [iaFocus, setIaFocus] = useState(false);
   const [gen, setGen] = useState(false);
   const [out, setOut] = useState<GenIdeas | null>(null);
 
   const generar = async () => {
-    setGen(true); const r = await c.generateIdeas(nichos, foco); setGen(false);
+    if (!nichos.trim()) return;
+    setGen(true);
+    const r = await c.generateIdeas({ nichos, publico, objetivo, plataforma, tono, foco, evitar, iaFocus });
+    setGen(false);
     if (r) setOut(r as GenIdeas);
   };
   const guardar = (i: GenIdeas['ideasInstagram'][0]) => c.addPost({
-    format: toFmt(i.formato), objective: '', title: i.titulo, status: 'borrador',
+    format: toFmt(i.formato), objective: objetivo, title: i.titulo, status: 'borrador',
     content: `HOOK: ${i.gancho}\n\n${i.idea}\n\nCTA: ${i.cta}`,
   });
 
@@ -355,9 +367,17 @@ function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
       <div className="ig-card">
         <div className="ig-card-head"><div><p className="ig-eyebrow">Agente de ideas</p><h3>Investigá y generá ideas de contenido</h3></div></div>
         <div className="ig-form">
-          <label>Nichos (separados por coma)<input className="input" value={nichos} placeholder="Ej: estética, inmobiliarias, gastronomía" onChange={e => setNichos(e.target.value)} /></label>
-          <label>Foco / objetivo (opcional)<input className="input" value={foco} placeholder="Ej: reels que generen consultas por DM" onChange={e => setFoco(e.target.value)} /></label>
-          <button className="btn btn-primary" onClick={generar} disabled={gen}>
+          <label>Nichos (separados por coma) *<input className="input" value={nichos} placeholder="Ej: estética, inmobiliarias, gastronomía" onChange={e => setNichos(e.target.value)} /></label>
+          <label>¿Para quién? (público objetivo)<input className="input" value={publico} placeholder="Ej: mujeres 25-45, dueñas de PyME, zona Córdoba" onChange={e => setPublico(e.target.value)} /></label>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <label style={{ flex: 1 }}>Objetivo<select className="select" value={objetivo} onChange={e => setObjetivo(e.target.value)}>{OBJ_IDEAS.map(x => <option key={x}>{x}</option>)}</select></label>
+            <label style={{ flex: 1 }}>Formato<select className="select" value={plataforma} onChange={e => setPlataforma(e.target.value)}>{PLAT_IDEAS.map(x => <option key={x}>{x}</option>)}</select></label>
+          </div>
+          <label>Tono / estilo (opcional)<input className="input" value={tono} placeholder="Ej: cercano y divertido / experto y directo" onChange={e => setTono(e.target.value)} /></label>
+          <label>Foco extra (opcional)<input className="input" value={foco} placeholder="Ej: aprovechar temporada / lanzamiento nuevo" onChange={e => setFoco(e.target.value)} /></label>
+          <label>Qué evitar (opcional)<input className="input" value={evitar} placeholder="Ej: nada de bailecitos, sin tecnicismos" onChange={e => setEvitar(e.target.value)} /></label>
+          <label className="notif-toggle"><input type="checkbox" checked={iaFocus} onChange={e => setIaFocus(e.target.checked)} /> Enfocar en novedades de IA / Claude Code / tecnología</label>
+          <button className="btn btn-primary" onClick={generar} disabled={gen || !nichos.trim()}>
             <Sparkles size={15} /> {gen ? 'Investigando y generando…' : 'Generar ideas'}
           </button>
         </div>
