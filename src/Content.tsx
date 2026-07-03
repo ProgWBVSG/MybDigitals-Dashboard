@@ -331,6 +331,7 @@ type GenIdeas = {
 };
 const IDEA_FMT: Record<string, ContentFormat> = { reel: 'reel', carrusel: 'carrusel', story: 'story', stories: 'story', ad: 'ad', anuncio: 'ad' };
 const toFmt = (s: string): ContentFormat => IDEA_FMT[(s || '').toLowerCase().trim()] || 'reel';
+const adLibUrl = (q: string) => `https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=AR&media_type=all&q=${encodeURIComponent(q)}`;
 
 function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
   const [nichos, setNichos] = useState('');
@@ -358,6 +359,14 @@ function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
             <Sparkles size={15} /> {gen ? 'Investigando y generando…' : 'Generar ideas'}
           </button>
         </div>
+        {nichos.trim() && (
+          <div className="idea-adslib">
+            <span>👀 Ver anuncios reales en Meta Ads Library:</span>
+            {nichos.split(',').map(s => s.trim()).filter(Boolean).slice(0, 6).map((nch, k) => (
+              <a key={k} className="btn btn-secondary btn-sm" href={adLibUrl(nch)} target="_blank" rel="noreferrer">{nch} ↗</a>
+            ))}
+          </div>
+        )}
       </div>
 
       {out && (

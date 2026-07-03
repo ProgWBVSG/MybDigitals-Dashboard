@@ -56,12 +56,39 @@ async function geminiGenerate(prompt: string): Promise<any> {
   throw new Error('Gemini sigue saturado, probá de nuevo en un minuto. ' + JSON.stringify(last));
 }
 
+// Búsqueda web REAL con grounding de Google Search. Si no está disponible, devuelve ''.
+async function geminiGrounded(prompt: string): Promise<string> {
+  for (const model of MODELS) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.4, maxOutputTokens: 1024 } }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const t = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('') || '';
+        if (t.trim()) return t;
+      }
+    } catch { /* probá el siguiente modelo */ }
+  }
+  return '';
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
     const { nichos, foco } = await req.json();
     const n = (nichos || '').toString().trim() || 'agencias digitales, estética, gastronomía';
-    const prompt = `${SYSTEM_PROMPT}\n\n=== NICHOS ===\n${n}\n${foco ? `\n=== FOCO / OBJETIVO ===\n${foco}\n` : ''}\n=== FIN ===\nGenerá las ideas en JSON.`;
+
+    // Paso 1: tendencias REALES por búsqueda web (si el grounding está disponible)
+    const realTrends = await geminiGrounded(
+      `Buscá en la web y listá 5 tendencias o novedades RECIENTES (últimas semanas) de tecnología, IA y marketing digital que sirvan para contenido de Instagram/anuncios en estos nichos: ${n}. Formato: lista corta, cada ítem "Título — 1 frase". Solo lo que encuentres real y reciente.`
+    ).catch(() => '');
+
+    const trendsBlock = realTrends
+      ? `\n=== TENDENCIAS REALES (de búsqueda web reciente — usalas en "tendencias" y para las "cruzadas") ===\n${realTrends}\n`
+      : '';
+    const prompt = `${SYSTEM_PROMPT}\n\n=== NICHOS ===\n${n}\n${foco ? `\n=== FOCO / OBJETIVO ===\n${foco}\n` : ''}${trendsBlock}\n=== FIN ===\nGenerá las ideas en JSON.${realTrends ? ' En "nota" aclaró que las tendencias vienen de búsqueda web reciente.' : ''}`;
 
     const data = await geminiGenerate(prompt);
     const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('') || '';
