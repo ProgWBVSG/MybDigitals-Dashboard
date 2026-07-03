@@ -934,7 +934,17 @@ export function useContent() {
     return data.ideas;
   };
 
-  return { posts, sources, loading, addPost, updatePost, removePost, addSource, removeSource, generateScript, generateIdeas, refresh: load };
+  // Estudio de guiones virales (Reels/Shorts/TikTok/ventas)
+  const generateViralScript = async (input: { plataforma: string; objetivo: string; duracion: string; tema: string; publico?: string }): Promise<any | null> => {
+    const { data, error } = await supabase.functions.invoke('generate-viral-script', { body: input });
+    let err = '';
+    if (error) { err = error.message; try { const b = await (error as { context?: { json?: () => Promise<{ error?: string }> } }).context?.json?.(); if (b?.error) err = b.error; } catch { /* noop */ } }
+    else if (!data?.ok) err = data?.error || 'Respuesta inesperada';
+    if (err) { toast('Error al generar el guion: ' + err, 'error'); return null; }
+    return data.script;
+  };
+
+  return { posts, sources, loading, addPost, updatePost, removePost, addSource, removeSource, generateScript, generateIdeas, generateViralScript, refresh: load };
 }
 
 // ─── ANÁLISIS DE COMPETENCIA ───

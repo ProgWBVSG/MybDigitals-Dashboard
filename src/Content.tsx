@@ -8,10 +8,11 @@ import {
 } from './utils';
 import './Content.css';
 
-type Tab = 'resumen' | 'ideas' | 'pipeline' | 'calendario' | 'generador' | 'fuentes' | 'conexion';
+type Tab = 'resumen' | 'ideas' | 'guiones' | 'pipeline' | 'calendario' | 'generador' | 'fuentes' | 'conexion';
 const TABS: { k: Tab; label: string }[] = [
   { k: 'resumen', label: 'Resumen' },
   { k: 'ideas', label: 'Ideas ✨' },
+  { k: 'guiones', label: 'Guiones 🎬' },
   { k: 'pipeline', label: 'Pipeline' },
   { k: 'calendario', label: 'Calendario' },
   { k: 'generador', label: 'Generador' },
@@ -40,6 +41,7 @@ export default function Content() {
       <div className="ig-body">
         {tab === 'resumen' && <Resumen posts={c.posts} onGo={setTab} />}
         {tab === 'ideas' && <Ideas c={c} />}
+        {tab === 'guiones' && <Guiones c={c} />}
         {tab === 'pipeline' && <Pipeline c={c} />}
         {tab === 'calendario' && <Calendario posts={c.posts} />}
         {tab === 'generador' && <Generador c={c} onDone={() => setTab('pipeline')} />}
@@ -434,6 +436,98 @@ function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+type ViralScript = {
+  framework: string; hooks: string[];
+  guion: { tiempo: string; voz: string; pantalla: string; visual: string }[];
+  caption: string; hashtags: string[]; loop: string; porQue: string;
+};
+const PLATAFORMAS = ['Reel de Instagram', 'YouTube Short', 'TikTok'];
+const OBJETIVOS_G = ['Viral / alcance', 'Ventas', 'Educativo', 'Autoridad'];
+const DURACIONES = ['7-15s', '20-30s', '45-60s'];
+
+function Guiones({ c }: { c: ReturnType<typeof useContent> }) {
+  const [plataforma, setPlataforma] = useState(PLATAFORMAS[0]);
+  const [objetivo, setObjetivo] = useState(OBJETIVOS_G[0]);
+  const [duracion, setDuracion] = useState(DURACIONES[1]);
+  const [tema, setTema] = useState('');
+  const [publico, setPublico] = useState('');
+  const [gen, setGen] = useState(false);
+  const [out, setOut] = useState<ViralScript | null>(null);
+  const [hookSel, setHookSel] = useState(0);
+
+  const generar = async () => {
+    if (!tema.trim()) return;
+    setGen(true); setOut(null);
+    const r = await c.generateViralScript({ plataforma, objetivo, duracion, tema, publico });
+    setGen(false);
+    if (r) { setOut(r as ViralScript); setHookSel(0); }
+  };
+  const guardar = () => {
+    if (!out) return;
+    const content = [
+      `HOOK: ${out.hooks?.[hookSel] || ''}`, '', 'GUION:',
+      ...(out.guion || []).map(g => `[${g.tiempo}] ${g.voz}${g.pantalla ? `  · pantalla: ${g.pantalla}` : ''}${g.visual ? `  · visual: ${g.visual}` : ''}`),
+      '', `LOOP: ${out.loop}`, '', `CAPTION: ${out.caption}`, '', (out.hashtags || []).join(' '),
+    ].join('\n');
+    c.addPost({ format: 'reel', objective: objetivo, title: tema, content, status: 'borrador' });
+  };
+
+  return (
+    <div className="ig-grid-2">
+      <div className="ig-card" style={{ alignSelf: 'start' }}>
+        <div className="ig-card-head"><div><p className="ig-eyebrow">Estudio de guiones</p><h3>Guion viral</h3></div></div>
+        <div className="ig-form">
+          <label>Tema<input className="input" value={tema} placeholder="Ej: por qué tu web no vende" onChange={e => setTema(e.target.value)} /></label>
+          <label>Plataforma<select className="select" value={plataforma} onChange={e => setPlataforma(e.target.value)}>{PLATAFORMAS.map(x => <option key={x}>{x}</option>)}</select></label>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <label style={{ flex: 1 }}>Objetivo<select className="select" value={objetivo} onChange={e => setObjetivo(e.target.value)}>{OBJETIVOS_G.map(x => <option key={x}>{x}</option>)}</select></label>
+            <label style={{ flex: 1 }}>Duración<select className="select" value={duracion} onChange={e => setDuracion(e.target.value)}>{DURACIONES.map(x => <option key={x}>{x}</option>)}</select></label>
+          </div>
+          <label>Público / marca (opcional)<input className="input" value={publico} placeholder="Ej: dueños de estética" onChange={e => setPublico(e.target.value)} /></label>
+          <button className="btn btn-primary" onClick={generar} disabled={gen || !tema.trim()}>
+            <Sparkles size={15} /> {gen ? 'Escribiendo el guion…' : 'Generar guion viral'}
+          </button>
+        </div>
+      </div>
+
+      <div className="ig-card">
+        <div className="ig-card-head">
+          <div><p className="ig-eyebrow">Guion listo para grabar</p><h3>{out ? out.framework : 'Salida'}</h3></div>
+          {out && <button className="btn btn-primary btn-sm" onClick={guardar}><Plus size={14} /> Guardar en Pipeline</button>}
+        </div>
+        {!out ? (
+          <div className="ig-empty-inline" style={{ minHeight: 240 }}>{gen ? 'La IA está escribiendo tu guion viral…' : 'Completá el tema y generá. Vas a tener 3 hooks, el guion por segundos y el cierre en loop.'}</div>
+        ) : (
+          <div className="scr-out">
+            <div className="scr-hooks">
+              <div className="scr-label">🎣 Elegí tu hook (primeros 3s)</div>
+              {(out.hooks || []).map((h, k) => (
+                <button key={k} className={`scr-hook ${hookSel === k ? 'on' : ''}`} onClick={() => setHookSel(k)}>{h}</button>
+              ))}
+            </div>
+            <div className="scr-beats">
+              {(out.guion || []).map((g, k) => (
+                <div key={k} className="scr-beat">
+                  <span className="scr-time">{g.tiempo}</span>
+                  <div>
+                    <p className="scr-voz">{g.voz}</p>
+                    {g.pantalla && <p className="scr-mini"><b>En pantalla:</b> {g.pantalla}</p>}
+                    {g.visual && <p className="scr-mini"><b>Visual:</b> {g.visual}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {out.loop && <div className="scr-loop"><b>🔁 Loop:</b> {out.loop}</div>}
+            <div className="ig-gen-block"><span>Caption</span><p>{out.caption}</p></div>
+            {(out.hashtags || []).length > 0 && <div className="ig-gen-tags">{out.hashtags.map((h, i) => <span key={i}>{h.startsWith('#') ? h : '#' + h}</span>)}</div>}
+            {out.porQue && <div className="scr-why">💡 {out.porQue}</div>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
