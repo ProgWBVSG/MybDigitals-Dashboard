@@ -95,11 +95,17 @@ export default function LeadFinder() {
       let lat = z.lat, lon = z.lon;
       const radius = radiusKm;
       if (zone === 'mi') {
-        // Geolocalización del navegador (pide permiso)
+        if (!('geolocation' in navigator)) { setError('Tu navegador no soporta ubicación. Elegí una zona de la lista.'); return; }
         try {
-          const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 9000, enableHighAccuracy: true }));
+          const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 15000, maximumAge: 60000, enableHighAccuracy: false }));
           lat = pos.coords.latitude; lon = pos.coords.longitude;
-        } catch { setError('No pude obtener tu ubicación. Activá el permiso de ubicación del navegador o elegí una zona de la lista.'); return; }
+        } catch (e) {
+          const code = (e as GeolocationPositionError)?.code;
+          setError(code === 1 ? 'Bloqueaste el permiso de ubicación. Habilitalo en el candado 🔒 de la barra de direcciones y recargá.'
+            : code === 3 ? 'La ubicación tardó demasiado. Reintentá o elegí una zona de la lista.'
+            : 'No pude obtener tu ubicación (puede estar desactivada en tu compu). Elegí una zona de la lista, como "Córdoba Capital".');
+          return;
+        }
       } else if (zone === 'otra') {
         if (!customCity.trim()) { setError('Escribí la zona (ej: "Rosario" o "Miami").'); return; }
         // Primero busca en Argentina (evita que "Córdoba" agarre la de España); si no, global.
