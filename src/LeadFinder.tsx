@@ -5,18 +5,26 @@ import { optimizeRoute, gmapsUrl, type RoutePoint } from './route';
 
 type Lead = { name: string; phone: string; website: string; address: string; lat?: number; lon?: number };
 
-// Overpass: POST form-encoded (forma canónica). Reintenta en un mirror si el primero falla.
+// Overpass: consulta VARIOS servidores en paralelo y gana el más rápido (más veloz y
+// resistente a que uno esté saturado). Corta a los 20s.
+const OVERPASS_EPS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+];
 async function overpassQuery(query: string): Promise<any> {
-  const eps = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
-  let lastErr: unknown = null;
-  for (const ep of eps) {
-    try {
-      const r = await fetch(ep, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(query) });
-      if (r.ok) return await r.json();
-      lastErr = new Error('HTTP ' + r.status);
-    } catch (e) { lastErr = e; }
-  }
-  throw lastErr || new Error('overpass');
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const attempts = OVERPASS_EPS.map(ep =>
+      fetch(ep, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(query), signal: ctrl.signal })
+        .then(async r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    );
+    const data = await Promise.any(attempts);
+    ctrl.abort(); // cancelar los mirrors que quedaron corriendo
+    return data;
+  } finally { clearTimeout(timer); }
 }
 
 // filters = etiquetas OSM; nameRegex = también cazar por nombre (para los mal etiquetados)
@@ -107,10 +115,11 @@ export default function LeadFinder() {
         q = `nwr["name"~"${term.replace(/["\\]/g, '')}",i]${around};`;
       } else {
         const parts = c.filters.map(f => `nwr[${f}]${around};`);
-        if (c.nameRegex) parts.push(`nwr["name"~"${c.nameRegex}",i]${around};`); // también por nombre
+        // La búsqueda por nombre es pesada: solo en radios chicos (para no trabar áreas grandes)
+        if (c.nameRegex && radius <= 12) parts.push(`nwr["name"~"${c.nameRegex}",i]${around};`);
         q = parts.join('');
       }
-      const body = `[out:json][timeout:20];(${q});out center 70;`;
+      const body = `[out:json][timeout:25];(${q});out center 60;`;
       const res = await overpassQuery(body);
 
       const seen = new Set<string>();
@@ -136,7 +145,7 @@ export default function LeadFinder() {
       setResults(leads.slice(0, 80));
       if (leads.length === 0) setError('No aparecieron negocios con esos filtros. Probá otro rubro, "Buscar por nombre" o una zona más grande (ej: "Gran Córdoba").');
     } catch {
-      setError('Hubo un error al buscar (el servicio gratuito puede estar ocupado). Probá de nuevo en unos segundos.');
+      setError('El servicio gratuito está ocupado o la búsqueda es muy amplia. Probá de nuevo, o bajá el radio (ej: 10 km) para que sea más rápido.');
     } finally { setLoading(false); }
   };
 
