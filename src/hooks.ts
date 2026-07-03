@@ -980,7 +980,28 @@ export function useCompetitors() {
     return true;
   };
 
-  return { competitors, loading, add, update, remove, analyze, refresh: load };
+  // Analiza el copy de un anuncio del competidor con IA y lo guarda en competitors.ads
+  const analyzeAd = async (c: Competitor, texto: string): Promise<boolean> => {
+    const { data, error } = await supabase.functions.invoke('analyze-ad', { body: { texto, rubro: c.rubro, competidor: c.name } });
+    let err = '';
+    if (error) { err = error.message; try { const b = await (error as { context?: { json?: () => Promise<{ error?: string }> } }).context?.json?.(); if (b?.error) err = b.error; } catch { /* noop */ } }
+    else if (!data?.ok) err = data?.error || 'Respuesta inesperada';
+    if (err) { toast('Error al analizar el anuncio: ' + err, 'error'); return false; }
+    const a = data.analysis;
+    const ad = { id: uuid(), texto: String(texto).slice(0, 700), gancho: a.gancho || '', oferta: a.oferta || '', formato: a.formato || '', porQue: a.porQue || '', adaptar: a.adaptar || '', createdAt: Date.now() };
+    const ads = [ad, ...(c.ads || [])];
+    // update directo (keys camelCase, no pasa por mapToSnake) para no romper el jsonb
+    await supabase.from('competitors').update({ ads, updated_at: Date.now() }).eq('id', c.id);
+    toast('Anuncio analizado ✨'); load();
+    return true;
+  };
+  const removeAd = async (c: Competitor, adId: string) => {
+    const ads = (c.ads || []).filter(a => a.id !== adId);
+    await supabase.from('competitors').update({ ads, updated_at: Date.now() }).eq('id', c.id);
+    load();
+  };
+
+  return { competitors, loading, add, update, remove, analyze, analyzeAd, removeAd, refresh: load };
 }
 
 // ─── EXCHANGE RATE HOOK ───

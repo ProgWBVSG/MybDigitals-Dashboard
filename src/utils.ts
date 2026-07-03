@@ -329,9 +329,11 @@ export interface CompetitorAnalysis {
   oportunidades: string[];
   recomendaciones: string[];
 }
+export interface CompetitorAd { id: string; texto: string; gancho: string; oferta: string; formato: string; porQue: string; adaptar: string; createdAt: number; }
 export interface Competitor {
   id: string; clientId: string | null; name: string; instagram: string; website: string;
   rubro: string; notes: string; analysis: CompetitorAnalysis | null; analyzedAt: number | null;
+  ads?: CompetitorAd[];
   createdAt: number; updatedAt: number;
 }
 

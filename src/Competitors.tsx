@@ -1,18 +1,31 @@
 import { useState } from 'react';
-import { Swords, Plus, Trash2, Pencil, Sparkles, AtSign, Globe, Loader, TrendingUp, TrendingDown, Target, Lightbulb } from 'lucide-react';
+import { Swords, Plus, Trash2, Pencil, Sparkles, AtSign, Globe, Loader, TrendingUp, TrendingDown, Target, Lightbulb, ExternalLink, Megaphone } from 'lucide-react';
 import { useCompetitors, useClients } from './hooks';
 import type { Competitor } from './utils';
+
+const adLibByName = (name: string) => `https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=AR&media_type=all&q=${encodeURIComponent(name)}`;
 
 type Form = { id?: string; clientId: string | null; name: string; instagram: string; website: string; rubro: string; notes: string };
 const empty = (clientId: string | null): Form => ({ clientId, name: '', instagram: '', website: '', rubro: '', notes: '' });
 
 export default function Competitors() {
-  const { competitors, add, update, remove, analyze } = useCompetitors();
+  const { competitors, add, update, remove, analyze, analyzeAd, removeAd } = useCompetitors();
   const { clients } = useClients();
   const [clientFilter, setClientFilter] = useState<string>('all');
   const [modal, setModal] = useState<Form | null>(null);
   const [confirm, setConfirm] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState<string | null>(null);
+  const [adFor, setAdFor] = useState<string | null>(null);
+  const [adText, setAdText] = useState('');
+  const [analyzingAd, setAnalyzingAd] = useState(false);
+
+  const doAnalyzeAd = async (c: Competitor) => {
+    if (!adText.trim()) return;
+    setAnalyzingAd(true);
+    const ok = await analyzeAd(c, adText);
+    setAnalyzingAd(false);
+    if (ok) { setAdText(''); setAdFor(null); }
+  };
 
   const clientName = (id: string | null) => id ? (clients.find(c => c.id === id)?.name || 'Cliente') : 'General';
   const shown = competitors.filter(c => clientFilter === 'all' || (clientFilter === 'general' ? !c.clientId : c.clientId === clientFilter));
@@ -84,6 +97,33 @@ export default function Competitors() {
                   </div>
                 </div>
               )}
+
+              {/* Radar de anuncios */}
+              <div className="cmp-ads">
+                <div className="cmp-ads-bar">
+                  <span><Megaphone size={13} /> Anuncios</span>
+                  <a className="btn btn-ghost btn-sm" href={adLibByName(c.name)} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Ver sus anuncios activos</a>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { setAdFor(adFor === c.id ? null : c.id); setAdText(''); }}><Plus size={13} /> Analizar un anuncio</button>
+                </div>
+                {adFor === c.id && (
+                  <div className="cmp-ad-input">
+                    <textarea className="input" rows={3} value={adText} placeholder="Pegá el texto del anuncio que viste en la Ads Library…" onChange={e => setAdText(e.target.value)} />
+                    <button className="btn btn-primary btn-sm" onClick={() => doAnalyzeAd(c)} disabled={analyzingAd || !adText.trim()}>
+                      {analyzingAd ? <Loader size={14} className="lead-spin" /> : <Sparkles size={14} />} Analizar
+                    </button>
+                  </div>
+                )}
+                {(c.ads || []).map(ad => (
+                  <div key={ad.id} className="cmp-ad">
+                    <div className="cmp-ad-head"><span className="ig-badge soft" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', fontSize: 11, padding: '2px 8px', borderRadius: 999 }}>{ad.formato}</span>
+                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => removeAd(c, ad.id)}><Trash2 size={12} /></button></div>
+                    <p><b>Gancho:</b> {ad.gancho}</p>
+                    <p><b>Oferta:</b> {ad.oferta}</p>
+                    <p><b>Por qué funciona:</b> {ad.porQue}</p>
+                    <p style={{ color: 'var(--primary-light)' }}><b>Adaptar:</b> {ad.adaptar}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
