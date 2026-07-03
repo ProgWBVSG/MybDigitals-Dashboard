@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Search, X, Trash2, Target, CalendarPlus, MessageCircle, Sparkles, Presentation, Share2, Eye, UserCheck } from 'lucide-react';
+import { Plus, Search, X, Trash2, Target, CalendarPlus, MessageCircle, Sparkles, Presentation, Share2, Eye, UserCheck, Navigation, MapPin, Loader } from 'lucide-react';
+import { optimizeRoute, gmapsUrl, type RoutePoint } from './route';
 import { useProspects, useClients, toast } from './hooks';
 import { supabase } from './supabase';
 import ProposalDeck from './ProposalDeck';
@@ -28,6 +29,12 @@ export default function PreVenta() {
   const [generatingProp, setGeneratingProp] = useState(false);
   const [deck, setDeck] = useState<Proposal | null>(null);
   const [deckBrand, setDeckBrand] = useState<Brand>({});
+  // Recorrido de visitas
+  const [routeOpen, setRouteOpen] = useState(false);
+  const [routeSel, setRouteSel] = useState<Set<string>>(new Set());
+  const [fromMe, setFromMe] = useState(true);
+  const [routeResult, setRouteResult] = useState<{ order: RoutePoint[]; km: number; min: number } | null>(null);
+  const [routing, setRouting] = useState(false);
   // Estado local de los campos editables (evita que un guardado pise a otro)
   const [disc, setDisc] = useState<Record<string, string>>({});
   const [mintL, setMintL] = useState<Record<string, string>>({});
@@ -78,6 +85,24 @@ export default function PreVenta() {
   const lost = filtered.filter(p => p.stage === 'perdido');
 
   const openNew = () => { setForm(emptyProspect); setModal(true); };
+
+  const geoProspects = prospects.filter(p => p.lat != null && p.lon != null);
+  const toggleRouteSel = (id: string) => setRouteSel(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const armarRecorridoPV = async () => {
+    let pts: RoutePoint[] = prospects.filter(p => routeSel.has(p.id) && p.lat != null && p.lon != null)
+      .map(p => ({ name: p.business || p.name, lat: p.lat!, lon: p.lon! }));
+    if (pts.length < 2) { toast('Elegí al menos 2 prospectos', 'error'); return; }
+    if (pts.length > 12) { toast('Máximo 12 paradas por recorrido', 'error'); return; }
+    setRouting(true);
+    if (fromMe) {
+      try {
+        const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 9000, enableHighAccuracy: true }));
+        pts = [{ name: '📍 Mi ubicación', lat: pos.coords.latitude, lon: pos.coords.longitude }, ...pts];
+      } catch { toast('No pude obtener tu ubicación. Desactivá "salir desde mi ubicación" o dá el permiso.', 'error'); setRouting(false); return; }
+    }
+    const r = await optimizeRoute(pts);
+    setRouteResult(r); setRouting(false);
+  };
   const save = async () => {
     if (!form.name.trim()) { toast('El nombre es obligatorio', 'error'); return; }
     const id = await create(form);
@@ -201,7 +226,10 @@ export default function PreVenta() {
               <input placeholder="Buscar prospecto..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
           </div>
-          <div className="toolbar-right">
+          <div className="toolbar-right" style={{ display: 'flex', gap: 8 }}>
+            {geoProspects.length >= 2 && (
+              <button className="btn btn-secondary" onClick={() => { setRouteResult(null); setRouteOpen(true); }}><Navigation size={16} /> Recorrido</button>
+            )}
             <button className="btn btn-primary" onClick={openNew}><Plus size={16} /> Nuevo Prospecto</button>
           </div>
         </div>
@@ -425,6 +453,48 @@ export default function PreVenta() {
       )}
 
       <button className="btn-fab" onClick={openNew}><Plus size={24} /></button>
+
+      {/* Recorrido de visitas */}
+      {routeOpen && (
+        <div className="modal-overlay" onClick={() => setRouteOpen(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
+            <h2><Navigation size={18} style={{ verticalAlign: '-3px', marginRight: 6 }} />Armar recorrido de visitas</h2>
+            {!routeResult ? (
+              <>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 12px' }}>Elegí los prospectos a visitar y te armo el mejor orden.</p>
+                <label className="notif-toggle" style={{ marginBottom: 12 }}>
+                  <input type="checkbox" checked={fromMe} onChange={e => setFromMe(e.target.checked)} /> Salir desde mi ubicación
+                </label>
+                <div className="route-picklist">
+                  {geoProspects.map(p => (
+                    <label key={p.id} className="route-pick">
+                      <input type="checkbox" checked={routeSel.has(p.id)} onChange={() => toggleRouteSel(p.id)} />
+                      <span><MapPin size={13} /> {p.business || p.name}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="modal-actions">
+                  <button className="btn btn-secondary" onClick={() => setRouteOpen(false)}>Cancelar</button>
+                  <button className="btn btn-primary" onClick={armarRecorridoPV} disabled={routing || routeSel.size < 2}>
+                    {routing ? <Loader size={15} className="lead-spin" /> : <Navigation size={15} />} Optimizar ({routeSel.size})
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="lead-route-sum">{routeResult.order.length} paradas · ~{routeResult.km.toFixed(1)} km · ~{Math.round(routeResult.min)} min en auto</p>
+                <ol className="lead-route-list">
+                  {routeResult.order.map((l, i) => <li key={i}><span className="lead-route-n">{i + 1}</span><div><strong>{l.name}</strong></div></li>)}
+                </ol>
+                <div className="modal-actions">
+                  <button className="btn btn-secondary" onClick={() => setRouteResult(null)}>Volver</button>
+                  <a className="btn btn-primary" href={gmapsUrl(routeResult.order, false)} target="_blank" rel="noreferrer"><Navigation size={15} /> Abrir en Google Maps</a>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Presentación de la propuesta */}
       {deck && <ProposalDeck proposal={deck} brand={deckBrand} onClose={() => setDeck(null)} />}

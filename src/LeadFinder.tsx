@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Search, Plus, Globe, Phone, Check, Loader, Navigation } from 'lucide-react';
 import { useProspects, toast } from './hooks';
+import { optimizeRoute, gmapsUrl, type RoutePoint } from './route';
 
 type Lead = { name: string; phone: string; website: string; address: string; lat?: number; lon?: number };
 
@@ -16,44 +17,6 @@ async function overpassQuery(query: string): Promise<any> {
     } catch (e) { lastErr = e; }
   }
   throw lastErr || new Error('overpass');
-}
-
-// ── Recorrido óptimo entre varios puntos ──
-function haversine(a: Lead, b: Lead): number {
-  const R = 6371, toRad = (d: number) => d * Math.PI / 180;
-  const dLat = toRad((b.lat!) - (a.lat!)), dLon = toRad((b.lon!) - (a.lon!));
-  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat!)) * Math.cos(toRad(b.lat!)) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(s));
-}
-function nearestNeighbor(leads: Lead[]): Lead[] {
-  const rest = [...leads]; const order = [rest.shift()!];
-  while (rest.length) {
-    const last = order[order.length - 1];
-    let bi = 0, bd = Infinity;
-    rest.forEach((l, i) => { const d = haversine(last, l); if (d < bd) { bd = d; bi = i; } });
-    order.push(rest.splice(bi, 1)[0]);
-  }
-  return order;
-}
-async function optimizeRoute(leads: Lead[]): Promise<{ order: Lead[]; km: number; min: number }> {
-  const coords = leads.map(l => `${l.lon},${l.lat}`).join(';');
-  try {
-    const r = await fetch(`https://router.project-osrm.org/trip/v1/driving/${coords}?source=first&roundtrip=false&overview=false`).then(x => x.json());
-    if (r.code === 'Ok' && Array.isArray(r.waypoints)) {
-      const withIdx = leads.map((l, i) => ({ l, idx: r.waypoints[i].waypoint_index as number }));
-      withIdx.sort((a, b) => a.idx - b.idx);
-      const trip = r.trips?.[0];
-      return { order: withIdx.map(x => x.l), km: trip ? trip.distance / 1000 : 0, min: trip ? trip.duration / 60 : 0 };
-    }
-  } catch { /* usa fallback */ }
-  const order = nearestNeighbor(leads);
-  let km = 0; for (let i = 1; i < order.length; i++) km += haversine(order[i - 1], order[i]);
-  return { order, km, min: km / 0.5 }; // ~30 km/h urbano
-}
-function gmapsUrl(order: Lead[]): string {
-  const dest = order[order.length - 1];
-  const wps = order.slice(0, -1).map(p => `${p.lat},${p.lon}`).join('|');
-  return `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${dest.lat},${dest.lon}${wps ? `&waypoints=${encodeURIComponent(wps)}` : ''}`;
 }
 
 // filters = etiquetas OSM; nameRegex = también cazar por nombre (para los mal etiquetados)
@@ -100,14 +63,15 @@ export default function LeadFinder() {
   const [error, setError] = useState('');
   const [webFilter, setWebFilter] = useState<'all' | 'sinweb' | 'conweb'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [route, setRoute] = useState<{ order: Lead[]; km: number; min: number } | null>(null);
+  const [route, setRoute] = useState<{ order: RoutePoint[]; km: number; min: number } | null>(null);
   const [routing, setRouting] = useState(false);
 
   const key = (l: Lead) => l.name + '|' + l.address;
   const toggleSel = (l: Lead) => setSelected(s => { const n = new Set(s); const k = key(l); n.has(k) ? n.delete(k) : n.add(k); return n; });
 
   const armarRecorrido = async () => {
-    const pts = results.filter(l => selected.has(key(l)) && l.lat != null && l.lon != null);
+    const pts: RoutePoint[] = results.filter(l => selected.has(key(l)) && l.lat != null && l.lon != null)
+      .map(l => ({ name: l.name, lat: l.lat!, lon: l.lon!, address: l.address }));
     if (pts.length < 2) { setError('Elegí al menos 2 negocios (con el check ✓) para armar el recorrido.'); return; }
     if (pts.length > 12) { setError('Máximo 12 paradas por recorrido. Sacá algunas.'); return; }
     setError(''); setRouting(true);
@@ -182,6 +146,7 @@ export default function LeadFinder() {
       name: l.name, business: l.name, source: 'Búsqueda (OpenStreetMap)', stage: 'prospeccion',
       contact: { whatsapp: l.phone || '', email: '', instagram: '' },
       meetingAt: null, mint: {}, prep: {}, discovery: {}, notes, proposal: null,
+      lat: l.lat ?? null, lon: l.lon ?? null,
     });
     if (id) { setAdded(s => new Set(s).add(key(l))); toast(`${l.name} agregado a Pre-venta`); }
   };
@@ -286,7 +251,7 @@ export default function LeadFinder() {
             </ol>
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setRoute(null)}>Cerrar</button>
-              <a className="btn btn-primary" href={gmapsUrl(route.order)} target="_blank" rel="noreferrer"><Navigation size={15} /> Abrir en Google Maps</a>
+              <a className="btn btn-primary" href={gmapsUrl(route.order, true)} target="_blank" rel="noreferrer"><Navigation size={15} /> Abrir en Google Maps</a>
             </div>
           </div>
         </div>

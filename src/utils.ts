@@ -505,6 +505,8 @@ export interface Prospect {
   shareToken?: string | null;
   shareExpires?: number | null;
   clientId?: string | null;   // si ya se convirtió en cliente
+  lat?: number | null;        // ubicación (para armar recorridos)
+  lon?: number | null;
   createdAt: number;
   updatedAt: number;
 }

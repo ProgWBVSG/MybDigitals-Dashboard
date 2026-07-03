@@ -928,6 +928,12 @@ input[type="number"] {
 .lead-route-list li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; color: var(--text-primary); }
 .lead-route-list li span:not(.lead-route-n) { color: var(--text-muted); }
 .lead-route-n { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.route-picklist { display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow: auto; margin-bottom: 6px; }
+.route-pick { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--text-primary); }
+.route-pick:hover { background: rgba(255,255,255,0.03); }
+.route-pick input { width: 16px; height: 16px; accent-color: var(--primary); }
+.route-pick span { display: inline-flex; align-items: center; gap: 6px; }
+.route-pick span svg { color: var(--text-muted); }
 .lead-spin { animation: leadSpin 0.9s linear infinite; }
 @keyframes leadSpin { to { transform: rotate(360deg); } }
 
