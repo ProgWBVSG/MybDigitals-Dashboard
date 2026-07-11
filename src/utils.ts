@@ -117,10 +117,20 @@ export const fmtMoney = (n: number) => new Intl.NumberFormat('es-AR', { style: '
 export const fmtUSD = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 
 // ─── TYPES ───
+export const SKILL_IMPORTANCE = ['critica', 'recomendada', 'opcional'] as const;
+export type SkillImportance = typeof SKILL_IMPORTANCE[number];
+export const SKILL_IMPORTANCE_LABELS: Record<SkillImportance, string> = { critica: 'Usar sí o sí', recomendada: 'Recomendada', opcional: 'No prioritaria' };
+export const SKILL_IMPORTANCE_COLORS: Record<SkillImportance, string> = { critica: '#ef4444', recomendada: '#f59e0b', opcional: '#64748b' };
+// Para qué tipo de proyecto aplica cada skill (además de los servicios de Onboarding, "general" = todos)
+export const SKILL_PROJECT_TYPES = ['general', ...SERVICE_TYPES] as const;
+export const SKILL_PROJECT_LABELS: Record<string, string> = { general: 'Todo proyecto', ...SERVICE_LABELS };
+
 export interface Skill {
   id: string; name: string; category: string; level: number;
   description: string; assignedTo: string[]; createdAt: number;
   updatedAt: number; color: string; links?: string;
+  importance: SkillImportance;
+  serviceTypes: string[]; // subset de SKILL_PROJECT_TYPES; vacío = "general" (todo proyecto)
 }
 
 export interface Board {

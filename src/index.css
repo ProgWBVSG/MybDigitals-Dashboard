@@ -977,6 +977,15 @@ input[type="number"] {
 .cmp-ad p { margin: 0 0 4px; font-size: 13px; color: var(--text-secondary); line-height: 1.45; }
 .cmp-ad b { color: var(--text-primary); }
 
+/* ─── SKILLS: importancia y proyectos ─── */
+.skill-importance { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; padding: 3px 8px; border-radius: 999px; }
+.skill-proj-tag { display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 600; color: var(--text-muted); background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 999px; }
+.skill-reco-panel { background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; }
+.skill-reco-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; }
+.skill-reco-list { display: flex; flex-direction: column; gap: 6px; }
+.skill-reco-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+.skill-reco-item b { color: var(--text-primary); }
+
 /* ─── CONFIGURACIÓN ─── */
 .cfg-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
 .cfg-card-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 16px; }

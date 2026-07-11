@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Plus, Rocket, ArrowRight, Search, Users } from 'lucide-react';
-import { useOnboardings, useClients, toast } from './hooks';
+import { Plus, Rocket, ArrowRight, Search, Users, Sparkles, AlertTriangle } from 'lucide-react';
+import { useOnboardings, useClients, useSkills, toast } from './hooks';
 import { supabase } from './supabase';
 import { getPlaybook } from './playbooks';
 import OnboardingDetail from './OnboardingDetail';
@@ -8,12 +8,14 @@ import {
   SERVICE_TYPES, SERVICE_LABELS, SERVICE_AVAILABLE,
   ONBOARDING_STATUS_LABELS, ONBOARDING_STATUS_COLORS,
   onboardingProgress, onboardingNextStep,
+  SKILL_IMPORTANCE_LABELS, SKILL_IMPORTANCE_COLORS,
   type ServiceType,
 } from './utils';
 
 export default function Onboarding() {
   const ob = useOnboardings();
   const { clients, create: createClient } = useClients();
+  const { skills } = useSkills();
   const [detailId, setDetailId] = useState<string | null>(null);
   const [wizard, setWizard] = useState(false);
   const [search, setSearch] = useState('');
@@ -37,6 +39,16 @@ export default function Onboarding() {
       return b.createdAt - a.createdAt;
     });
   }, [ob.onboardings, search]);
+
+  // Skills recomendadas para el servicio elegido en el wizard: las de ese servicio +
+  // las "generales" (sin serviceTypes = aplican a todo proyecto). Críticas primero.
+  const recoSkills = useMemo(() => {
+    const rank = { critica: 0, recomendada: 1, opcional: 2 };
+    return skills
+      .filter(s => s.name !== '__folder__')
+      .filter(s => !s.serviceTypes?.length || s.serviceTypes.includes(service))
+      .sort((a, b) => rank[a.importance || 'recomendada'] - rank[b.importance || 'recomendada']);
+  }, [skills, service]);
 
   const openWizard = () => {
     setClientMode(clients.length > 0 ? 'existing' : 'new');
@@ -222,6 +234,25 @@ export default function Onboarding() {
                 })}
               </div>
             </div>
+
+            {/* Skills recomendadas para este proyecto */}
+            {recoSkills.length > 0 && (
+              <div className="skill-reco-panel" style={{ marginTop: 18 }}>
+                <div className="skill-reco-title"><Sparkles size={15} color="var(--primary)" /> Skills recomendadas para este proyecto</div>
+                <div className="skill-reco-list">
+                  {recoSkills.slice(0, 6).map(s => (
+                    <div key={s.id} className="skill-reco-item">
+                      {s.importance === 'critica' && <AlertTriangle size={13} color={SKILL_IMPORTANCE_COLORS.critica} />}
+                      <b>{s.name}</b>
+                      <span style={{ color: SKILL_IMPORTANCE_COLORS[s.importance || 'recomendada'], fontSize: 11, fontWeight: 700 }}>
+                        · {SKILL_IMPORTANCE_LABELS[s.importance || 'recomendada']}
+                      </span>
+                    </div>
+                  ))}
+                  {recoSkills.length > 6 && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>+{recoSkills.length - 6} más en la sección Skills</div>}
+                </div>
+              </div>
+            )}
 
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setWizard(false)}>Cancelar</button>

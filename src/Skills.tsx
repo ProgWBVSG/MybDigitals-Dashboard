@@ -1,11 +1,15 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Pencil, Trash2, Layers, FolderPlus, Video, Link as LinkIcon } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Layers, FolderPlus, Video, Link as LinkIcon, AlertTriangle } from 'lucide-react';
 import { useSkills, toast } from './hooks';
-import { CATEGORIES, LEVELS, COLORS, type Skill } from './utils';
+import {
+  CATEGORIES, LEVELS, COLORS, SKILL_IMPORTANCE, SKILL_IMPORTANCE_LABELS, SKILL_IMPORTANCE_COLORS,
+  SKILL_PROJECT_TYPES, SKILL_PROJECT_LABELS, type Skill,
+} from './utils';
 
 const empty: Omit<Skill, 'id' | 'createdAt' | 'updatedAt'> = {
   name: '', category: 'Frontend', level: 3, description: '',
-  assignedTo: [], color: '#6366f1', links: ''
+  assignedTo: [], color: '#6366f1', links: '',
+  importance: 'recomendada', serviceTypes: [],
 };
 
 export default function Skills() {
@@ -60,7 +64,9 @@ export default function Skills() {
         description: '',
         assignedTo: [],
         color: '#6366f1',
-        links: ''
+        links: '',
+        importance: 'recomendada',
+        serviceTypes: [],
       });
       toast('Carpeta creada');
     }
@@ -163,6 +169,15 @@ export default function Skills() {
                       <h3 style={{ color: s.color }}>{s.name}</h3>
                       <span className="badge" style={{ background: `${s.color}22`, color: s.color }}>{s.category}</span>
                     </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                      <span className="skill-importance" style={{ background: `${SKILL_IMPORTANCE_COLORS[s.importance || 'recomendada']}22`, color: SKILL_IMPORTANCE_COLORS[s.importance || 'recomendada'] }}>
+                        {s.importance === 'critica' && <AlertTriangle size={11} />}
+                        {SKILL_IMPORTANCE_LABELS[s.importance || 'recomendada']}
+                      </span>
+                      {(s.serviceTypes || []).map(st => (
+                        <span key={st} className="skill-proj-tag">{SKILL_PROJECT_LABELS[st]}</span>
+                      ))}
+                    </div>
                     <div style={{ marginBottom: 8 }}>
                       <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Nivel: {LEVELS[s.level - 1]}</span>
                       <div className="level-bar" style={{ marginTop: 6 }}>
@@ -234,6 +249,37 @@ export default function Skills() {
                   <div className="slider-labels">
                     {LEVELS.map(l => <span key={l}>{l}</span>)}
                   </div>
+                </div>
+              </div>
+              <div className="input-group">
+                <label>Importancia — ¿qué tan clave es para un proyecto?</label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {SKILL_IMPORTANCE.map(imp => (
+                    <button key={imp} type="button"
+                      className={`filter-chip ${form.importance === imp ? 'active' : ''}`}
+                      style={form.importance === imp ? { background: SKILL_IMPORTANCE_COLORS[imp], borderColor: SKILL_IMPORTANCE_COLORS[imp] } : { borderColor: SKILL_IMPORTANCE_COLORS[imp], color: SKILL_IMPORTANCE_COLORS[imp] }}
+                      onClick={() => setForm(f => ({ ...f, importance: imp }))}>
+                      {imp === 'critica' && <AlertTriangle size={12} />} {SKILL_IMPORTANCE_LABELS[imp]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="input-group">
+                <label>¿Para qué proyectos aplica? (recomendación automática al crear uno)</label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {SKILL_PROJECT_TYPES.map(pt => {
+                    const active = pt === 'general' ? form.serviceTypes.length === 0 : form.serviceTypes.includes(pt);
+                    return (
+                      <button key={pt} type="button" className={`filter-chip ${active ? 'active' : ''}`}
+                        onClick={() => setForm(f => {
+                          if (pt === 'general') return { ...f, serviceTypes: [] };
+                          const has = f.serviceTypes.includes(pt);
+                          return { ...f, serviceTypes: has ? f.serviceTypes.filter(x => x !== pt) : [...f.serviceTypes, pt] };
+                        })}>
+                        {SKILL_PROJECT_LABELS[pt]}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div className="input-group">

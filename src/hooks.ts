@@ -79,7 +79,7 @@ export function useSkills() {
             }
           }
         } catch (e) {}
-        return { ...camel, description: desc, links };
+        return { ...camel, description: desc, links, importance: camel.importance || 'recomendada', serviceTypes: camel.serviceTypes || [] };
       }));
     }
     setLoading(false);
@@ -87,7 +87,7 @@ export function useSkills() {
 
   useEffect(() => {
     load();
-    const sub = supabase.channel('skills_changes')
+    const sub = supabase.channel('skills_changes_' + uuid())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'skills' }, load)
       .subscribe();
     return () => { supabase.removeChannel(sub); };
