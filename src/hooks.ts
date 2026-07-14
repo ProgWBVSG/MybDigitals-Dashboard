@@ -755,7 +755,8 @@ export function useNotifications() {
 
   const addReminder = async (title: string, dueAt: number | null) => {
     if (!title.trim()) return;
-    const { error } = await supabase.from('reminders').insert(mapToSnake({ title: title.trim(), dueAt, done: false, createdAt: Date.now() }));
+    // No pasar createdAt (mapToSnake lo haría ISO string, pero la columna es bigint) — usa el default de la DB.
+    const { error } = await supabase.from('reminders').insert(mapToSnake({ title: title.trim(), dueAt, done: false }));
     if (error) toast('No se pudo crear el recordatorio', 'error'); else { toast('Recordatorio agregado'); loadRem(); }
   };
   const completeReminder = async (id: string) => { await supabase.from('reminders').update({ done: true }).eq('id', id); loadRem(); };
@@ -804,7 +805,9 @@ export function useHistory() {
   }, [load]);
 
   const add = async (e: Omit<HistoryEntry, 'id' | 'createdAt'>) => {
-    const { error } = await supabase.from('history').insert(mapToSnake({ ...e, createdAt: Date.now() }));
+    // No pasar createdAt: mapToSnake lo convertiría a fecha ISO, pero la columna es
+    // bigint (epoch ms) — se deja que el default de la DB lo complete.
+    const { error } = await supabase.from('history').insert(mapToSnake(e));
     if (error) toast('No se pudo guardar en el historial', 'error'); else toast('Registrado en el historial');
   };
   const update = async (id: string, updates: Partial<HistoryEntry>) => {
@@ -859,13 +862,14 @@ export function useGuide() {
     return () => { supabase.removeChannel(ch); };
   }, [load]);
 
+  // created_at/updated_at son bigint (epoch ms): no pasar por mapToSnake (los haría ISO string).
   const add = async (t: Omit<GuideTopic, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = Date.now();
-    const { error } = await supabase.from('guide_topics').insert(mapToSnake({ ...t, createdAt: now, updatedAt: now }));
+    const { error } = await supabase.from('guide_topics').insert({ ...mapToSnake(t), created_at: now, updated_at: now });
     if (error) toast('No se pudo guardar el tema', 'error'); else toast('Tema guardado');
   };
   const update = async (id: string, updates: Partial<GuideTopic>) => {
-    const { error } = await supabase.from('guide_topics').update(mapToSnake({ ...updates, updatedAt: Date.now() })).eq('id', id);
+    const { error } = await supabase.from('guide_topics').update({ ...mapToSnake(updates), updated_at: Date.now() }).eq('id', id);
     if (error) toast('Error al guardar', 'error'); else toast('Guardado');
   };
   const remove = async (id: string) => { await supabase.from('guide_topics').delete().eq('id', id); };
@@ -972,7 +976,8 @@ export function useCompetitors() {
     return data?.id as string;
   };
   const update = async (id: string, u: Partial<Competitor>) => {
-    const { error } = await supabase.from('competitors').update(mapToSnake({ ...u, updatedAt: Date.now() })).eq('id', id);
+    // updated_at es bigint (epoch ms): no pasar por mapToSnake (lo haría ISO string).
+    const { error } = await supabase.from('competitors').update({ ...mapToSnake(u), updated_at: Date.now() }).eq('id', id);
     if (error) toast('Error al actualizar', 'error'); else load();
   };
   const remove = async (id: string) => { await supabase.from('competitors').delete().eq('id', id); load(); };
@@ -985,7 +990,8 @@ export function useCompetitors() {
     if (error) { err = error.message; try { const b = await (error as { context?: { json?: () => Promise<{ error?: string }> } }).context?.json?.(); if (b?.error) err = b.error; } catch { /* noop */ } }
     else if (!data?.ok) err = data?.error || 'Respuesta inesperada';
     if (err) { toast('Error al analizar: ' + err, 'error'); return false; }
-    await supabase.from('competitors').update(mapToSnake({ analysis: data.analysis, analyzedAt: Date.now(), updatedAt: Date.now() })).eq('id', c.id);
+    // analyzed_at / updated_at son bigint (epoch ms): no pasar por mapToSnake.
+    await supabase.from('competitors').update({ analysis: data.analysis, analyzed_at: Date.now(), updated_at: Date.now() }).eq('id', c.id);
     toast('Análisis listo ✨'); load();
     return true;
   };
