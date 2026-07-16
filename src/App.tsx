@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target, LogOut, Bell, SlidersHorizontal, History as HistoryIcon, BookOpen, Smartphone, MapPin, Swords, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target, LogOut, Bell, SlidersHorizontal, History as HistoryIcon, BookOpen, Smartphone, MapPin, Swords, ChevronLeft, ChevronRight, Lightbulb, GitBranch } from 'lucide-react';
 import { supabase } from './supabase';
 import { useToastProvider, useNotifications } from './hooks';
 import Skills from './Skills';
@@ -19,9 +19,11 @@ import Login from './Login';
 import Content from './Content';
 import LeadFinder from './LeadFinder';
 import Competitors from './Competitors';
+import Notes from './Notes';
+import Estrategia from './Estrategia';
 import './index.css';
 
-type Tab = 'metrics' | 'preventa' | 'buscar' | 'competencia' | 'onboarding' | 'tasks' | 'calendar' | 'clients' | 'history' | 'guide' | 'skills' | 'notifications' | 'settings' | 'content';
+type Tab = 'metrics' | 'preventa' | 'buscar' | 'competencia' | 'onboarding' | 'notas' | 'estrategia' | 'tasks' | 'calendar' | 'clients' | 'history' | 'guide' | 'skills' | 'notifications' | 'settings' | 'content';
 
 export default function App() {
   // Link público de propuesta: muestra SOLO el deck, sin sesión ni acceso al dashboard.
@@ -97,6 +99,12 @@ function Dashboard() {
           <button className={tab === 'onboarding' ? 'active' : ''} onClick={() => setTab('onboarding')}>
             <Rocket size={16} /> Onboarding
           </button>
+          <button className={tab === 'notas' ? 'active' : ''} onClick={() => setTab('notas')}>
+            <Lightbulb size={16} /> Ideas
+          </button>
+          <button className={tab === 'estrategia' ? 'active' : ''} onClick={() => setTab('estrategia')}>
+            <GitBranch size={16} /> Estrategia
+          </button>
           <button className={tab === 'tasks' ? 'active' : ''} onClick={() => setTab('tasks')}>
             <LayoutGrid size={16} /> Tasks
           </button>
@@ -143,6 +151,8 @@ function Dashboard() {
         {tab === 'buscar' && <LeadFinder />}
         {tab === 'competencia' && <Competitors />}
         {tab === 'onboarding' && <Onboarding />}
+        {tab === 'notas' && <Notes />}
+        {tab === 'estrategia' && <Estrategia onGoToGuide={() => setTab('guide')} />}
         {tab === 'tasks' && <Tasks />}
         {tab === 'calendar' && <CalendarView />}
         {tab === 'clients' && <Clients />}

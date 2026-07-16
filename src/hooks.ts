@@ -3,7 +3,8 @@ import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client
   type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type ServiceType, type Prospect,
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
   type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic,
-  type ContentPost, type ContentSource, type Competitor } from './utils';
+  type ContentPost, type ContentSource, type Competitor,
+  type Note, type Whiteboard, type BoardData, EMPTY_BOARD_DATA, REPEAT_LABELS } from './utils';
 import { getPlaybook } from './playbooks';
 import { GUIDE_SEED } from './guideSeed';
 import { supabase } from './supabase';
@@ -461,12 +462,12 @@ export function useOnboardings() {
     const { data: clientData } = await supabase.from('clients').select('id, name');
 
     if (!error && obData) {
-      const nameOf = (id: string) => clientData?.find((c: any) => c.id === id)?.name || '';
+      const nameOf = (id: string | null) => clientData?.find((c: any) => c.id === id)?.name || '';
       setOnboardings(obData.map(o => {
         const camel = mapToCamel(o);
         return {
           ...camel,
-          clientName: nameOf(o.client_id),
+          clientName: o.client_id ? nameOf(o.client_id) : (o.product_name || ''),
           steps: stepData ? stepData.filter(s => s.onboarding_id === o.id).map(mapToCamel).sort((a: any, b: any) => a.order - b.order) : [],
           payments: payData ? payData.filter(p => p.onboarding_id === o.id).map(mapToCamel) : [],
           documents: docData ? docData.filter(d => d.onboarding_id === o.id).map(mapToCamel) : [],
@@ -488,13 +489,13 @@ export function useOnboardings() {
   }, [load]);
 
   // Crea el onboarding y "materializa" el playbook en filas reales
-  const create = async (clientId: string, serviceType: ServiceType, title: string): Promise<string | null> => {
+  const create = async (clientId: string | null, serviceType: ServiceType, title: string, productName?: string): Promise<string | null> => {
     const playbook = getPlaybook(serviceType);
     if (!playbook) { toast('Ese servicio todavía no tiene playbook', 'error'); return null; }
 
     const now = Date.now();
     const { data: ob, error } = await supabase.from('onboardings').insert([mapToSnake({
-      clientId, serviceType, title, status: 'active', currentPhase: 0,
+      clientId, serviceType, title, status: 'active', currentPhase: 0, productName: productName || null,
       driveRootLink: '', whatsappLink: '', domain: '', startedAt: now, launchedAt: null,
     })]).select().single();
 
@@ -1018,6 +1019,96 @@ export function useCompetitors() {
   };
 
   return { competitors, loading, add, update, remove, analyze, analyzeAd, removeAd, refresh: load };
+}
+
+// ─── NOTAS / IDEAS (bloc de notas con seguimiento + calendario) ───
+export function useNotes() {
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('notes').select('*').order('pinned', { ascending: false }).order('updated_at', { ascending: false });
+    if (data) setNotes(data.map(mapToCamel) as Note[]);
+    setLoading(false);
+  }, []);
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('notes_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+
+  // Sincroniza el seguimiento de una nota con un evento en el Calendario (crea/mueve/borra).
+  const syncCalendar = async (note: Note, title: string): Promise<string | null> => {
+    if (!note.followUpAt) {
+      if (note.calendarEventId) await supabase.from('calendar_events').delete().eq('id', note.calendarEventId);
+      return null;
+    }
+    const desc = note.repeatRule !== 'none' ? `Repite: ${REPEAT_LABELS[note.repeatRule]} (recordatorio manual, no se re-crea solo).` : 'Seguimiento de idea.';
+    const payload = { title: `💡 ${title}`, description: desc, startDate: note.followUpAt, endDate: note.followUpAt + 3600000, type: 'reminder' as const, assignedTo: [], relatedTaskId: null, color: '#a78bfa', allDay: false };
+    if (note.calendarEventId) {
+      await supabase.from('calendar_events').update(mapToSnake(payload)).eq('id', note.calendarEventId);
+      return note.calendarEventId;
+    }
+    const { data, error } = await supabase.from('calendar_events').insert([mapToSnake(payload)]).select().single();
+    if (error) { toast('La nota se guardó, pero no se pudo crear el recordatorio en el calendario', 'error'); return null; }
+    return data?.id as string;
+  };
+
+  const add = async (n: Omit<Note, 'id' | 'createdAt' | 'updatedAt' | 'calendarEventId'>): Promise<string | null> => {
+    const calendarEventId = n.followUpAt ? await syncCalendar({ ...n, id: '', calendarEventId: null, createdAt: 0, updatedAt: 0 }, n.title || 'Idea sin título') : null;
+    const { data, error } = await supabase.from('notes').insert(mapToSnake({ ...n, calendarEventId })).select().single();
+    if (error) { toast('No se pudo guardar la idea', 'error'); return null; }
+    toast('Idea guardada');
+    return data?.id as string;
+  };
+  const update = async (id: string, u: Partial<Note>) => {
+    const current = notes.find(x => x.id === id);
+    let calendarEventId = current?.calendarEventId ?? null;
+    if (current && 'followUpAt' in u) {
+      calendarEventId = await syncCalendar({ ...current, ...u } as Note, (u.title ?? current.title) || 'Idea sin título');
+    }
+    const { error } = await supabase.from('notes').update({ ...mapToSnake(u), calendar_event_id: calendarEventId, updated_at: Date.now() }).eq('id', id);
+    if (error) toast('Error al guardar', 'error'); else load();
+  };
+  const remove = async (id: string) => {
+    const n = notes.find(x => x.id === id);
+    if (n?.calendarEventId) await supabase.from('calendar_events').delete().eq('id', n.calendarEventId);
+    await supabase.from('notes').delete().eq('id', id);
+    load();
+  };
+
+  return { notes, loading, add, update, remove, refresh: load };
+}
+
+// ─── PIZARRAS ESTILO MIRO (compartidas por Ideas y Estrategia/Embudos) ───
+export function useWhiteboards(kind?: 'idea' | 'embudo') {
+  const [boards, setBoards] = useState<Whiteboard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = useCallback(async () => {
+    let q = supabase.from('whiteboards').select('*').order('updated_at', { ascending: false });
+    if (kind) q = q.eq('kind', kind);
+    const { data } = await q;
+    if (data) setBoards(data.map(mapToCamel) as Whiteboard[]);
+    setLoading(false);
+  }, [kind]);
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('whiteboards_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'whiteboards' }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+
+  const create = async (title: string, k: 'idea' | 'embudo', clientId: string | null = null, noteId: string | null = null): Promise<string | null> => {
+    const { data, error } = await supabase.from('whiteboards').insert(mapToSnake({ title, kind: k, clientId, noteId, data: EMPTY_BOARD_DATA })).select().single();
+    if (error) { toast('No se pudo crear la pizarra', 'error'); return null; }
+    toast('Pizarra creada');
+    return data?.id as string;
+  };
+  const saveData = async (id: string, data: BoardData) => {
+    await supabase.from('whiteboards').update({ data, updated_at: Date.now() }).eq('id', id);
+  };
+  const rename = async (id: string, title: string) => { await supabase.from('whiteboards').update({ title, updated_at: Date.now() }).eq('id', id); };
+  const remove = async (id: string) => { await supabase.from('whiteboards').delete().eq('id', id); load(); };
+
+  return { boards, loading, create, saveData, rename, remove, refresh: load };
 }
 
 // ─── EXCHANGE RATE HOOK ───

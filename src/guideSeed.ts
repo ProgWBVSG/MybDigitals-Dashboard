@@ -119,6 +119,49 @@ Cada servicio = un **paquete** con precio fijo, plazo y entregables claros. Vend
 El verdadero ingreso está en el **mantenimiento/retainer** post-lanzamiento y el check-in a 30 días (upsell).`,
     resources: [],
   },
+  {
+    category: 'comercial', order: 4, emoji: '🧲', title: 'Embudo para conseguir clientes por internet',
+    summary: 'El proceso completo: de desconocido a cliente, paso a paso.',
+    content: `## La lógica del embudo
+Nadie te compra en el primer contacto. El embudo ordena las etapas para que sepas en qué momento está cada prospecto y qué le toca en cada una.
+
+## Las 5 etapas
+1. **Atracción** — que te encuentren: Buscar clientes (Google Maps/OSM), contenido en IG, referidos. Objetivo: que sepan que existís.
+2. **Contacto** — primer mensaje. Corto, personalizado, sin vender todavía. Objetivo: que te respondan.
+3. **Reunión / Discovery** — entender su dolor real (ver ficha de Pre-venta: MINT). Objetivo: calificar si es un cliente real.
+4. **Propuesta** — a medida, con lo que dijo en la reunión, nunca genérica. Objetivo: que la vea como hecha para él.
+5. **Cierre y seguimiento** — la mayoría no cierra en el primer "sí lo pienso". Objetivo: no dejar que se enfríe.
+
+## Dónde se arma en el dashboard
+- Cada prospecto pasa por las etapas del pipeline en **Pre-venta**.
+- Armá el diagrama visual del embudo en **Estrategia → Pizarras** (estilo Miro): una caja por etapa, conectada con flechas, y anotás ahí qué tasa de conversión tenés en cada paso.
+- Medí: de 10 contactados, ¿cuántos agendan? De los que agendan, ¿cuántos compran? Ahí ves dónde se te cae la gente.
+
+## Error común
+Meter mucho esfuerzo en "Atracción" (contenido, ads) y cero en "Seguimiento". El seguimiento es gratis y es lo que más cierra.`,
+    resources: [],
+  },
+  {
+    category: 'comercial', order: 5, emoji: '📬', title: 'Seguimiento de prospectos (follow-up)',
+    summary: 'La mayoría de las ventas se pierden por falta de seguimiento, no por precio.',
+    content: `## La regla
+Un "no por ahora" casi nunca es un "no" definitivo. Es un "todavía no". El seguimiento es lo que convierte esos casos.
+
+## Cadencia sugerida
+- **Día 0**: mandás la propuesta.
+- **Día 2-3** si no respondió: mensaje corto, sin presionar ("¿Pudiste verla? Cualquier duda te ayudo a resolverla").
+- **Día 7**: un aporte de valor (ej: algo que viste de su negocio, una idea concreta) — no repetir "¿alguna novedad?".
+- **Día 15-20**: último mensaje, dejando la puerta abierta sin insistir.
+- Después: pasa a seguimiento pasivo (lo recontactás en 1-2 meses o cuando tengas algo nuevo para ofrecer).
+
+## Cómo lo armamos acá
+- Cargá la **fecha de seguimiento** en la ficha del prospecto (Pre-venta) o como recordatorio en **Ideas** → aparece solo en el **Calendario** y en las **Notificaciones**.
+- No dejes un prospecto "en el aire": si no vas a seguirlo más, pasalo a "Perdido" para tener el pipeline limpio y real.
+
+## Tono
+Nunca sonar desesperado. El seguimiento aporta valor o resuelve una duda, no repite "¿ya decidiste?".`,
+    resources: [],
+  },
 
   // ─── ENTREGA ───
   {

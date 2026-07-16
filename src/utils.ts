@@ -74,17 +74,18 @@ export const PROJECT_STATUSES = ['pending', 'in_progress', 'delivered', 'cancell
 export const PROJECT_STATUS_LABELS: Record<string, string> = { pending: 'Pendiente', in_progress: 'En curso', delivered: 'Entregado', cancelled: 'Cancelado' };
 
 // ─── ONBOARDING ───
-export const SERVICE_TYPES = ['landing', 'web_pro', 'automation', 'consulting'] as const;
+export const SERVICE_TYPES = ['landing', 'web_pro', 'automation', 'consulting', 'own_product'] as const;
 export type ServiceType = typeof SERVICE_TYPES[number];
 export const SERVICE_LABELS: Record<ServiceType, string> = {
   landing: 'Landing Page',
   web_pro: 'Web Profesional',
   automation: 'Automatización IA',
   consulting: 'Consultoría',
+  own_product: 'Idea propia / Producto MYB',
 };
 // Servicios con playbook ya disponible (el resto se muestra "próximamente")
 export const SERVICE_AVAILABLE: Record<ServiceType, boolean> = {
-  landing: true, web_pro: false, automation: false, consulting: false,
+  landing: true, web_pro: false, automation: false, consulting: false, own_product: true,
 };
 
 export const ONBOARDING_STATUSES = ['active', 'paused', 'launched', 'archived'] as const;
@@ -234,7 +235,8 @@ export const DISCOVERY_FIELDS: { key: keyof Discovery; label: string; placeholde
 
 export interface Onboarding {
   id: string;
-  clientId: string;
+  clientId: string | null;
+  productName?: string | null; // nombre de la idea/producto cuando no hay cliente (own_product)
   serviceType: ServiceType;
   title: string;
   status: 'active' | 'paused' | 'launched' | 'archived';
@@ -554,4 +556,26 @@ export function fmtRel(ms: number): string {
   else { const d = Math.round(abs / 86400000); unit = `${d} día${d === 1 ? '' : 's'}`; }
   return diff < 0 ? `hace ${unit}` : `en ${unit}`;
 }
+
+// ─── NOTAS / IDEAS ───
+export type RepeatRule = 'none' | 'daily' | 'weekly' | 'monthly';
+export const REPEAT_LABELS: Record<RepeatRule, string> = { none: 'No repetir', daily: 'Todos los días', weekly: 'Todas las semanas', monthly: 'Todos los meses' };
+export interface Note {
+  id: string; title: string; content: string; tags: string;
+  followUpAt: number | null; repeatRule: RepeatRule; calendarEventId: string | null;
+  boardId: string | null; pinned: boolean; createdAt: number; updatedAt: number;
+}
+
+// ─── PIZARRAS ESTILO MIRO (notas y embudos) ───
+export type BoardKind = 'idea' | 'embudo';
+export interface BoardNode { id: string; x: number; y: number; w: number; h: number; text: string; color: string; shape: 'sticky' | 'box'; }
+export interface BoardEdge { id: string; from: string; to: string; label?: string; }
+export interface BoardStroke { id: string; points: [number, number][]; color: string; width: number; }
+export interface BoardData { nodes: BoardNode[]; edges: BoardEdge[]; strokes: BoardStroke[]; }
+export interface Whiteboard {
+  id: string; title: string; kind: BoardKind; clientId: string | null; noteId: string | null;
+  data: BoardData; createdAt: number; updatedAt: number;
+}
+export const EMPTY_BOARD_DATA: BoardData = { nodes: [], edges: [], strokes: [] };
+export const BOARD_STICKY_COLORS = ['#facc15', '#fb923c', '#f472b6', '#a78bfa', '#60a5fa', '#4ade80', '#f8fafc'];
 

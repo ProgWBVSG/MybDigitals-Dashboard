@@ -485,9 +485,76 @@ const LANDING_PAGE: Playbook = {
   ],
 };
 
+// ─── IDEA PROPIA / PRODUCTO MYB ───
+// Para apps o productos que quiere armar la agencia (sin cliente): ej. una app para
+// gimnasios, una app para lectores de un nicho, etc. Mismo motor de fases/pasos que un
+// cliente, pero sin hitos de pago ni docs legales — foco en validar y lanzar rápido.
+const DOC_PRODUCTO = `# FICHA DE PRODUCTO / IDEA — MYB Digitals
+
+## 1. La idea
+[¿Qué es? En 1-2 frases.]
+
+## 2. Nicho / público
+- ¿Para quién es? [ej: dueños de gimnasios chicos, lectores de un género específico]
+- ¿Qué problema le resuelve hoy mal o no le resuelve nadie?
+
+## 3. Validación
+- ¿Ya vimos que la gente pague por algo así? [competencia, encuestas, señales]
+- ¿Cuál es el riesgo más grande de que esto no funcione?
+
+## 4. MVP (lo mínimo para probarlo)
+- Funcionalidad núcleo: [una sola cosa que tiene que hacer bien]
+- Qué NO va en la v1: [para no perder foco]
+
+## 5. Modelo
+- ¿Cómo genera ingresos? [suscripción, único pago, freemium, para vender a clientes de MYB]
+- ¿Se vende como producto propio o se ofrece a los clientes de la agencia?
+
+## 6. Próximos pasos
+- [ ] Validar con 5-10 personas del nicho
+- [ ] Definir stack y armar el MVP
+- [ ] Lanzar a un grupo chico y medir
+`;
+
+const OWN_PRODUCT: Playbook = {
+  serviceType: 'own_product',
+  payments: [],
+  documents: [
+    { docType: 'brief', title: 'Ficha de producto', content: DOC_PRODUCTO },
+  ],
+  steps: [
+    // FASE 0 — Idea & Validación
+    { phase: 0, phaseName: 'Idea & Validación', owner: 'myb', title: 'Completar la ficha de producto', description: 'Definir la idea, el nicho y el problema que resuelve.' },
+    { phase: 0, phaseName: 'Idea & Validación', owner: 'myb', title: 'Hablar con 5-10 personas del nicho', description: 'Validar que el problema es real y que pagarían por resolverlo, antes de construir nada.' },
+    { phase: 0, phaseName: 'Idea & Validación', owner: 'myb', title: 'Mirar a la competencia', description: 'Qué existe hoy, qué hace bien, qué hace mal, dónde está el hueco.' },
+
+    // FASE 1 — Research de nicho
+    { phase: 1, phaseName: 'Research de nicho', owner: 'myb', title: 'Definir el público exacto', description: 'Quién es el usuario ideal, dónde está (IG, foros, comunidades), cómo habla.' },
+    { phase: 1, phaseName: 'Research de nicho', owner: 'myb', title: 'Definir el modelo de negocio', description: 'Suscripción, pago único, freemium, o producto para ofrecer a clientes de MYB.' },
+
+    // FASE 2 — Diseño de producto
+    { phase: 2, phaseName: 'Diseño de producto', owner: 'myb', title: 'Definir el MVP', description: 'La única funcionalidad que tiene que andar bien en la v1. Todo lo demás espera.' },
+    { phase: 2, phaseName: 'Diseño de producto', owner: 'myb', title: 'Wireframes / diseño de las pantallas clave', description: 'Lo justo para poder construir sin perder tiempo.' },
+
+    // FASE 3 — Desarrollo del MVP
+    { phase: 3, phaseName: 'Desarrollo del MVP', owner: 'myb', title: 'Elegir el stack', description: 'Lo más simple que permita salir rápido a probar.' },
+    { phase: 3, phaseName: 'Desarrollo del MVP', owner: 'myb', title: 'Construir el MVP', description: 'Solo la funcionalidad núcleo definida en Diseño de producto.' },
+    { phase: 3, phaseName: 'Desarrollo del MVP', owner: 'myb', title: 'QA propio', description: 'Probarlo nosotros antes de mostrarlo a nadie.' },
+
+    // FASE 4 — Lanzamiento
+    { phase: 4, phaseName: 'Lanzamiento', owner: 'myb', title: 'Lanzar a un grupo chico', description: 'Beta cerrada con el nicho que ya validamos, no lanzamiento masivo.' },
+    { phase: 4, phaseName: 'Lanzamiento', owner: 'myb', title: 'Setup de analítica básica', description: 'Medir uso real desde el día 1 (qué usan, qué abandonan).' },
+
+    // FASE 5 — Crecimiento & Feedback
+    { phase: 5, phaseName: 'Crecimiento & Feedback', owner: 'myb', title: 'Juntar feedback de los primeros usuarios', description: 'Qué les sirvió, qué les faltó, pagarían por esto.' },
+    { phase: 5, phaseName: 'Crecimiento & Feedback', owner: 'myb', title: 'Decidir: iterar, pivotar o escalar', description: 'Con datos reales, no con intuición. Definir el próximo paso del producto.', isOptional: true },
+  ],
+};
+
 // ─── REGISTRO DE PLAYBOOKS ───
 export const PLAYBOOKS: Partial<Record<ServiceType, Playbook>> = {
   landing: LANDING_PAGE,
+  own_product: OWN_PRODUCT,
   // web_pro, automation, consulting → Fase 2
 };
 

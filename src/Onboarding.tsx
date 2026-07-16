@@ -21,9 +21,10 @@ export default function Onboarding() {
   const [search, setSearch] = useState('');
 
   // Wizard state
-  const [clientMode, setClientMode] = useState<'existing' | 'new'>('existing');
+  const [clientMode, setClientMode] = useState<'existing' | 'new' | 'own'>('existing');
   const [clientId, setClientId] = useState('');
   const [newClientName, setNewClientName] = useState('');
+  const [productName, setProductName] = useState('');
   const [service, setService] = useState<ServiceType>('landing');
   const [creating, setCreating] = useState(false);
 
@@ -54,6 +55,7 @@ export default function Onboarding() {
     setClientMode(clients.length > 0 ? 'existing' : 'new');
     setClientId('');
     setNewClientName('');
+    setProductName('');
     setService('landing');
     setWizard(true);
   };
@@ -62,6 +64,16 @@ export default function Onboarding() {
     if (!SERVICE_AVAILABLE[service]) { toast('Ese servicio todavía no tiene playbook', 'error'); return; }
     setCreating(true);
     try {
+      // Idea propia / producto MYB: no necesita cliente ni carpetas de Drive.
+      if (clientMode === 'own') {
+        if (!productName.trim()) { toast('Poné el nombre de la idea o producto', 'error'); setCreating(false); return; }
+        const title = `${SERVICE_LABELS[service]} — ${productName.trim()}`;
+        const newId = await ob.create(null, service, title, productName.trim());
+        setWizard(false);
+        if (newId) setDetailId(newId);
+        return;
+      }
+
       let cid = clientId;
       let cname = clients.find(c => c.id === clientId)?.name || '';
       if (clientMode === 'new') {
@@ -197,43 +209,55 @@ export default function Onboarding() {
 
             {/* Cliente */}
             <div className="input-group">
-              <label>Cliente</label>
+              <label>¿Para quién es este proyecto?</label>
               <div className="filters" style={{ marginBottom: 10 }}>
-                <button className={`filter-chip ${clientMode === 'existing' ? 'active' : ''}`} onClick={() => setClientMode('existing')}>
-                  <Users size={13} /> Existente
+                <button className={`filter-chip ${clientMode === 'existing' ? 'active' : ''}`} onClick={() => { setClientMode('existing'); if (service === 'own_product') setService('landing'); }}>
+                  <Users size={13} /> Cliente existente
                 </button>
-                <button className={`filter-chip ${clientMode === 'new' ? 'active' : ''}`} onClick={() => setClientMode('new')}>
-                  <Plus size={13} /> Nuevo
+                <button className={`filter-chip ${clientMode === 'new' ? 'active' : ''}`} onClick={() => { setClientMode('new'); if (service === 'own_product') setService('landing'); }}>
+                  <Plus size={13} /> Cliente nuevo
+                </button>
+                <button className={`filter-chip ${clientMode === 'own' ? 'active' : ''}`} onClick={() => { setClientMode('own'); setService('own_product'); }}>
+                  <Sparkles size={13} /> Idea propia (MYB)
                 </button>
               </div>
-              {clientMode === 'existing' ? (
+              {clientMode === 'existing' && (
                 <select className="select" value={clientId} onChange={e => setClientId(e.target.value)}>
                   <option value="" disabled>Elegir cliente…</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-              ) : (
+              )}
+              {clientMode === 'new' && (
                 <input className="input" value={newClientName} onChange={e => setNewClientName(e.target.value)} placeholder="Nombre / Empresa" autoFocus />
+              )}
+              {clientMode === 'own' && (
+                <>
+                  <input className="input" value={productName} onChange={e => setProductName(e.target.value)} placeholder="Ej: App para gimnasios, App de lectura…" autoFocus />
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0' }}>Para productos o apps propias de MYB, sin cliente. Usa la misma guía paso a paso.</p>
+                </>
               )}
             </div>
 
-            {/* Servicio */}
-            <div className="input-group" style={{ marginTop: 18 }}>
-              <label>Servicio</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {SERVICE_TYPES.map(s => {
-                  const available = SERVICE_AVAILABLE[s];
-                  return (
-                    <button key={s} type="button" disabled={!available}
-                      className={`onb-service-opt ${service === s ? 'active' : ''} ${!available ? 'disabled' : ''}`}
-                      onClick={() => available && setService(s)}>
-                      <Rocket size={16} />
-                      <span>{SERVICE_LABELS[s]}</span>
-                      {!available && <span className="onb-soon">Próximamente</span>}
-                    </button>
-                  );
-                })}
+            {/* Servicio (no aplica cuando es Idea propia: ya queda asignado) */}
+            {clientMode !== 'own' && (
+              <div className="input-group" style={{ marginTop: 18 }}>
+                <label>Servicio</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {SERVICE_TYPES.filter(s => s !== 'own_product').map(s => {
+                    const available = SERVICE_AVAILABLE[s];
+                    return (
+                      <button key={s} type="button" disabled={!available}
+                        className={`onb-service-opt ${service === s ? 'active' : ''} ${!available ? 'disabled' : ''}`}
+                        onClick={() => available && setService(s)}>
+                        <Rocket size={16} />
+                        <span>{SERVICE_LABELS[s]}</span>
+                        {!available && <span className="onb-soon">Próximamente</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Skills recomendadas para este proyecto */}
             {recoSkills.length > 0 && (
