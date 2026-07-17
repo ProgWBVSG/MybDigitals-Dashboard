@@ -408,26 +408,37 @@ export function useFinance() {
   const load = useCallback(async () => {
     const { data: expData } = await supabase.from('expenses').select('*');
     const { data: goalData } = await supabase.from('goals').select('*');
-    if (expData) setExpenses(expData.map(mapToCamel));
+    // 'date' es timestamptz (string ISO) y mapToCamel solo convierte created_at/updated_at
+    // a epoch — se convierte acá para que el tipo Expense.date:number sea real.
+    if (expData) setExpenses(expData.map(e => { const c = mapToCamel(e); return { ...c, date: new Date(c.date).getTime() }; }));
     if (goalData) setGoals(goalData.map(mapToCamel));
     setLoading(false);
   }, []);
 
   useEffect(() => {
     load();
-    const subE = supabase.channel('exp_ch').on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, load).subscribe();
-    const subG = supabase.channel('goal_ch').on('postgres_changes', { event: '*', schema: 'public', table: 'goals' }, load).subscribe();
+    const subE = supabase.channel('exp_ch_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, load).subscribe();
+    const subG = supabase.channel('goal_ch_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'goals' }, load).subscribe();
     return () => { supabase.removeChannel(subE); supabase.removeChannel(subG); };
   }, [load]);
 
-  const addExpense = async (data: Omit<Expense, 'id' | 'date'>) => {
-    const { error } = await supabase.from('expenses').insert([mapToSnake(data)]);
-    if (error) toast('Error al agregar gasto', 'error');
-    else toast('Gasto registrado');
+  // Cada gasto queda espejado como entrada 'gasto' en el Historial (mismo comprobante),
+  // así todo el movimiento de plata de la agencia queda en un solo lugar.
+  const addExpense = async (data: Omit<Expense, 'id' | 'date' | 'historyId'>) => {
+    const { data: hist, error: histErr } = await supabase.from('history').insert({
+      client_id: null, kind: 'gasto', title: data.description, detail: data.category,
+      amount: data.amount, currency: 'ARS', receipt_path: data.receiptPath, happened_at: Date.now(),
+    }).select('id').single();
+    if (histErr) { toast('Error al agregar gasto: ' + histErr.message, 'error'); return; }
+    const { error } = await supabase.from('expenses').insert([mapToSnake({ ...data, historyId: hist.id })]);
+    if (error) { await supabase.from('history').delete().eq('id', hist.id); toast('Error al agregar gasto: ' + error.message, 'error'); return; }
+    toast('Gasto registrado');
   };
 
   const removeExpense = async (id: string) => {
+    const exp = expenses.find(e => e.id === id);
     await supabase.from('expenses').delete().eq('id', id);
+    if (exp?.historyId) await supabase.from('history').delete().eq('id', exp.historyId);
     toast('Gasto eliminado');
   };
 
@@ -790,6 +801,22 @@ export function useNotifications() {
   return { items, unread, reminders, settings, setSettings, isRead, markRead, markAllRead, addReminder, completeReminder, enableBrowserPush };
 }
 
+// Comprobantes: bucket privado compartido 'receipts' (usado por Historial y Gastos)
+export const uploadReceipt = async (file: File): Promise<string | null> => {
+  if (file.size > 10 * 1024 * 1024) { toast('El comprobante supera los 10 MB', 'error'); return null; }
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${uuid()}.${ext}`;
+  const { error } = await supabase.storage.from('receipts').upload(path, file, {
+    upsert: false, cacheControl: '3600', contentType: file.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+  });
+  if (error) { toast('No se pudo subir el comprobante: ' + error.message, 'error'); return null; }
+  return path;
+};
+export const receiptSignedUrl = async (path: string): Promise<string | null> => {
+  const { data } = await supabase.storage.from('receipts').createSignedUrl(path, 3600);
+  return data?.signedUrl || null;
+};
+
 // ─── HISTORIAL / LEDGER ───
 export function useHistory() {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
@@ -819,22 +846,7 @@ export function useHistory() {
   };
   const remove = async (id: string) => { await supabase.from('history').delete().eq('id', id); };
 
-  const uploadReceipt = async (file: File): Promise<string | null> => {
-    if (file.size > 10 * 1024 * 1024) { toast('El comprobante supera los 10 MB', 'error'); return null; }
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    const path = `${uuid()}.${ext}`;
-    const { error } = await supabase.storage.from('receipts').upload(path, file, {
-      upsert: false, cacheControl: '3600', contentType: file.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-    });
-    if (error) { toast('No se pudo subir el comprobante: ' + error.message, 'error'); return null; }
-    return path;
-  };
-  const signedUrl = async (path: string): Promise<string | null> => {
-    const { data } = await supabase.storage.from('receipts').createSignedUrl(path, 3600);
-    return data?.signedUrl || null;
-  };
-
-  return { entries, loading, add, update, remove, uploadReceipt, signedUrl, refresh: load };
+  return { entries, loading, add, update, remove, uploadReceipt, signedUrl: receiptSignedUrl, refresh: load };
 }
 
 // ─── GUÍA / CENTRO DE CONOCIMIENTO ───

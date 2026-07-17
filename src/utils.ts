@@ -173,6 +173,7 @@ export interface ClientNote {
 export interface Expense {
   id: string; amount: number; description: string;
   category: string; date: number;
+  receiptPath: string | null; historyId: string | null;
 }
 
 export interface Goal {
@@ -294,7 +295,7 @@ export interface AppSettings {
 export const APP_SETTINGS_DEFAULTS: AppSettings = { stepDeadlineDays: 3, clientDeadlineDays: 2, paymentDeadlineDays: 3 };
 
 // ─── HISTORIAL / LEDGER ───
-export type HistoryKind = 'pago' | 'entrega' | 'recibido' | 'nota';
+export type HistoryKind = 'pago' | 'entrega' | 'recibido' | 'nota' | 'gasto';
 export interface HistoryEntry {
   id: string;
   clientId: string | null;
@@ -311,6 +312,7 @@ export const HISTORY_KINDS: { key: HistoryKind; label: string; color: string }[]
   { key: 'pago', label: 'Cobro recibido', color: '#10b981' },
   { key: 'entrega', label: 'Entrega / lo que hicimos', color: '#6366f1' },
   { key: 'recibido', label: 'Recibido del cliente', color: '#0ea5e9' },
+  { key: 'gasto', label: 'Gasto de la agencia', color: '#ef4444' },
   { key: 'nota', label: 'Nota', color: '#64748b' },
 ];
 export const HISTORY_KIND_LABELS: Record<HistoryKind, string> = Object.fromEntries(HISTORY_KINDS.map(k => [k.key, k.label])) as Record<HistoryKind, string>;

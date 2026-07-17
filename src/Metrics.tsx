@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   CheckCircle2, Clock, AlertTriangle, CalendarDays, TrendingUp,
-  Users, Wallet, MinusCircle, Target, Plus, Trash2, TrendingDown, Receipt, Calendar, Rocket
+  Users, Wallet, MinusCircle, Target, Plus, Trash2, TrendingDown, Receipt, Calendar, Rocket,
+  Upload, Paperclip, Image as ImageIcon,
 } from 'lucide-react';
-import { useTasks, useCalendar, useClients, useFinance, useExchangeRate, useOnboardings } from './hooks';
+import { useTasks, useCalendar, useClients, useFinance, useExchangeRate, useOnboardings, uploadReceipt, receiptSignedUrl } from './hooks';
 import { fmt, isOverdue, fmtMoney, fmtUSD, onboardingProgress, type Board, type ClientProject } from './utils';
 
 const CHART_COLORS = ['#6366f1', '#3b82f6', '#f59e0b', '#10b981'];
@@ -26,8 +27,9 @@ export default function Metrics() {
 
   const [showExpModal, setShowExpModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
-  const [expForm, setExpForm] = useState({ amount: 0, description: '', category: 'General' });
+  const [expForm, setExpForm] = useState({ amount: 0, description: '', category: 'General', receiptPath: null as string | null });
   const [goalForm, setGoalForm] = useState({ name: '', targetAmount: 0 });
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
   // Calculations
   const totalRevenueARS = useMemo(() => clients.reduce((s, c) => s + (c.totalRevenue || 0), 0), [clients]);
@@ -93,7 +95,16 @@ export default function Metrics() {
     if (expForm.amount <= 0 || !expForm.description) return;
     addExpense(expForm);
     setShowExpModal(false);
-    setExpForm({ amount: 0, description: '', category: 'General' });
+    setExpForm({ amount: 0, description: '', category: 'General', receiptPath: null });
+  };
+
+  const onUploadReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    setUploadingReceipt(true);
+    const path = await uploadReceipt(file);
+    setUploadingReceipt(false);
+    if (path) setExpForm(f => ({ ...f, receiptPath: path }));
   };
 
   const handleAddGoal = () => {
@@ -327,6 +338,7 @@ export default function Metrics() {
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{fmt(e.date)} · {e.category}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {e.receiptPath && <ExpenseReceiptThumb path={e.receiptPath} />}
                     <span style={{ fontSize: 14, fontWeight: 700, color: '#ef4444' }}>-{fmtMoney(e.amount)}</span>
                     <button className="btn btn-ghost btn-icon btn-sm" onClick={() => removeExpense(e.id)}><Trash2 size={12} /></button>
                   </div>
@@ -415,10 +427,23 @@ export default function Metrics() {
                   <option>General</option>
                 </select>
               </div>
+              <div className="input-group">
+                <label>Comprobante (foto)</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
+                    {uploadingReceipt ? 'Subiendo…' : <><Upload size={14} /> {expForm.receiptPath ? 'Cambiar' : 'Subir foto'}</>}
+                    <input type="file" accept="image/*" hidden onChange={onUploadReceipt} />
+                  </label>
+                  {expForm.receiptPath && <span style={{ fontSize: 12, color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: 4 }}><Paperclip size={13} /> Adjunto</span>}
+                  {expForm.receiptPath && <button type="button" className="btn btn-ghost btn-icon btn-sm" title="Quitar comprobante" onClick={() => setExpForm(f => ({ ...f, receiptPath: null }))}><Trash2 size={13} /></button>}
+                </div>
+                {expForm.receiptPath && <ExpenseReceiptPreview path={expForm.receiptPath} />}
+              </div>
+              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: 0 }}>Este gasto también queda registrado en el Historial (carpeta General).</p>
             </div>
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setShowExpModal(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleAddExpense}>Guardar Gasto</button>
+              <button className="btn btn-primary" onClick={handleAddExpense} disabled={uploadingReceipt}>Guardar Gasto</button>
             </div>
           </div>
         </div>
@@ -465,6 +490,22 @@ function FinanceKPI({ icon, label, ars, usd, color, sub, action }: any) {
       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>{sub}</div>
     </div>
   );
+}
+
+// Miniatura del comprobante en la lista de gastos (URL firmada del bucket privado al vuelo)
+function ExpenseReceiptThumb({ path }: { path: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => { let on = true; receiptSignedUrl(path).then(u => { if (on) setUrl(u); }); return () => { on = false; }; }, [path]);
+  if (!url) return <ImageIcon size={14} style={{ color: 'var(--text-muted)' }} />;
+  return <a href={url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}><img src={url} alt="comprobante" style={{ width: 26, height: 26, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--border)' }} /></a>;
+}
+
+// Vista previa grande dentro del modal de "Registrar Gasto"
+function ExpenseReceiptPreview({ path }: { path: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => { let on = true; setUrl(null); receiptSignedUrl(path).then(u => { if (on) setUrl(u); }); return () => { on = false; }; }, [path]);
+  if (!url) return null;
+  return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt="comprobante" style={{ marginTop: 8, maxHeight: 140, borderRadius: 8, border: '1px solid var(--border)' }} /></a>;
 }
 
 function KPI({ icon, label, value, sub, color }: any) {
