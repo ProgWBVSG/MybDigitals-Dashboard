@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { History as HistoryIcon, Search, Plus, Trash2, Image as ImageIcon, Upload, Paperclip } from 'lucide-react';
-import { useHistory, useClients } from './hooks';
+import { useHistory, useClients, toast } from './hooks';
 import {
   HISTORY_KINDS, HISTORY_KIND_LABELS, DATE_RANGES, fmtMoney, fmtUSD,
   type HistoryEntry, type HistoryKind,
@@ -71,12 +71,15 @@ export default function History() {
   }, [filtered]);
 
   const openNew = () => setModal({ ...emptyForm(), clientId: folder !== 'all' && folder !== 'general' ? folder : null });
+  const [saving, setSaving] = useState(false);
   const save = async () => {
-    if (!modal) return;
-    if (!modal.title.trim()) { return; }
+    if (!modal || saving) return;
+    if (!modal.title.trim()) { toast('Ponele un título al registro', 'error'); return; }
+    setSaving(true);
     const payload = { clientId: modal.clientId, kind: modal.kind, title: modal.title.trim(), detail: modal.detail.trim(), amount: modal.amount || 0, currency: modal.currency, receiptPath: modal.receiptPath, happenedAt: modal.happenedAt };
-    if (modal.id) await update(modal.id, payload); else await add(payload);
-    setModal(null);
+    const ok = modal.id ? await update(modal.id, payload) : await add(payload);
+    setSaving(false);
+    if (ok) setModal(null); // si falla, dejar el modal abierto para reintentar (el toast muestra el motivo)
   };
 
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,12 +201,14 @@ export default function History() {
                     <input type="file" accept="image/*" hidden onChange={onUpload} />
                   </label>
                   {modal.receiptPath && <span style={{ fontSize: 12, color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: 4 }}><Paperclip size={13} /> Adjunto</span>}
+                  {modal.receiptPath && <button type="button" className="btn btn-ghost btn-icon btn-sm" title="Quitar comprobante" onClick={() => setModal({ ...modal, receiptPath: null })}><Trash2 size={13} /></button>}
                 </div>
+                {modal.receiptPath && <ReceiptPreview path={modal.receiptPath} signedUrl={signedUrl} />}
               </div>
             </div>
             <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setModal(null)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={save}>{modal.id ? 'Guardar' : 'Registrar'}</button>
+              <button className="btn btn-secondary" onClick={() => setModal(null)} disabled={saving}>Cancelar</button>
+              <button className="btn btn-primary" onClick={save} disabled={saving || uploading}>{saving ? 'Guardando…' : (modal.id ? 'Guardar' : 'Registrar')}</button>
             </div>
           </div>
         </div>
@@ -231,4 +236,12 @@ function Receipt({ path, signedUrl }: { path: string; signedUrl: (p: string) => 
   useEffect(() => { let on = true; signedUrl(path).then(u => { if (on) setUrl(u); }); return () => { on = false; }; }, [path, signedUrl]);
   if (!url) return <div className="hist-receipt loading"><ImageIcon size={15} /></div>;
   return <a href={url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}><img className="hist-receipt" src={url} alt="comprobante" /></a>;
+}
+
+// Vista previa grande del comprobante recién adjuntado, dentro del modal
+function ReceiptPreview({ path, signedUrl }: { path: string; signedUrl: (p: string) => Promise<string | null> }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => { let on = true; setUrl(null); signedUrl(path).then(u => { if (on) setUrl(u); }); return () => { on = false; }; }, [path, signedUrl]);
+  if (!url) return null;
+  return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt="comprobante" style={{ marginTop: 8, maxHeight: 140, borderRadius: 8, border: '1px solid var(--border)' }} /></a>;
 }

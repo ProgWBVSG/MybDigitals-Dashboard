@@ -805,15 +805,17 @@ export function useHistory() {
     return () => { supabase.removeChannel(ch); };
   }, [load]);
 
-  const add = async (e: Omit<HistoryEntry, 'id' | 'createdAt'>) => {
+  const add = async (e: Omit<HistoryEntry, 'id' | 'createdAt'>): Promise<boolean> => {
     // No pasar createdAt: mapToSnake lo convertiría a fecha ISO, pero la columna es
     // bigint (epoch ms) — se deja que el default de la DB lo complete.
     const { error } = await supabase.from('history').insert(mapToSnake(e));
-    if (error) toast('No se pudo guardar en el historial', 'error'); else toast('Registrado en el historial');
+    if (error) { toast('No se pudo guardar: ' + error.message, 'error'); return false; }
+    toast('Registrado en el historial'); return true;
   };
-  const update = async (id: string, updates: Partial<HistoryEntry>) => {
+  const update = async (id: string, updates: Partial<HistoryEntry>): Promise<boolean> => {
     const { error } = await supabase.from('history').update(mapToSnake(updates)).eq('id', id);
-    if (error) toast('Error al actualizar', 'error');
+    if (error) { toast('No se pudo actualizar: ' + error.message, 'error'); return false; }
+    return true;
   };
   const remove = async (id: string) => { await supabase.from('history').delete().eq('id', id); };
 
@@ -821,7 +823,9 @@ export function useHistory() {
     if (file.size > 10 * 1024 * 1024) { toast('El comprobante supera los 10 MB', 'error'); return null; }
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
     const path = `${uuid()}.${ext}`;
-    const { error } = await supabase.storage.from('receipts').upload(path, file, { upsert: false });
+    const { error } = await supabase.storage.from('receipts').upload(path, file, {
+      upsert: false, cacheControl: '3600', contentType: file.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+    });
     if (error) { toast('No se pudo subir el comprobante: ' + error.message, 'error'); return null; }
     return path;
   };

@@ -1072,20 +1072,48 @@ input[type="number"] {
 .wb-colors { display: flex; align-items: center; gap: 5px; }
 .wb-color { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
 .wb-color.on { border-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
+.wb-tool.sm { width: auto; height: 26px; padding: 0 8px; font-size: 12px; font-weight: 700; }
+.wb-fontgrp { display: inline-flex; align-items: center; gap: 4px; }
 .wb-clear { margin-left: auto; font-size: 12px; color: var(--text-muted); background: none; border: 1px solid var(--border); border-radius: 7px; padding: 5px 10px; cursor: pointer; }
 .wb-clear:hover { color: var(--danger); border-color: var(--danger); }
 .wb-hint { font-size: 12px; color: var(--primary-light); margin-left: 8px; }
 .wb-canvas { position: relative; flex: 1; overflow: auto; background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 22px 22px; cursor: default; touch-action: none; }
-.wb-canvas.tool-sticky, .wb-canvas.tool-box { cursor: crosshair; }
+.wb-canvas.tool-sticky, .wb-canvas.tool-box, .wb-canvas.tool-ellipse, .wb-canvas.tool-diamond { cursor: crosshair; }
 .wb-canvas.tool-pen { cursor: crosshair; }
 .wb-canvas.tool-connect { cursor: pointer; }
 .wb-svg { position: absolute; top: 0; left: 0; pointer-events: none; }
-.wb-node { position: absolute; border-radius: 10px; border: 2px solid transparent; box-shadow: 0 6px 16px rgba(0,0,0,0.3); cursor: grab; }
+.wb-node { position: absolute; border-radius: 10px; border: 2px solid transparent; box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
 .wb-node.sticky { border-radius: 4px; box-shadow: 3px 4px 10px rgba(0,0,0,0.35); }
+.wb-node.ellipse { border-radius: 50%; }
+/* rombo: el nodo es un rectángulo normal (grip/resize funcionan); el rombo lo dibuja un
+   pseudo-elemento rotado 45°, así el texto queda derecho y encima */
+.wb-node.diamond { background: transparent !important; border: none; box-shadow: none; }
+.wb-node.diamond::before { content: ''; position: absolute; inset: 12%; background: color-mix(in srgb, var(--wbc, #a78bfa) 20%, transparent); border: 2px solid var(--wbc, #a78bfa); border-radius: 8px; transform: rotate(45deg); z-index: 0; }
+.wb-node.diamond textarea { position: relative; z-index: 1; padding: 10px 24px; }
+.wb-node.diamond .wb-grip, .wb-node.diamond .wb-resize { z-index: 2; }
 .wb-node.sel { outline: 2px solid var(--primary); outline-offset: 2px; }
 .wb-node.connecting { outline: 2px dashed var(--secondary); outline-offset: 2px; }
-.wb-node textarea { width: 100%; height: 100%; background: none; border: none; resize: none; padding: 10px; font-size: 13px; color: #1a1a1a; font-weight: 600; line-height: 1.35; outline: none; cursor: text; }
-.wb-node.box textarea { color: var(--text-primary); }
+.wb-node textarea { width: 100%; height: 100%; background: none; border: none; resize: none; padding: 18px 10px 10px; font-size: 13px; color: #1a1a1a; font-weight: 600; line-height: 1.3; outline: none; cursor: text; text-align: center; }
+.wb-node.box textarea, .wb-node.ellipse textarea, .wb-node.diamond textarea { color: var(--text-primary); }
+.wb-node.sticky textarea { text-align: left; }
+/* grip de arrastre */
+.wb-grip { position: absolute; top: 0; left: 0; right: 0; height: 16px; display: flex; align-items: center; justify-content: center; color: rgba(0,0,0,0.35); cursor: grab; border-top-left-radius: inherit; border-top-right-radius: inherit; opacity: 0; transition: opacity 0.12s; }
+.wb-node:hover .wb-grip, .wb-node.sel .wb-grip { opacity: 1; }
+.wb-node.box .wb-grip, .wb-node.link .wb-grip { color: var(--text-muted); }
+.wb-grip:active { cursor: grabbing; }
+/* redimensionar */
+.wb-resize { position: absolute; right: -4px; bottom: -4px; width: 14px; height: 14px; background: var(--primary); border: 2px solid #fff; border-radius: 3px; cursor: nwse-resize; }
+/* link node */
+.wb-node.link { display: flex; align-items: center; }
+.wb-link { display: flex; align-items: center; gap: 8px; width: 100%; padding: 0 10px; color: var(--primary-light); }
+.wb-link a { color: var(--text-primary); font-weight: 600; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.wb-link a:hover { color: var(--primary-light); text-decoration: underline; }
+/* video node */
+.wb-node.video { display: flex; flex-direction: column; overflow: hidden; background: #000; }
+.wb-videobar { display: flex; align-items: center; justify-content: space-between; padding: 3px 6px 3px 10px; background: var(--bg-card); font-size: 11px; font-weight: 700; text-transform: capitalize; color: var(--text-secondary); cursor: grab; }
+.wb-video iframe { flex: 1; width: 100%; border: none; }
+.wb-mini { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; border: none; background: none; color: var(--text-muted); cursor: pointer; }
+.wb-mini:hover { background: var(--bg-hover); color: var(--text-primary); }
 @media (max-width: 768px) {
   .note-grid, .strat-grid { grid-template-columns: 1fr; }
   .wb-toolbar { gap: 3px; }

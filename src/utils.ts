@@ -568,7 +568,13 @@ export interface Note {
 
 // ─── PIZARRAS ESTILO MIRO (notas y embudos) ───
 export type BoardKind = 'idea' | 'embudo';
-export interface BoardNode { id: string; x: number; y: number; w: number; h: number; text: string; color: string; shape: 'sticky' | 'box'; }
+export type BoardShape = 'sticky' | 'box' | 'ellipse' | 'diamond' | 'link' | 'video';
+export interface BoardNode {
+  id: string; x: number; y: number; w: number; h: number; text: string; color: string; shape: BoardShape;
+  fontSize?: number; // px, default 13
+  url?: string;      // para shape 'link' | 'video'
+}
+export const BOARD_FONT_SIZES = [12, 15, 19, 26, 34];
 export interface BoardEdge { id: string; from: string; to: string; label?: string; }
 export interface BoardStroke { id: string; points: [number, number][]; color: string; width: number; }
 export interface BoardData { nodes: BoardNode[]; edges: BoardEdge[]; strokes: BoardStroke[]; }
