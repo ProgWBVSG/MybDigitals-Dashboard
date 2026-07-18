@@ -571,10 +571,22 @@ export interface Note {
 // ─── PIZARRAS ESTILO MIRO (notas y embudos) ───
 export type BoardKind = 'idea' | 'embudo';
 export type BoardShape = 'sticky' | 'box' | 'ellipse' | 'diamond' | 'link' | 'video';
+export type NodeStageStatus = 'pending' | 'active' | 'done' | 'blocked';
+export const NODE_STAGE_STATUSES: { key: NodeStageStatus; label: string; color: string }[] = [
+  { key: 'pending', label: 'Sin empezar', color: '#64748b' },
+  { key: 'active', label: 'En curso', color: '#3b82f6' },
+  { key: 'done', label: 'Completado', color: '#10b981' },
+  { key: 'blocked', label: 'Trabado', color: '#ef4444' },
+];
 export interface BoardNode {
   id: string; x: number; y: number; w: number; h: number; text: string; color: string; shape: BoardShape;
   fontSize?: number; // px, default 13
   url?: string;      // para shape 'link' | 'video'
+  // Metadata de negocio / automatización (solo se usa en pizarras de Estrategia, kind='embudo')
+  clientId?: string | null;       // a qué cliente de la tabla `clients` pertenece esta etapa
+  stageStatus?: NodeStageStatus;
+  conversionRate?: number | null; // % (0-100)
+  webhookUrl?: string | null;     // URL de n8n a disparar manualmente desde el panel
 }
 export const BOARD_FONT_SIZES = [12, 15, 19, 26, 34];
 export interface BoardEdge { id: string; from: string; to: string; label?: string; }
@@ -586,4 +598,11 @@ export interface Whiteboard {
 }
 export const EMPTY_BOARD_DATA: BoardData = { nodes: [], edges: [], strokes: [] };
 export const BOARD_STICKY_COLORS = ['#facc15', '#fb923c', '#f472b6', '#a78bfa', '#60a5fa', '#4ade80', '#f8fafc'];
+
+// Log de disparos manuales de automatización (botón "Disparar" en el panel del nodo)
+export interface NodeEvent {
+  id: string; boardId: string; nodeId: string; clientId: string | null;
+  action: string; webhookUrl: string | null; status: 'success' | 'error';
+  responseSummary: string | null; createdAt: number;
+}
 

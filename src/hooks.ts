@@ -4,7 +4,7 @@ import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
   type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic,
   type ContentPost, type ContentSource, type Competitor,
-  type Note, type Whiteboard, type BoardData, EMPTY_BOARD_DATA, REPEAT_LABELS } from './utils';
+  type Note, type Whiteboard, type BoardData, EMPTY_BOARD_DATA, REPEAT_LABELS, type NodeEvent, type BoardNode } from './utils';
 import { getPlaybook } from './playbooks';
 import { GUIDE_SEED } from './guideSeed';
 import { supabase } from './supabase';
@@ -1125,6 +1125,45 @@ export function useWhiteboards(kind?: 'idea' | 'embudo') {
   const remove = async (id: string) => { await supabase.from('whiteboards').delete().eq('id', id); load(); };
 
   return { boards, loading, create, saveData, rename, remove, refresh: load };
+}
+
+// ─── AUTOMATIZACIÓN DE NODOS (Estrategia → disparo manual de webhooks n8n) ───
+// El fetch al webhook lo hace la Edge Function `trigger-node-webhook` (server-side, evita
+// exponer el token del webhook en el navegador). El cliente solo llama a la función y
+// después inserta el log en `node_events` para tener auditoría de qué se disparó y cuándo.
+export function useNodeEvents(boardId: string | null) {
+  const [events, setEvents] = useState<NodeEvent[]>([]);
+  const load = useCallback(async () => {
+    if (!boardId) { setEvents([]); return; }
+    const { data } = await supabase.from('node_events').select('*').eq('board_id', boardId).order('created_at', { ascending: false }).limit(50);
+    if (data) setEvents(data.map(mapToCamel) as NodeEvent[]);
+  }, [boardId]);
+  useEffect(() => {
+    load();
+    if (!boardId) return;
+    const ch = supabase.channel('node_events_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'node_events' }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load, boardId]);
+  return { events, refresh: load };
+}
+
+export async function fireNodeWebhook(boardId: string, node: BoardNode): Promise<{ ok: boolean; summary: string }> {
+  const webhookUrl = node.webhookUrl?.trim();
+  if (!webhookUrl) return { ok: false, summary: 'Este nodo no tiene webhook configurado' };
+  const payload = {
+    nodeId: node.id, boardId, clientId: node.clientId || null,
+    text: node.text, stageStatus: node.stageStatus || null, conversionRate: node.conversionRate ?? null,
+    triggeredAt: Date.now(),
+  };
+  const { data, error } = await supabase.functions.invoke('trigger-node-webhook', { body: { webhookUrl, payload } });
+  const ok = !error && !!data?.ok;
+  const summary = error ? (error.message || 'Error de red') : ok ? `HTTP ${data.status}` : (data?.error || `HTTP ${data?.status ?? '?'}`);
+  await supabase.from('node_events').insert({
+    board_id: boardId, node_id: node.id, client_id: node.clientId || null, action: 'webhook',
+    webhook_url: webhookUrl, status: ok ? 'success' : 'error', response_summary: summary.slice(0, 500), created_at: Date.now(),
+  });
+  toast(ok ? `Webhook disparado (${summary})` : `Falló el webhook: ${summary}`, ok ? 'success' : 'error');
+  return { ok, summary };
 }
 
 // ─── EXCHANGE RATE HOOK ───

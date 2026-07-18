@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Target, Plus, X, Trash2, Pencil, BookOpen, LayoutDashboard, ArrowRight } from 'lucide-react';
-import { useWhiteboards, useGuide, toast } from './hooks';
+import { useWhiteboards, useGuide, useClients, toast } from './hooks';
 import Whiteboard from './Whiteboard';
 import Markdown from './Markdown';
 import { GUIDE_CAT_MAP, type GuideCategory } from './utils';
@@ -11,6 +11,7 @@ export default function Estrategia({ onGoToGuide }: { onGoToGuide?: () => void }
   const [tab, setTab] = useState<'pizarras' | 'guia'>('pizarras');
   const wb = useWhiteboards('embudo');
   const { topics } = useGuide();
+  const { clients } = useClients();
   const [openBoard, setOpenBoard] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
@@ -41,7 +42,9 @@ export default function Estrategia({ onGoToGuide }: { onGoToGuide?: () => void }
             </h2>
           )}
         </div>
-        <div style={{ flex: 1, minHeight: 0 }}><Whiteboard data={board.data} onSave={d => wb.saveData(board.id, d)} /></div>
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <Whiteboard data={board.data} onSave={d => wb.saveData(board.id, d)} automation boardId={board.id} clients={clients.map(c => ({ id: c.id, name: c.name }))} />
+        </div>
       </div>
     );
   }

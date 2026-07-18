@@ -1,13 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   StickyNote, Square, Circle, Diamond, Pencil, MousePointer2, ArrowRight, Trash2,
-  Palette, Undo2, Link2, Video, ExternalLink, Copy, Type, GripVertical,
+  Palette, Undo2, Link2, Video, ExternalLink, Copy, Type, GripVertical, Zap, Loader2,
 } from 'lucide-react';
 import { toEmbed, videoPlatform } from './embed';
 import {
-  BOARD_STICKY_COLORS, BOARD_FONT_SIZES, uuid,
-  type BoardData, type BoardNode, type BoardStroke, type BoardShape,
+  BOARD_STICKY_COLORS, BOARD_FONT_SIZES, NODE_STAGE_STATUSES, uuid,
+  type BoardData, type BoardNode, type BoardStroke, type BoardShape, type NodeStageStatus,
 } from './utils';
+import { fireNodeWebhook } from './hooks';
 
 type Tool = 'select' | 'sticky' | 'box' | 'ellipse' | 'diamond' | 'pen' | 'connect';
 
@@ -20,13 +21,19 @@ const DEFAULT_SIZE: Record<BoardShape, { w: number; h: number }> = {
 // videos embebidos, dibujo a mano alzada y flechas de conexión. Todo se guarda como
 // JSON (nodes/edges/strokes) via onSave (debounce). Optimizada para arrastre fluido
 // con pointer capture y actualización local durante el gesto (guarda al soltar).
-export default function Whiteboard({ data, onSave }: { data: BoardData; onSave: (d: BoardData) => void }) {
+interface WhiteboardProps {
+  data: BoardData; onSave: (d: BoardData) => void;
+  // Panel de automatización (solo para pizarras de Estrategia, kind='embudo')
+  automation?: boolean; boardId?: string; clients?: { id: string; name: string }[];
+}
+export default function Whiteboard({ data, onSave, automation, boardId, clients }: WhiteboardProps) {
   const [board, setBoard] = useState<BoardData>(data);
   const [tool, setTool] = useState<Tool>('select');
   const [color, setColor] = useState(BOARD_STICKY_COLORS[0]);
   const [drawing, setDrawing] = useState<[number, number][] | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [firing, setFiring] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Gesto activo (drag/resize) — el ref evita depender del estado en los handlers
@@ -144,6 +151,13 @@ export default function Whiteboard({ data, onSave }: { data: BoardData; onSave: 
   const pickColor = (c: string) => { setColor(c); if (selectedNode) patchNode(selectedNode.id, { color: c }); };
   const editUrl = (n: BoardNode) => { const url = window.prompt('Editar link', n.url || ''); if (url !== null) patchNode(n.id, { url: url.trim() }); };
 
+  const fire = async (n: BoardNode) => {
+    if (!boardId || firing) return;
+    setFiring(true);
+    await fireNodeWebhook(boardId, n);
+    setFiring(false);
+  };
+
   const undoStroke = () => commit({ ...board, strokes: board.strokes.slice(0, -1) });
   const clearAll = () => { if (window.confirm('¿Vaciar toda la pizarra?')) commit({ nodes: [], edges: [], strokes: [] }); };
 
@@ -166,7 +180,10 @@ export default function Whiteboard({ data, onSave }: { data: BoardData; onSave: 
     <button className={`wb-tool ${tool === t ? 'on' : ''}`} title={label} onClick={() => { setTool(t); setConnectFrom(null); }}>{icon}</button>
   );
 
+  const stageAutomation = automation && !!selectedNode && selectedNode.shape !== 'link' && selectedNode.shape !== 'video';
+
   return (
+    <div className="wb-outer">
     <div className="wb-wrap">
       <div className="wb-toolbar">
         {T('select', <MousePointer2 size={16} />, 'Seleccionar / mover')}
@@ -253,11 +270,49 @@ export default function Whiteboard({ data, onSave }: { data: BoardData; onSave: 
                 </div>
               )}
 
+              {automation && n.stageStatus && n.shape !== 'link' && n.shape !== 'video' && (
+                <span className="wb-status-dot" style={{ background: NODE_STAGE_STATUSES.find(s => s.key === n.stageStatus)?.color }} title={NODE_STAGE_STATUSES.find(s => s.key === n.stageStatus)?.label} />
+              )}
+
               {sel && <div className="wb-resize" onPointerDown={e => startResize(e, n)} title="Redimensionar" />}
             </div>
           );
         })}
       </div>
+    </div>
+
+    {stageAutomation && selectedNode && (
+      <div className="wb-panel">
+        <h4>Automatización del nodo</h4>
+        <div className="input-group">
+          <label>Cliente</label>
+          <select className="select" value={selectedNode.clientId || ''} onChange={e => patchNode(selectedNode.id, { clientId: e.target.value || null })}>
+            <option value="">Sin cliente / general</option>
+            {(clients || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div className="input-group">
+          <label>Estado de la etapa</label>
+          <select className="select" value={selectedNode.stageStatus || 'pending'} onChange={e => patchNode(selectedNode.id, { stageStatus: e.target.value as NodeStageStatus })}>
+            {NODE_STAGE_STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+          </select>
+        </div>
+        <div className="input-group">
+          <label>Tasa de conversión (%)</label>
+          <input className="input" type="number" min={0} max={100} value={selectedNode.conversionRate ?? ''}
+            onChange={e => patchNode(selectedNode.id, { conversionRate: e.target.value === '' ? null : Number(e.target.value) })} />
+        </div>
+        <div className="input-group">
+          <label>Webhook n8n</label>
+          <input className="input" placeholder="https://n8n.tuservidor.com/webhook/..." value={selectedNode.webhookUrl || ''}
+            onChange={e => patchNode(selectedNode.id, { webhookUrl: e.target.value })} />
+        </div>
+        <button className="btn btn-primary btn-sm wb-fire" disabled={!selectedNode.webhookUrl || firing} onClick={() => fire(selectedNode)}>
+          {firing ? <><Loader2 size={14} className="wb-spin" /> Disparando…</> : <><Zap size={14} /> Disparar automatización</>}
+        </button>
+        <p className="wb-panel-hint">Envía el contexto de este nodo a n8n vía POST. Queda logueado.</p>
+      </div>
+    )}
     </div>
   );
 }
