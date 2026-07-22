@@ -606,3 +606,46 @@ export interface NodeEvent {
   responseSummary: string | null; createdAt: number;
 }
 
+// ─── PORTAL DEL CLIENTE (link público con la marca del cliente) ───
+export type DomainStatus = 'none' | 'pending' | 'purchased' | 'pointed' | 'live';
+export const DOMAIN_STATUS_LABELS: Record<DomainStatus, string> = {
+  none: 'Sin definir', pending: 'A definir', purchased: 'Comprado', pointed: 'Apuntando', live: 'En vivo',
+};
+export interface PortalConfig {
+  title?: string;              // título del proyecto que ve el cliente
+  welcome?: string;            // mensaje de bienvenida
+  objectives?: string;         // objetivos (autollenado de discovery.objetivos)
+  brand?: Brand;               // logo + colores del cliente (snapshot, para que no parezca genérico)
+  domain?: string;
+  domainStatus?: DomainStatus;
+  liveUrl?: string;            // link a la web/automatización en vivo cuando está lista
+  designs?: { title: string; url: string }[]; // links a diseños/previews (Drive, Figma, staging)
+  sections?: {                 // qué secciones mostrar (todas true por defecto)
+    objetivos?: boolean; avance?: boolean; actualizaciones?: boolean; disenos?: boolean; tickets?: boolean;
+  };
+}
+export interface ClientPortal {
+  id: string; clientId: string | null; onboardingId: string | null;
+  token: string; enabled: boolean; config: PortalConfig;
+  createdAt: number; updatedAt: number;
+}
+export interface PortalUpdate { id: string; portalId: string; title: string; body: string; createdAt: number; }
+export interface PortalTicket {
+  id: string; portalId: string; title: string; description: string;
+  screenshotPath: string | null; status: 'open' | 'in_progress' | 'resolved';
+  reply: string | null; taskId: string | null; createdAt: number;
+}
+// Estructura que la Edge Function pública `client-portal` devuelve al visor (datos curados)
+export interface PortalBundle {
+  clientName: string;
+  brand: Brand;
+  serviceType: ServiceType | null;
+  config: PortalConfig;
+  phases: { name: string; status: 'done' | 'active' | 'pending'; total: number; done: number }[];
+  progress: number;            // % global
+  tasks: { title: string; done: boolean }[]; // tareas curadas (portal_visible)
+  updates: { title: string; body: string; createdAt: number }[];
+  tickets: { id: string; title: string; description: string; status: string; reply: string | null; createdAt: number }[];
+  driveLink: string;
+}
+

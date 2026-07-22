@@ -1,0 +1,121 @@
+/* Portal del Cliente — hoja de estilos AISLADA (todo scopeado bajo .cp para no tocar el
+   dashboard). Base editorial cálida y clara; el color de acento sale de la marca del
+   cliente (--cp-brand), así cada portal se siente hecho a medida y no genérico. */
+
+.cp {
+  --cp-ink: #191a1e;
+  --cp-paper: #f7f6f2;
+  --cp-card: #ffffff;
+  --cp-muted: #74756f;
+  --cp-line: #e6e4db;
+  --cp-brand: #6366f1;
+  --cp-brand-ink: #ffffff;
+  --cp-serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Times New Roman', serif;
+  --cp-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  min-height: 100vh;
+  background: var(--cp-paper);
+  color: var(--cp-ink);
+  font-family: var(--cp-sans);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+.cp * { box-sizing: border-box; }
+
+.cp-wrap { max-width: 680px; margin: 0 auto; padding: 0 24px 96px; }
+
+/* barra superior */
+.cp-top { display: flex; align-items: center; justify-content: space-between; padding: 28px 0 40px; }
+.cp-logo { height: 34px; max-width: 190px; object-fit: contain; }
+.cp-logo-txt { font-family: var(--cp-serif); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.cp-top-tag { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cp-muted); }
+
+/* tipografía / estructura */
+.cp-eyebrow { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--cp-brand); font-weight: 600; margin: 0 0 14px; }
+.cp-greet { font-family: var(--cp-serif); font-size: clamp(34px, 7vw, 52px); line-height: 1.02; letter-spacing: -0.02em; margin: 0 0 18px; font-weight: 600; }
+.cp-lead { font-size: 18px; line-height: 1.55; color: #45463f; max-width: 52ch; margin: 0; }
+
+.cp-section { padding: 46px 0; border-top: 1px solid var(--cp-line); }
+.cp-section:first-of-type { border-top: none; }
+.cp-h { font-family: var(--cp-serif); font-size: 24px; letter-spacing: -0.01em; margin: 0 0 20px; font-weight: 600; }
+.cp-body { font-size: 16px; line-height: 1.65; color: #3a3b35; white-space: pre-wrap; }
+
+/* objetivo: regla de marca a la izquierda */
+.cp-quote { border-left: 3px solid var(--cp-brand); padding: 4px 0 4px 22px; }
+
+/* LA RUTA — la firma del portal: un recorrido vertical de fases */
+.cp-ruta-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 26px; }
+.cp-progress { font-family: var(--cp-serif); font-size: 30px; font-weight: 600; color: var(--cp-brand); line-height: 1; }
+.cp-progress span { font-size: 14px; color: var(--cp-muted); font-family: var(--cp-sans); margin-left: 2px; }
+
+.cp-ruta { position: relative; margin: 0; padding: 0; list-style: none; }
+.cp-phase { position: relative; padding: 0 0 26px 40px; }
+.cp-phase:last-child { padding-bottom: 0; }
+/* línea vertical que une los puntos */
+.cp-phase::before { content: ''; position: absolute; left: 11px; top: 22px; bottom: -4px; width: 2px; background: var(--cp-line); }
+.cp-phase:last-child::before { display: none; }
+.cp-dot { position: absolute; left: 0; top: 0; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--cp-line); background: var(--cp-card); display: flex; align-items: center; justify-content: center; }
+.cp-phase.done .cp-dot { background: var(--cp-brand); border-color: var(--cp-brand); color: var(--cp-brand-ink); }
+.cp-phase.done::before { background: var(--cp-brand); }
+.cp-phase.active .cp-dot { border-color: var(--cp-brand); box-shadow: 0 0 0 5px color-mix(in srgb, var(--cp-brand) 16%, transparent); animation: cp-pulse 2.4s ease-in-out infinite; }
+.cp-phase-name { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.cp-phase.pending .cp-phase-name { color: var(--cp-muted); font-weight: 500; }
+.cp-phase-meta { font-size: 13px; color: var(--cp-muted); margin-top: 2px; }
+.cp-phase.active .cp-phase-meta { color: var(--cp-brand); font-weight: 600; }
+
+@keyframes cp-pulse { 0%, 100% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--cp-brand) 16%, transparent); } 50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--cp-brand) 6%, transparent); } }
+
+/* lo que sigue (tareas curadas) */
+.cp-next { margin-top: 30px; background: var(--cp-card); border: 1px solid var(--cp-line); border-radius: 14px; padding: 20px 22px; }
+.cp-next-h { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cp-muted); font-weight: 600; margin: 0 0 12px; }
+.cp-next ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.cp-next li { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; }
+.cp-next li::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--cp-brand); margin-top: 7px; flex-shrink: 0; }
+
+/* novedades */
+.cp-update { padding: 22px 0; border-top: 1px dashed var(--cp-line); }
+.cp-update:first-child { border-top: none; padding-top: 0; }
+.cp-update-date { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cp-muted); margin-bottom: 6px; }
+.cp-update-title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 6px; }
+.cp-update-body { font-size: 15px; line-height: 1.6; color: #47483f; white-space: pre-wrap; }
+
+/* archivos / links */
+.cp-files { display: flex; flex-direction: column; gap: 10px; }
+.cp-file { display: flex; align-items: center; gap: 14px; padding: 15px 18px; background: var(--cp-card); border: 1px solid var(--cp-line); border-radius: 13px; text-decoration: none; color: var(--cp-ink); transition: border-color 0.15s, transform 0.1s; }
+.cp-file:hover { border-color: var(--cp-brand); transform: translateY(-1px); }
+.cp-file-ic { width: 20px; height: 20px; color: var(--cp-brand); flex-shrink: 0; }
+.cp-file-tt { font-size: 15px; font-weight: 600; }
+.cp-file-sb { font-size: 13px; color: var(--cp-muted); }
+.cp-file-arrow { margin-left: auto; color: var(--cp-muted); }
+
+.cp-domain { display: inline-flex; align-items: center; gap: 8px; padding: 15px 18px; background: var(--cp-card); border: 1px solid var(--cp-line); border-radius: 13px; }
+.cp-pill { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+
+/* CTA en vivo + correcciones */
+.cp-live { display: inline-flex; align-items: center; gap: 10px; background: var(--cp-brand); color: var(--cp-brand-ink); font-weight: 600; font-size: 16px; padding: 15px 26px; border-radius: 13px; text-decoration: none; }
+.cp-fix { background: var(--cp-card); border: 1px solid var(--cp-line); border-radius: 16px; padding: 26px; }
+.cp-fix p { margin: 0 0 16px; color: #45463f; }
+.cp-wa { display: inline-flex; align-items: center; gap: 9px; background: #25d366; color: #062b13; font-weight: 700; font-size: 15px; padding: 12px 22px; border-radius: 12px; text-decoration: none; }
+
+/* footer */
+.cp-foot { text-align: center; padding: 40px 0 0; border-top: 1px solid var(--cp-line); margin-top: 46px; color: var(--cp-muted); font-size: 13px; }
+.cp-foot strong { color: var(--cp-ink); font-weight: 600; }
+
+/* estados */
+.cp-center { min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; }
+.cp-center h1 { font-family: var(--cp-serif); font-size: 28px; margin: 0 0 10px; }
+.cp-center p { color: var(--cp-muted); margin: 0; }
+
+/* entrada escalonada */
+.cp-rise { opacity: 0; transform: translateY(14px); animation: cp-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+@keyframes cp-rise { to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cp-rise { animation: none; opacity: 1; transform: none; }
+  .cp-phase.active .cp-dot { animation: none; }
+}
+
+@media (max-width: 560px) {
+  .cp-wrap { padding: 0 18px 72px; }
+  .cp-section { padding: 38px 0; }
+}

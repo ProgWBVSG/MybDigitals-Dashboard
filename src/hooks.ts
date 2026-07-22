@@ -4,7 +4,8 @@ import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
   type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic,
   type ContentPost, type ContentSource, type Competitor,
-  type Note, type Whiteboard, type BoardData, EMPTY_BOARD_DATA, REPEAT_LABELS, type NodeEvent, type BoardNode } from './utils';
+  type Note, type Whiteboard, type BoardData, EMPTY_BOARD_DATA, REPEAT_LABELS, type NodeEvent, type BoardNode,
+  type ClientPortal, type PortalConfig, type PortalUpdate, type PortalTicket } from './utils';
 import { getPlaybook } from './playbooks';
 import { GUIDE_SEED } from './guideSeed';
 import { supabase } from './supabase';
@@ -1164,6 +1165,93 @@ export async function fireNodeWebhook(boardId: string, node: BoardNode): Promise
   });
   toast(ok ? `Webhook disparado (${summary})` : `Falló el webhook: ${summary}`, ok ? 'success' : 'error');
   return { ok, summary };
+}
+
+// ─── PORTAL DEL CLIENTE (lado interno / dashboard) ───
+export function usePortals() {
+  const [portals, setPortals] = useState<ClientPortal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('client_portals').select('*').order('updated_at', { ascending: false });
+    if (data) setPortals(data.map(mapToCamel) as ClientPortal[]);
+    setLoading(false);
+  }, []);
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('portals_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'client_portals' }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+
+  // Crea el portal autollenando desde el cliente/onboarding (objetivos del discovery, dominio,
+  // marca de la propuesta si existe). Devuelve el token del link.
+  const create = async (clientId: string, opts: { onboardingId?: string | null; config?: PortalConfig } = {}): Promise<string | null> => {
+    const token = uuid() + uuid().replace(/-/g, ''); // token largo, difícil de adivinar
+    const { error } = await supabase.from('client_portals').insert({
+      client_id: clientId, onboarding_id: opts.onboardingId || null, token, enabled: true, config: opts.config || {},
+    });
+    if (error) { toast('No se pudo crear el portal: ' + error.message, 'error'); return null; }
+    toast('Portal creado'); return token;
+  };
+  const updateConfig = async (id: string, config: PortalConfig) => {
+    const { error } = await supabase.from('client_portals').update({ config, updated_at: Date.now() }).eq('id', id);
+    if (error) toast('No se pudo guardar: ' + error.message, 'error');
+  };
+  const setEnabled = async (id: string, enabled: boolean) => {
+    await supabase.from('client_portals').update({ enabled, updated_at: Date.now() }).eq('id', id);
+    toast(enabled ? 'Portal activado' : 'Portal pausado');
+  };
+  const regenerateToken = async (id: string): Promise<string | null> => {
+    const token = uuid() + uuid().replace(/-/g, '');
+    const { error } = await supabase.from('client_portals').update({ token, updated_at: Date.now() }).eq('id', id);
+    if (error) { toast('No se pudo regenerar el link', 'error'); return null; }
+    toast('Link regenerado — el anterior dejó de funcionar');
+    return token;
+  };
+  const remove = async (id: string) => { await supabase.from('client_portals').delete().eq('id', id); toast('Portal eliminado'); };
+
+  return { portals, loading, create, updateConfig, setEnabled, regenerateToken, remove, refresh: load };
+}
+
+// Actualizaciones que publica MYB (timeline que ve el cliente)
+export function usePortalUpdates(portalId: string | null) {
+  const [updates, setUpdates] = useState<PortalUpdate[]>([]);
+  const load = useCallback(async () => {
+    if (!portalId) { setUpdates([]); return; }
+    const { data } = await supabase.from('portal_updates').select('*').eq('portal_id', portalId).order('created_at', { ascending: false });
+    if (data) setUpdates(data.map(mapToCamel) as PortalUpdate[]);
+  }, [portalId]);
+  useEffect(() => {
+    load();
+    if (!portalId) return;
+    const ch = supabase.channel('portal_updates_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'portal_updates' }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load, portalId]);
+  const add = async (portalId: string, title: string, body: string) => {
+    const { error } = await supabase.from('portal_updates').insert({ portal_id: portalId, title, body, created_at: Date.now() });
+    if (error) toast('No se pudo publicar: ' + error.message, 'error'); else toast('Actualización publicada');
+  };
+  const remove = async (id: string) => { await supabase.from('portal_updates').delete().eq('id', id); };
+  return { updates, add, remove, refresh: load };
+}
+
+// Tickets (correcciones/errores) que sube el cliente; MYB los ve y responde
+export function usePortalTickets(portalId: string | null) {
+  const [tickets, setTickets] = useState<PortalTicket[]>([]);
+  const load = useCallback(async () => {
+    if (!portalId) { setTickets([]); return; }
+    const { data } = await supabase.from('portal_tickets').select('*').eq('portal_id', portalId).order('created_at', { ascending: false });
+    if (data) setTickets(data.map(mapToCamel) as PortalTicket[]);
+  }, [portalId]);
+  useEffect(() => {
+    load();
+    if (!portalId) return;
+    const ch = supabase.channel('portal_tickets_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'portal_tickets' }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load, portalId]);
+  const update = async (id: string, patch: Partial<PortalTicket>) => {
+    await supabase.from('portal_tickets').update(mapToSnake(patch)).eq('id', id);
+  };
+  return { tickets, update, refresh: load };
 }
 
 // ─── EXCHANGE RATE HOOK ───

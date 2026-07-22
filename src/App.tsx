@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target, LogOut, Bell, SlidersHorizontal, History as HistoryIcon, BookOpen, Smartphone, MapPin, Swords, ChevronLeft, ChevronRight, Lightbulb, GitBranch } from 'lucide-react';
+import { Layers, LayoutGrid, CalendarDays, BarChart3, Users, CheckCircle2, Rocket, Target, LogOut, Bell, SlidersHorizontal, History as HistoryIcon, BookOpen, Smartphone, MapPin, Swords, ChevronLeft, ChevronRight, Lightbulb, GitBranch, DoorOpen } from 'lucide-react';
 import { supabase } from './supabase';
 import { useToastProvider, useNotifications } from './hooks';
 import Skills from './Skills';
@@ -11,6 +11,7 @@ import Clients from './Clients';
 import Onboarding from './Onboarding';
 import PreVenta from './PreVenta';
 import ProposalView from './ProposalView';
+import ClientPortalView from './ClientPortalView';
 import Notifications from './Notifications';
 import SettingsView from './Settings';
 import History from './History';
@@ -21,13 +22,17 @@ import LeadFinder from './LeadFinder';
 import Competitors from './Competitors';
 import Notes from './Notes';
 import Estrategia from './Estrategia';
+import Portals from './Portals';
 import './index.css';
 
-type Tab = 'metrics' | 'preventa' | 'buscar' | 'competencia' | 'onboarding' | 'notas' | 'estrategia' | 'tasks' | 'calendar' | 'clients' | 'history' | 'guide' | 'skills' | 'notifications' | 'settings' | 'content';
+type Tab = 'metrics' | 'preventa' | 'buscar' | 'competencia' | 'onboarding' | 'notas' | 'estrategia' | 'tasks' | 'calendar' | 'clients' | 'portales' | 'history' | 'guide' | 'skills' | 'notifications' | 'settings' | 'content';
 
 export default function App() {
-  // Link público de propuesta: muestra SOLO el deck, sin sesión ni acceso al dashboard.
-  const proposalToken = new URL(window.location.href).searchParams.get('p');
+  // Links públicos: propuesta (deck) y portal del cliente. Se resuelven ANTES de la sesión,
+  // así el cliente ve SOLO eso, sin acceso ni link al dashboard.
+  const params = new URL(window.location.href).searchParams;
+  const proposalToken = params.get('p');
+  const portalToken = params.get('portal');
 
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
@@ -39,6 +44,7 @@ export default function App() {
   }, []);
 
   if (proposalToken) return <ProposalView token={proposalToken} />;
+  if (portalToken) return <ClientPortalView token={portalToken} />;
   if (!ready) return null; // evita parpadeo del login mientras carga la sesión
   if (!session) return <Login />;
 
@@ -114,6 +120,9 @@ function Dashboard() {
           <button className={tab === 'clients' ? 'active' : ''} onClick={() => setTab('clients')}>
             <Users size={16} /> Clientes
           </button>
+          <button className={tab === 'portales' ? 'active' : ''} onClick={() => setTab('portales')}>
+            <DoorOpen size={16} /> Portales
+          </button>
           <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>
             <HistoryIcon size={16} /> Historial
           </button>
@@ -156,6 +165,7 @@ function Dashboard() {
         {tab === 'tasks' && <Tasks />}
         {tab === 'calendar' && <CalendarView />}
         {tab === 'clients' && <Clients />}
+        {tab === 'portales' && <Portals />}
         {tab === 'history' && <History />}
         {tab === 'guide' && <Guide />}
         {tab === 'content' && <Content />}
