@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
 import {
-  DoorOpen, Plus, Copy, ExternalLink, Pencil, Trash2, RefreshCw, Power, X, Check,
+  DoorOpen, Plus, Copy, ExternalLink, Pencil, Trash2, RefreshCw, Power, X, Check, Megaphone,
 } from 'lucide-react';
-import { usePortals, useClients, useOnboardings, toast } from './hooks';
+import { usePortals, useClients, useOnboardings, usePortalUpdates, toast } from './hooks';
 import { supabase } from './supabase';
-import { DOMAIN_STATUS_LABELS, type ClientPortal, type PortalConfig, type DomainStatus, type Brand } from './utils';
+import { DOMAIN_STATUS_LABELS, fmt, fmtRel, type ClientPortal, type PortalConfig, type DomainStatus, type Brand } from './utils';
 
 const portalLink = (token: string) => `${window.location.origin}/?portal=${token}`;
 const SECTIONS: { key: keyof NonNullable<PortalConfig['sections']>; label: string }[] = [
@@ -20,6 +20,7 @@ export default function Portals() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<ClientPortal | null>(null);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  const [updatesFor, setUpdatesFor] = useState<ClientPortal | null>(null);
 
   const clientName = (id: string | null) => clients.find(c => c.id === id)?.name || 'Cliente';
 
@@ -54,6 +55,7 @@ export default function Portals() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
                 <button className="btn btn-secondary btn-sm" onClick={() => copy(p.token)}><Copy size={13} /> Copiar link</button>
                 <a className="btn btn-ghost btn-sm" href={portalLink(p.token)} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Ver</a>
+                <button className="btn btn-ghost btn-sm" onClick={() => setUpdatesFor(p)}><Megaphone size={13} /> Novedades</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => setEditing(p)}><Pencil size={13} /> Editar</button>
                 <button className="btn btn-ghost btn-icon btn-sm" title={p.enabled ? 'Pausar' : 'Activar'} onClick={() => setEnabled(p.id, !p.enabled)}><Power size={14} /></button>
                 <button className="btn btn-ghost btn-icon btn-sm" title="Eliminar" onClick={() => setConfirmDel(p.id)}><Trash2 size={14} /></button>
@@ -96,6 +98,79 @@ export default function Portals() {
           </div>
         </div>
       )}
+
+      {updatesFor && (
+        <UpdatesModal portal={updatesFor} clientName={clientName(updatesFor.clientId)} onClose={() => setUpdatesFor(null)} />
+      )}
+    </div>
+  );
+}
+
+// ─── Novedades (timeline que ve el cliente en su portal) ───
+function UpdatesModal({ portal, clientName, onClose }: { portal: ClientPortal; clientName: string; onClose: () => void }) {
+  const { updates, add, remove } = usePortalUpdates(portal.id);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const publish = async () => {
+    if (!title.trim()) { toast('Ponele un título a la novedad', 'error'); return; }
+    setBusy(true);
+    await add(portal.id, title.trim(), body.trim());
+    setBusy(false);
+    setTitle(''); setBody('');
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520, maxHeight: '88vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0 }}>Novedades — {clientName}</h2>
+          <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={16} /></button>
+        </div>
+        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '6px 0 16px' }}>
+          Aparece al toque en su portal, ordenado por fecha. Ej: "Subimos la web a staging", "Terminamos el diseño de la home".
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20, paddingBottom: 18, borderBottom: '1px solid var(--border)' }}>
+          <input className="input" placeholder="Título de la novedad" value={title} onChange={e => setTitle(e.target.value)} />
+          <textarea className="input" rows={3} placeholder="Detalle (opcional) — podés pegar un link" value={body} onChange={e => setBody(e.target.value)} />
+          <button className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={publish} disabled={busy}>
+            <Megaphone size={13} /> {busy ? 'Publicando…' : 'Publicar novedad'}
+          </button>
+        </div>
+
+        {updates.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>Todavía no publicaste ninguna novedad.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {updates.map(u => (
+              <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>{fmt(u.createdAt)} · {fmtRel(u.createdAt)}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{u.title}</div>
+                  {u.body && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3, whiteSpace: 'pre-wrap' }}>{u.body}</div>}
+                </div>
+                <button className="btn btn-ghost btn-icon btn-sm" style={{ flexShrink: 0 }} onClick={() => setConfirmDel(u.id)}><Trash2 size={13} /></button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {confirmDel && (
+          <div className="modal-overlay" onClick={() => setConfirmDel(null)} style={{ zIndex: 60 }}>
+            <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 340 }}>
+              <h2>¿Borrar esta novedad?</h2>
+              <p className="confirm-text">Desaparece del portal del cliente.</p>
+              <div className="modal-actions">
+                <button className="btn btn-secondary" onClick={() => setConfirmDel(null)}>Cancelar</button>
+                <button className="btn btn-danger" onClick={() => { remove(confirmDel); setConfirmDel(null); }}>Borrar</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
