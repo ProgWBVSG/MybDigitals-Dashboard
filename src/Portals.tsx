@@ -1,10 +1,17 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   DoorOpen, Plus, Copy, ExternalLink, Pencil, Trash2, RefreshCw, Power, X, Check, Megaphone,
+  MessageSquareWarning, Image as ImageIcon, ListPlus, CheckCircle2,
 } from 'lucide-react';
-import { usePortals, useClients, useOnboardings, usePortalUpdates, toast } from './hooks';
+import { usePortals, useClients, useOnboardings, useTasks, usePortalUpdates, usePortalTickets, portalUploadSignedUrl, toast } from './hooks';
 import { supabase } from './supabase';
-import { DOMAIN_STATUS_LABELS, fmt, fmtRel, type ClientPortal, type PortalConfig, type DomainStatus, type Brand } from './utils';
+import { DOMAIN_STATUS_LABELS, fmt, fmtRel, type ClientPortal, type PortalConfig, type DomainStatus, type Brand, type PortalTicket } from './utils';
+
+const TICKET_STATUS: { key: PortalTicket['status']; label: string; color: string }[] = [
+  { key: 'open', label: 'Sin ver', color: '#ef4444' },
+  { key: 'in_progress', label: 'En curso', color: '#3b82f6' },
+  { key: 'resolved', label: 'Resuelto', color: '#10b981' },
+];
 
 const portalLink = (token: string) => `${window.location.origin}/?portal=${token}`;
 const SECTIONS: { key: keyof NonNullable<PortalConfig['sections']>; label: string }[] = [
@@ -21,6 +28,7 @@ export default function Portals() {
   const [editing, setEditing] = useState<ClientPortal | null>(null);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [updatesFor, setUpdatesFor] = useState<ClientPortal | null>(null);
+  const [ticketsFor, setTicketsFor] = useState<ClientPortal | null>(null);
 
   const clientName = (id: string | null) => clients.find(c => c.id === id)?.name || 'Cliente';
 
@@ -56,6 +64,7 @@ export default function Portals() {
                 <button className="btn btn-secondary btn-sm" onClick={() => copy(p.token)}><Copy size={13} /> Copiar link</button>
                 <a className="btn btn-ghost btn-sm" href={portalLink(p.token)} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Ver</a>
                 <button className="btn btn-ghost btn-sm" onClick={() => setUpdatesFor(p)}><Megaphone size={13} /> Novedades</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setTicketsFor(p)}><MessageSquareWarning size={13} /> Correcciones</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => setEditing(p)}><Pencil size={13} /> Editar</button>
                 <button className="btn btn-ghost btn-icon btn-sm" title={p.enabled ? 'Pausar' : 'Activar'} onClick={() => setEnabled(p.id, !p.enabled)}><Power size={14} /></button>
                 <button className="btn btn-ghost btn-icon btn-sm" title="Eliminar" onClick={() => setConfirmDel(p.id)}><Trash2 size={14} /></button>
@@ -101,6 +110,10 @@ export default function Portals() {
 
       {updatesFor && (
         <UpdatesModal portal={updatesFor} clientName={clientName(updatesFor.clientId)} onClose={() => setUpdatesFor(null)} />
+      )}
+
+      {ticketsFor && (
+        <TicketsModal portal={ticketsFor} clientName={clientName(ticketsFor.clientId)} onClose={() => setTicketsFor(null)} />
       )}
     </div>
   );
@@ -318,6 +331,91 @@ function EditModal({ portal, clientName, onClose, onSave, onRegen }: {
           <button className="btn btn-primary" onClick={() => onSave(c)}>Guardar</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Correcciones (bandeja de tickets que sube el cliente, con captura) ───
+function TicketsModal({ portal, clientName, onClose }: { portal: ClientPortal; clientName: string; onClose: () => void }) {
+  const { tickets, update } = usePortalTickets(portal.id);
+  const { boards, createCard } = useTasks();
+
+  const createTask = async (t: PortalTicket) => {
+    const board = boards[0];
+    if (!board) { toast('Creá primero un tablero en Tasks', 'error'); return; }
+    const firstCol = [...board.columns].sort((a, b) => a.order - b.order)[0];
+    const id = await createCard({
+      boardId: board.id, columnId: firstCol.id, title: t.title, description: t.description,
+      assignedTo: [], priority: 'medium', dueDate: null, tags: ['portal'],
+      clientId: portal.clientId, portalVisible: false,
+    });
+    if (id) { await update(t.id, { taskId: id }); toast('Tarea creada en ' + board.name); }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560, maxHeight: '88vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0 }}>Correcciones — {clientName}</h2>
+          <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={16} /></button>
+        </div>
+        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: '6px 0 16px' }}>Lo que el cliente reporta desde su portal, con captura si adjuntó.</p>
+
+        {tickets.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Todavía no hay correcciones reportadas.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {tickets.map(t => (
+              <TicketRow key={t.id} ticket={t} onUpdate={patch => update(t.id, patch)} onCreateTask={() => createTask(t)} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TicketRow({ ticket, onUpdate, onCreateTask }: { ticket: PortalTicket; onUpdate: (p: Partial<PortalTicket>) => void; onCreateTask: () => void }) {
+  const [reply, setReply] = useState(ticket.reply || '');
+  const [shotUrl, setShotUrl] = useState<string | null>(null);
+  const st = TICKET_STATUS.find(s => s.key === ticket.status) || TICKET_STATUS[0];
+
+  useEffect(() => {
+    let on = true;
+    if (ticket.screenshotPath) portalUploadSignedUrl(ticket.screenshotPath).then(u => { if (on) setShotUrl(u); });
+    return () => { on = false; };
+  }, [ticket.screenshotPath]);
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
+        <strong style={{ fontSize: 14.5 }}>{ticket.title}</strong>
+        <span className="ig-badge soft" style={{ background: `${st.color}22`, color: st.color, flexShrink: 0 }}>{st.label}</span>
+      </div>
+      {ticket.description && <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 0 8px', whiteSpace: 'pre-wrap' }}>{ticket.description}</p>}
+      {ticket.screenshotPath && (
+        shotUrl
+          ? <a href={shotUrl} target="_blank" rel="noreferrer"><img src={shotUrl} alt="captura" style={{ maxHeight: 130, borderRadius: 8, border: '1px solid var(--border)', marginBottom: 10 }} /></a>
+          : <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}><ImageIcon size={14} /> Cargando captura…</div>
+      )}
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>{fmt(ticket.createdAt)} · {fmtRel(ticket.createdAt)}</div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+        {TICKET_STATUS.map(s => (
+          <button key={s.key} className="ig-badge" style={{ cursor: 'pointer', border: 'none', background: ticket.status === s.key ? s.color : 'var(--bg-hover)', color: ticket.status === s.key ? '#fff' : 'var(--text-muted)' }}
+            onClick={() => onUpdate({ status: s.key })}>{s.label}</button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input className="input" style={{ flex: 1 }} placeholder="Responderle al cliente…" value={reply} onChange={e => setReply(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && reply.trim() !== (ticket.reply || '') && onUpdate({ reply: reply.trim() })} />
+        <button className="btn btn-secondary btn-sm" onClick={() => onUpdate({ reply: reply.trim() })}><CheckCircle2 size={13} /> Guardar</button>
+      </div>
+
+      <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={onCreateTask} disabled={!!ticket.taskId}>
+        <ListPlus size={13} /> {ticket.taskId ? 'Ya tiene una tarea creada' : 'Crear Task'}
+      </button>
     </div>
   );
 }

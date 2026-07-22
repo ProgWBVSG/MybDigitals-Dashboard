@@ -146,6 +146,8 @@ export interface TaskCard {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   dueDate: number | null; tags: string[];
   createdAt: number; updatedAt: number; order: number;
+  clientId?: string | null;      // para curar qué tareas ve el cliente en su portal
+  portalVisible?: boolean;
 }
 
 export interface CalEvent {
@@ -643,9 +645,11 @@ export interface PortalBundle {
   config: PortalConfig;
   phases: { name: string; status: 'done' | 'active' | 'pending'; total: number; done: number }[];
   progress: number;            // % global
-  tasks: { title: string; done: boolean }[]; // tareas curadas (portal_visible)
+  tasks: { title: string; done: boolean; dueDate: number | null }[]; // tareas curadas (portal_visible)
+  setupSteps: { title: string; done: boolean }[]; // primeros pasos que dependen del cliente (owner='client')
   updates: { title: string; body: string; createdAt: number }[];
-  tickets: { id: string; title: string; description: string; status: string; reply: string | null; createdAt: number }[];
+  tickets: { id: string; title: string; description: string; status: string; reply: string | null; screenshotUrl: string | null; createdAt: number }[];
   driveLink: string;
+  keyDates: { label: string; date: number }[]; // hitos reales (inicio, lanzamiento) para el widget de fechas
 }
 

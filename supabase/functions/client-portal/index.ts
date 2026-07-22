@@ -20,7 +20,19 @@ const rest = async (path: string) => {
   return res.json();
 };
 
-interface StepRow { phase: number; phase_name: string; status: string; is_optional: boolean }
+const signReceipt = async (bucket: string, path: string): Promise<string | null> => {
+  try {
+    const res = await fetch(`${SUPA_URL}/storage/v1/object/sign/${bucket}/${path}`, {
+      method: 'POST',
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expiresIn: 3600 }),
+    });
+    const d = await res.json();
+    return d?.signedURL ? `${SUPA_URL}/storage/v1${d.signedURL}` : null;
+  } catch { return null; }
+};
+
+interface StepRow { phase: number; phase_name: string; status: string; is_optional: boolean; owner: string; title: string }
 
 function buildPhases(steps: StepRow[]) {
   const byPhase = new Map<number, { name: string; total: number; done: number; anyProgress: boolean }>();
@@ -72,41 +84,71 @@ Deno.serve(async (req) => {
       if (Array.isArray(cs) && cs[0]?.name) clientName = cs[0].name;
     }
 
-    // Onboarding (tipo de servicio, drive, fases desde los pasos)
+    // Onboarding: tipo de servicio, drive, fases + setup steps + fechas reales
     let serviceType: string | null = null;
     let driveLink = '';
     let phases: ReturnType<typeof buildPhases>['phases'] = [];
     let progress = 0;
+    let setupSteps: { title: string; done: boolean }[] = [];
+    const keyDates: { label: string; date: number }[] = [];
     if (portal.onboarding_id) {
-      const obs = await rest(`onboardings?id=eq.${portal.onboarding_id}&select=service_type,drive_root_link`);
+      const obs = await rest(`onboardings?id=eq.${portal.onboarding_id}&select=service_type,drive_root_link,started_at,launched_at`);
       const ob = Array.isArray(obs) ? obs[0] : null;
-      if (ob) { serviceType = ob.service_type || null; driveLink = ob.drive_root_link || ''; }
-      const steps = await rest(`onboarding_steps?onboarding_id=eq.${portal.onboarding_id}&select=phase,phase_name,status,is_optional&order=phase.asc`);
-      if (Array.isArray(steps)) { const r = buildPhases(steps as StepRow[]); phases = r.phases; progress = r.progress; }
+      if (ob) {
+        serviceType = ob.service_type || null;
+        driveLink = ob.drive_root_link || '';
+        if (ob.started_at) keyDates.push({ label: 'Arrancamos', date: Number(ob.started_at) });
+        if (ob.launched_at) keyDates.push({ label: 'Lanzamiento', date: Number(ob.launched_at) });
+      }
+      const steps = await rest(`onboarding_steps?onboarding_id=eq.${portal.onboarding_id}&select=phase,phase_name,status,is_optional,owner,title&order=order.asc`);
+      if (Array.isArray(steps)) {
+        const r = buildPhases(steps as StepRow[]); phases = r.phases; progress = r.progress;
+        // "Primeros pasos": lo que depende del cliente (owner='client'), primeros 5
+        setupSteps = (steps as StepRow[])
+          .filter(s => s.owner === 'client' && s.status !== 'skipped')
+          .slice(0, 5)
+          .map(s => ({ title: s.title, done: s.status === 'done' }));
+      }
     }
 
-    // Tareas curadas (visibles al cliente)
-    let tasks: { title: string; done: boolean }[] = [];
+    // Tareas curadas (visibles al cliente) — con estado real (columna del tablero)
+    let tasks: { title: string; done: boolean; dueDate: number | null }[] = [];
     if (portal.client_id) {
-      const ts = await rest(`tasks?client_id=eq.${portal.client_id}&portal_visible=eq.true&select=title,column_id&order=order.asc`);
-      if (Array.isArray(ts)) tasks = ts.map((t: { title: string }) => ({ title: t.title, done: false }));
+      const ts = await rest(`tasks?client_id=eq.${portal.client_id}&portal_visible=eq.true&select=title,column_id,board_id,due_date&order=order.asc`);
+      if (Array.isArray(ts) && ts.length > 0) {
+        const boardIds = [...new Set(ts.map((t: { board_id: string }) => t.board_id))];
+        const doneColIds = new Set<string>();
+        for (const bId of boardIds) {
+          const boards = await rest(`boards?id=eq.${bId}&select=columns`);
+          const cols = Array.isArray(boards) && boards[0]?.columns ? boards[0].columns : [];
+          for (const c of cols) if (String(c.name).toLowerCase().includes('completado')) doneColIds.add(c.id);
+        }
+        tasks = ts.map((t: { title: string; column_id: string; due_date: number | null }) => ({
+          title: t.title, done: doneColIds.has(t.column_id), dueDate: t.due_date ? Number(t.due_date) : null,
+        }));
+      }
     }
 
-    // Actualizaciones + tickets del propio portal
+    // Actualizaciones
     const updatesRaw = await rest(`portal_updates?portal_id=eq.${portal.id}&select=title,body,created_at&order=created_at.desc`);
     const updates = Array.isArray(updatesRaw) ? updatesRaw : [];
-    const ticketsRaw = await rest(`portal_tickets?portal_id=eq.${portal.id}&select=id,title,description,status,reply,created_at&order=created_at.desc`);
-    const tickets = Array.isArray(ticketsRaw) ? ticketsRaw.map((t: Record<string, unknown>) => ({
-      id: t.id, title: t.title, description: t.description, status: t.status, reply: t.reply, createdAt: Number(t.created_at),
-    })) : [];
+
+    // Tickets (correcciones) — con URL firmada de la captura si tiene
+    const ticketsRaw = await rest(`portal_tickets?portal_id=eq.${portal.id}&select=id,title,description,status,reply,screenshot_path,created_at&order=created_at.desc`);
+    const ticketsList = Array.isArray(ticketsRaw) ? ticketsRaw : [];
+    const tickets = await Promise.all(ticketsList.map(async (t: Record<string, unknown>) => ({
+      id: t.id, title: t.title, description: t.description, status: t.status, reply: t.reply,
+      screenshotUrl: t.screenshot_path ? await signReceipt('portal-uploads', String(t.screenshot_path)) : null,
+      createdAt: Number(t.created_at),
+    })));
 
     return json({
       ok: true,
       bundle: {
         clientName, brand: config.brand || {}, serviceType, config,
-        phases, progress, tasks,
+        phases, progress, tasks, setupSteps,
         updates: updates.map((u: Record<string, unknown>) => ({ title: u.title, body: u.body, createdAt: Number(u.created_at) })),
-        tickets, driveLink,
+        tickets, driveLink, keyDates,
       },
     });
   } catch (e) {

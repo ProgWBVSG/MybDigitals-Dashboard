@@ -188,11 +188,12 @@ export function useTasks() {
     }
   };
 
-  const createCard = async (data: Omit<TaskCard, 'id' | 'createdAt' | 'updatedAt' | 'order'>) => {
+  const createCard = async (data: Omit<TaskCard, 'id' | 'createdAt' | 'updatedAt' | 'order'>): Promise<string | null> => {
     const payload = { ...data, order: Date.now() };
-    const { error } = await supabase.from('tasks').insert([mapToSnake(payload)]);
-    if (error) toast('Error al crear tarea', 'error');
-    else toast('Tarea creada');
+    const { data: row, error } = await supabase.from('tasks').insert([mapToSnake(payload)]).select('id').single();
+    if (error) { toast('Error al crear tarea', 'error'); return null; }
+    toast('Tarea creada');
+    return row?.id as string;
   };
 
   const updateCard = async (id: string, updates: Partial<TaskCard>) => {
@@ -1253,6 +1254,12 @@ export function usePortalTickets(portalId: string | null) {
   };
   return { tickets, update, refresh: load };
 }
+
+// URL firmada de la captura de un ticket, para verla del lado MYB (autenticado)
+export const portalUploadSignedUrl = async (path: string): Promise<string | null> => {
+  const { data } = await supabase.storage.from('portal-uploads').createSignedUrl(path, 3600);
+  return data?.signedUrl || null;
+};
 
 // ─── EXCHANGE RATE HOOK ───
 export function useExchangeRate() {
