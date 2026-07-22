@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
   DoorOpen, Plus, Copy, ExternalLink, Pencil, Trash2, RefreshCw, Power, X, Check, Megaphone,
-  MessageSquareWarning, Image as ImageIcon, ListPlus, CheckCircle2,
+  MessageSquareWarning, Image as ImageIcon, ListPlus, CheckCircle2, Eye, Lock, Shuffle,
 } from 'lucide-react';
-import { usePortals, useClients, useOnboardings, useTasks, usePortalUpdates, usePortalTickets, portalUploadSignedUrl, toast } from './hooks';
+import { usePortals, useClients, useOnboardings, useTasks, usePortalUpdates, usePortalTickets, usePortalViews, portalUploadSignedUrl, toast } from './hooks';
 import { supabase } from './supabase';
 import { DOMAIN_STATUS_LABELS, fmt, fmtRel, type ClientPortal, type PortalConfig, type DomainStatus, type Brand, type PortalTicket } from './utils';
 
@@ -21,14 +21,18 @@ const SECTIONS: { key: keyof NonNullable<PortalConfig['sections']>; label: strin
 ];
 
 export default function Portals() {
-  const { portals, create, updateConfig, setEnabled, regenerateToken, remove } = usePortals();
+  const { portals, create, updateConfig, setEnabled, regenerateToken, setPin, remove } = usePortals();
   const { clients } = useClients();
   const { onboardings } = useOnboardings();
   const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<ClientPortal | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
-  const [updatesFor, setUpdatesFor] = useState<ClientPortal | null>(null);
-  const [ticketsFor, setTicketsFor] = useState<ClientPortal | null>(null);
+  const [updatesForId, setUpdatesForId] = useState<string | null>(null);
+  const [ticketsForId, setTicketsForId] = useState<string | null>(null);
+  // Siempre el portal "vivo" (con realtime), no una foto fija del momento en que se abrió el modal
+  const editing = portals.find(p => p.id === editingId) || null;
+  const updatesFor = portals.find(p => p.id === updatesForId) || null;
+  const ticketsFor = portals.find(p => p.id === ticketsForId) || null;
 
   const clientName = (id: string | null) => clients.find(c => c.id === id)?.name || 'Cliente';
 
@@ -54,18 +58,19 @@ export default function Portals() {
           {portals.map(p => (
             <div key={p.id} className="strat-card" style={{ cursor: 'default' }}>
               <div className="strat-card-top">
-                <strong>{clientName(p.clientId)}</strong>
+                <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{clientName(p.clientId)}{p.pin && <span title="Con PIN" style={{ display: 'inline-flex', color: 'var(--text-muted)' }}><Lock size={11} /></span>}</strong>
                 <span className="ig-badge soft" style={{ background: p.enabled ? '#10b98122' : '#64748b22', color: p.enabled ? '#10b981' : '#64748b' }}>
                   {p.enabled ? 'Activo' : 'Pausado'}
                 </span>
               </div>
               <div className="strat-card-meta">{p.config.title || 'Portal del cliente'}</div>
+              <ViewsStat portalId={p.id} />
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
                 <button className="btn btn-secondary btn-sm" onClick={() => copy(p.token)}><Copy size={13} /> Copiar link</button>
                 <a className="btn btn-ghost btn-sm" href={portalLink(p.token)} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Ver</a>
-                <button className="btn btn-ghost btn-sm" onClick={() => setUpdatesFor(p)}><Megaphone size={13} /> Novedades</button>
-                <button className="btn btn-ghost btn-sm" onClick={() => setTicketsFor(p)}><MessageSquareWarning size={13} /> Correcciones</button>
-                <button className="btn btn-ghost btn-sm" onClick={() => setEditing(p)}><Pencil size={13} /> Editar</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setUpdatesForId(p.id)}><Megaphone size={13} /> Novedades</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setTicketsForId(p.id)}><MessageSquareWarning size={13} /> Correcciones</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setEditingId(p.id)}><Pencil size={13} /> Editar</button>
                 <button className="btn btn-ghost btn-icon btn-sm" title={p.enabled ? 'Pausar' : 'Activar'} onClick={() => setEnabled(p.id, !p.enabled)}><Power size={14} /></button>
                 <button className="btn btn-ghost btn-icon btn-sm" title="Eliminar" onClick={() => setConfirmDel(p.id)}><Trash2 size={14} /></button>
               </div>
@@ -89,9 +94,10 @@ export default function Portals() {
       {editing && (
         <EditModal
           portal={editing} clientName={clientName(editing.clientId)}
-          onClose={() => setEditing(null)}
-          onSave={async (config) => { await updateConfig(editing.id, config); setEditing(null); }}
-          onRegen={async () => { const t = await regenerateToken(editing.id); if (t) copy(t); setEditing(null); }}
+          onClose={() => setEditingId(null)}
+          onSave={async (config) => { await updateConfig(editing.id, config); setEditingId(null); }}
+          onRegen={async () => { const t = await regenerateToken(editing.id); if (t) copy(t); setEditingId(null); }}
+          onSetPin={pin => setPin(editing.id, pin)}
         />
       )}
 
@@ -109,11 +115,11 @@ export default function Portals() {
       )}
 
       {updatesFor && (
-        <UpdatesModal portal={updatesFor} clientName={clientName(updatesFor.clientId)} onClose={() => setUpdatesFor(null)} />
+        <UpdatesModal portal={updatesFor} clientName={clientName(updatesFor.clientId)} onClose={() => setUpdatesForId(null)} />
       )}
 
       {ticketsFor && (
-        <TicketsModal portal={ticketsFor} clientName={clientName(ticketsFor.clientId)} onClose={() => setTicketsFor(null)} />
+        <TicketsModal portal={ticketsFor} clientName={clientName(ticketsFor.clientId)} onClose={() => setTicketsForId(null)} />
       )}
     </div>
   );
@@ -251,10 +257,21 @@ function CreateModal({ clients, onboardings, onClose, onCreate }: {
   );
 }
 
+// ─── Cuántas veces (y cuándo) abrió el cliente su portal ───
+function ViewsStat({ portalId }: { portalId: string }) {
+  const { count, lastViewedAt } = usePortalViews(portalId);
+  if (count === 0) return <div className="strat-card-meta" style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}><Eye size={11} /> Todavía no lo abrió</div>;
+  return (
+    <div className="strat-card-meta" style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+      <Eye size={11} /> {count} {count === 1 ? 'apertura' : 'aperturas'}{lastViewedAt ? ` · última ${fmtRel(lastViewedAt)}` : ''}
+    </div>
+  );
+}
+
 // ─── Editar config ───
-function EditModal({ portal, clientName, onClose, onSave, onRegen }: {
+function EditModal({ portal, clientName, onClose, onSave, onRegen, onSetPin }: {
   portal: ClientPortal; clientName: string;
-  onClose: () => void; onSave: (c: PortalConfig) => void; onRegen: () => void;
+  onClose: () => void; onSave: (c: PortalConfig) => void; onRegen: () => void; onSetPin: (pin: string | null) => void;
 }) {
   const [c, setC] = useState<PortalConfig>({ sections: {}, designs: [], ...portal.config });
   const set = (patch: Partial<PortalConfig>) => setC(prev => ({ ...prev, ...patch }));
@@ -320,6 +337,22 @@ function EditModal({ portal, clientName, onClose, onSave, onRegen }: {
                 );
               })}
             </div>
+          </div>
+
+          <div className="input-group">
+            <label>PIN de acceso (opcional, extra seguridad además del link)</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {portal.pin ? (
+                <>
+                  <span className="ig-badge soft" style={{ background: 'var(--bg-hover)', fontFamily: 'monospace', fontSize: 15, letterSpacing: 2, padding: '6px 12px' }}>{portal.pin}</span>
+                  <button className="btn btn-secondary btn-sm" onClick={() => onSetPin(String(Math.floor(1000 + Math.random() * 9000)))}><Shuffle size={13} /> Generar otro</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => onSetPin(null)}>Quitar</button>
+                </>
+              ) : (
+                <button className="btn btn-secondary btn-sm" onClick={() => onSetPin(String(Math.floor(1000 + Math.random() * 9000)))}><Lock size={13} /> Activar PIN</button>
+              )}
+            </div>
+            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '6px 0 0' }}>Se lo pasás al cliente aparte del link (ej. por WhatsApp).</p>
           </div>
 
           <button className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-start', color: 'var(--warning)' }} onClick={onRegen}>

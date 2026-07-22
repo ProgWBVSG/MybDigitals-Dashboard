@@ -1209,8 +1209,32 @@ export function usePortals() {
     return token;
   };
   const remove = async (id: string) => { await supabase.from('client_portals').delete().eq('id', id); toast('Portal eliminado'); };
+  const setPin = async (id: string, pin: string | null) => {
+    const { error } = await supabase.from('client_portals').update({ pin, updated_at: Date.now() }).eq('id', id);
+    if (error) { toast('No se pudo guardar el PIN', 'error'); return; }
+    toast(pin ? 'PIN activado' : 'PIN quitado');
+  };
 
-  return { portals, loading, create, updateConfig, setEnabled, regenerateToken, remove, refresh: load };
+  return { portals, loading, create, updateConfig, setEnabled, regenerateToken, setPin, remove, refresh: load };
+}
+
+// Estadística de aperturas del portal (para el lado interno)
+export function usePortalViews(portalId: string | null) {
+  const [count, setCount] = useState(0);
+  const [lastViewedAt, setLastViewedAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (!portalId) { setCount(0); setLastViewedAt(null); return; }
+    let on = true;
+    (async () => {
+      const { count: c } = await supabase.from('portal_views').select('*', { count: 'exact', head: true }).eq('portal_id', portalId);
+      const { data } = await supabase.from('portal_views').select('viewed_at').eq('portal_id', portalId).order('viewed_at', { ascending: false }).limit(1);
+      if (!on) return;
+      setCount(c || 0);
+      setLastViewedAt(data?.[0]?.viewed_at ?? null);
+    })();
+    return () => { on = false; };
+  }, [portalId]);
+  return { count, lastViewedAt };
 }
 
 // Actualizaciones que publica MYB (timeline que ve el cliente)

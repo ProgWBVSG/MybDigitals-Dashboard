@@ -144,6 +144,10 @@
 .cp-center { min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; }
 .cp-center h1 { font-size: 22px; font-weight: 800; margin: 0 0 8px; }
 .cp-center p { color: var(--cp-sub); margin: 0; }
+.cp-pin-input { width: 100%; text-align: center; font-size: 26px; letter-spacing: 0.4em; padding: 14px 10px 14px 18px; border-radius: 14px; border: 1px solid var(--cp-line); background: var(--cp-panel); outline: none; font-family: var(--cp-sans); }
+.cp-pin-input:focus { border-color: var(--cp-brand); }
+.cp-pin-btn { width: 100%; margin-top: 14px; background: var(--cp-brand); color: #fff; font-weight: 700; font-size: 14px; padding: 13px; border-radius: 13px; border: none; cursor: pointer; }
+.cp-pin-btn:disabled { opacity: 0.5; cursor: default; }
 
 .cp-rise { opacity: 0; transform: translateY(10px); animation: cp-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 @keyframes cp-rise { to { opacity: 1; transform: none; } }

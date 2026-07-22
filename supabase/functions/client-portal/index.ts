@@ -67,13 +67,26 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     let token = url.searchParams.get('token');
-    if (!token && req.method === 'POST') { try { token = (await req.json())?.token ?? null; } catch { /* noop */ } }
+    let pin = url.searchParams.get('pin') || '';
+    let logView = false;
+    if (req.method === 'POST') {
+      try { const b = await req.json(); token = token || b?.token || null; pin = b?.pin || pin; logView = !!b?.logView; } catch { /* noop */ }
+    }
     if (!token) return json({ ok: false, error: 'Link inválido.' }, 400);
 
-    const portals = await rest(`client_portals?token=eq.${encodeURIComponent(token)}&select=id,client_id,onboarding_id,enabled,config`);
+    const portals = await rest(`client_portals?token=eq.${encodeURIComponent(token)}&select=id,client_id,onboarding_id,enabled,pin,config`);
     const portal = Array.isArray(portals) ? portals[0] : null;
     if (!portal) return json({ ok: false, error: 'Este portal no existe o fue dado de baja.' }, 404);
     if (!portal.enabled) return json({ ok: false, error: 'Este portal está pausado. Escribile a MYB Digitals.' }, 403);
+    if (portal.pin && portal.pin !== pin) return json({ ok: false, needsPin: true, error: pin ? 'PIN incorrecto.' : 'Este portal pide un PIN.' }, 401);
+
+    if (logView) {
+      fetch(`${SUPA_URL}/rest/v1/portal_views`, {
+        method: 'POST',
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ portal_id: portal.id, viewed_at: Date.now() }),
+      }).catch(() => {});
+    }
 
     const config = portal.config || {};
 

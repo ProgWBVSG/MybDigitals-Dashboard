@@ -628,7 +628,7 @@ export interface PortalConfig {
 }
 export interface ClientPortal {
   id: string; clientId: string | null; onboardingId: string | null;
-  token: string; enabled: boolean; config: PortalConfig;
+  token: string; enabled: boolean; pin: string | null; config: PortalConfig;
   createdAt: number; updatedAt: number;
 }
 export interface PortalUpdate { id: string; portalId: string; title: string; body: string; createdAt: number; }

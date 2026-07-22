@@ -40,28 +40,72 @@ async function fileToBase64(file: File): Promise<{ base64: string; mime: string 
 export default function ClientPortalView({ token }: { token: string }) {
   const [bundle, setBundle] = useState<PortalBundle | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [reload, setReload] = useState(0);
+  const [needsPin, setNeedsPin] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinBusy, setPinBusy] = useState(false);
+  const pinRef = useRef(''); // el PIN ya verificado, para recargas silenciosas (sin re-loguear apertura)
 
   const base = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
+  const fetchBundle = async (pin: string, logView: boolean) => {
+    const res = await fetch(`${base}/functions/v1/client-portal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+      body: JSON.stringify({ token, pin, logView }),
+    });
+    return res.json().catch(() => ({ ok: false, error: 'Respuesta inválida' }));
+  };
+
+  // Primera carga: registra la apertura (una sola vez por visita, no en cada recarga silenciosa)
   useEffect(() => {
-    fetch(`${base}/functions/v1/client-portal?token=${encodeURIComponent(token)}`, {
-      headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
-    })
-      .then(async r => {
-        const d = await r.json().catch(() => ({ ok: false, error: 'Respuesta inválida' }));
-        if (d?.ok && d.bundle) setBundle(d.bundle);
+    fetchBundle('', true)
+      .then(d => {
+        if (d?.ok && d.bundle) { setBundle(d.bundle); setNeedsPin(false); }
+        else if (d?.needsPin) setNeedsPin(true);
         else setError(d?.error || 'No pudimos abrir el portal.');
       })
       .catch(() => setError('No pudimos cargar el portal. Revisá tu conexión.'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, reload]);
+  }, [token]);
+
+  const submitPin = async (pin: string) => {
+    setPinBusy(true); setPinError(null);
+    const d = await fetchBundle(pin, true).catch(() => null);
+    setPinBusy(false);
+    if (d?.ok && d.bundle) { pinRef.current = pin; setBundle(d.bundle); setNeedsPin(false); }
+    else setPinError(d?.error || 'No se pudo verificar el PIN.');
+  };
+
+  // Recarga silenciosa (ej: después de mandar un ticket) — no vuelve a loguear la apertura
+  const silentReload = () => {
+    fetchBundle(pinRef.current, false).then(d => { if (d?.ok && d.bundle) setBundle(d.bundle); });
+  };
 
   if (error) return <div className="cp"><div className="cp-center"><div><h1>Portal no disponible</h1><p>{error}</p></div></div></div>;
+  if (needsPin) return <PinGate error={pinError} busy={pinBusy} onSubmit={submitPin} />;
   if (!bundle) return <div className="cp"><div className="cp-center"><p>Abriendo tu portal…</p></div></div>;
 
-  return <PortalDashboard bundle={bundle} token={token} onSent={() => setReload(r => r + 1)} />;
+  return <PortalDashboard bundle={bundle} token={token} onSent={silentReload} />;
+}
+
+function PinGate({ error, busy, onSubmit }: { error: string | null; busy: boolean; onSubmit: (pin: string) => void }) {
+  const [pin, setPin] = useState('');
+  return (
+    <div className="cp"><div className="cp-center">
+      <div style={{ width: '100%', maxWidth: 300 }}>
+        <h1>Portal privado</h1>
+        <p style={{ marginBottom: 18 }}>Ingresá el PIN que te compartió MYB Digitals para entrar.</p>
+        <input
+          className="cp-pin-input" type="tel" inputMode="numeric" autoFocus maxLength={8} value={pin}
+          placeholder="• • • •" onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
+          onKeyDown={e => e.key === 'Enter' && pin && onSubmit(pin)}
+        />
+        {error && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 10 }}>{error}</p>}
+        <button className="cp-pin-btn" disabled={!pin || busy} onClick={() => onSubmit(pin)}>{busy ? 'Verificando…' : 'Entrar'}</button>
+      </div>
+    </div></div>
+  );
 }
 
 function PortalDashboard({ bundle, token, onSent }: { bundle: PortalBundle; token: string; onSent: () => void }) {
