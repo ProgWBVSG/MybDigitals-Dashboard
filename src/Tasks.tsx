@@ -1,11 +1,11 @@
 import { useState, type DragEvent } from 'react';
-import { Plus, Trash2, Pencil, Calendar, GripVertical, LayoutGrid, AlertCircle } from 'lucide-react';
-import { useTasks, toast } from './hooks';
+import { Plus, Trash2, Pencil, Calendar, GripVertical, LayoutGrid, AlertCircle, DoorOpen } from 'lucide-react';
+import { useTasks, useClients, toast } from './hooks';
 import { PRIORITIES, PRIORITY_LABELS, fmt, isOverdue, type TaskCard as TCard } from './utils';
 
 const emptyCard = (boardId: string, colId: string): Omit<TCard, 'id' | 'createdAt' | 'updatedAt' | 'order'> => ({
   boardId, columnId: colId, title: '', description: '', assignedTo: [],
-  priority: 'medium', dueDate: null, tags: [],
+  priority: 'medium', dueDate: null, tags: [], clientId: null, portalVisible: false,
 });
 
 export default function Tasks() {
@@ -13,6 +13,8 @@ export default function Tasks() {
     boards, cards, activeBoardId, setActiveBoardId,
     createBoard, deleteBoard, createCard, updateCard, moveCard, deleteCard,
   } = useTasks();
+  const { clients } = useClients();
+  const clientName = (id?: string | null) => clients.find(c => c.id === id)?.name || '';
   const [modal, setModal] = useState(false);
   const [boardModal, setBoardModal] = useState(false);
   const [editing, setEditing] = useState<TCard | null>(null);
@@ -149,8 +151,14 @@ export default function Tasks() {
                           {card.description.slice(0, 80)}{card.description.length > 80 ? '...' : ''}
                         </p>
                       )}
-                      {card.tags.length > 0 && (
+                      {(card.clientId || card.tags.length > 0) && (
                         <div className="tags">
+                          {card.clientId && (
+                            <span className="tag" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: card.portalVisible ? 'var(--primary)' : undefined, color: card.portalVisible ? '#fff' : undefined }}
+                              title={card.portalVisible ? 'Visible en su portal' : 'Asignada al cliente, no visible en el portal'}>
+                              {card.portalVisible && <DoorOpen size={10} />}{clientName(card.clientId)}
+                            </span>
+                          )}
                           {card.tags.map((t, i) => <span key={i} className="tag">{t}</span>)}
                         </div>
                       )}
@@ -239,6 +247,19 @@ export default function Tasks() {
                     <span key={i} className="tag">{p} <button className="tag-remove" onClick={() => setForm(f => ({ ...f, assignedTo: f.assignedTo.filter((_, j) => j !== i) }))}>×</button></span>
                   ))}
                 </div>
+              </div>
+              <div className="input-group">
+                <label>Cliente (opcional — para curar su Portal)</label>
+                <select className="select" value={form.clientId || ''} onChange={e => { const v = e.target.value || null; setForm(f => ({ ...f, clientId: v, portalVisible: v ? f.portalVisible : false })); }}>
+                  <option value="">Sin cliente</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                {form.clientId && (
+                  <label className="notif-toggle" style={{ marginTop: 8 }}>
+                    <input type="checkbox" checked={!!form.portalVisible} onChange={e => setForm(f => ({ ...f, portalVisible: e.target.checked }))} />
+                    Visible en su Portal (aparece en "Tu avance")
+                  </label>
+                )}
               </div>
             </div>
             <div className="modal-actions">
