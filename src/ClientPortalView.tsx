@@ -235,6 +235,7 @@ function PortalDashboard({ bundle, token, onSent }: { bundle: PortalBundle; toke
                       <li key={i} style={{ display: 'block', padding: '9px 6px' }}>
                         <div style={{ fontSize: 13.5, fontWeight: 600 }}>{u.title}</div>
                         {u.body && <div style={{ fontSize: 12.5, color: 'var(--cp-sub)', marginTop: 2 }}>{u.body}</div>}
+                        {u.imageUrl && <img src={u.imageUrl} alt="" style={{ marginTop: 8, maxHeight: 160, borderRadius: 10, border: '1px solid var(--cp-line)', display: 'block' }} />}
                         <div style={{ fontSize: 10.5, color: 'var(--cp-sub)', marginTop: 3 }}>{fmtRelDate(u.createdAt)}</div>
                       </li>
                     ))}

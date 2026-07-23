@@ -625,13 +625,17 @@ export interface PortalConfig {
   sections?: {                 // qué secciones mostrar (todas true por defecto)
     objetivos?: boolean; avance?: boolean; actualizaciones?: boolean; disenos?: boolean; tickets?: boolean;
   };
+  // Nombres de fase del onboarding tal como los ve EL CLIENTE (clave = phase_name real en
+  // onboarding_steps). Permite renombrar ("Cierre & Pago" → "Formalización") u ocultar del
+  // todo una fase (ej. la de pago) sin tocar el onboarding interno.
+  phaseLabels?: Record<string, { label?: string; hidden?: boolean }>;
 }
 export interface ClientPortal {
   id: string; clientId: string | null; onboardingId: string | null;
   token: string; enabled: boolean; pin: string | null; config: PortalConfig;
   createdAt: number; updatedAt: number;
 }
-export interface PortalUpdate { id: string; portalId: string; title: string; body: string; createdAt: number; }
+export interface PortalUpdate { id: string; portalId: string; title: string; body: string; imagePath: string | null; createdAt: number; }
 export interface PortalTicket {
   id: string; portalId: string; title: string; description: string;
   screenshotPath: string | null; status: 'open' | 'in_progress' | 'resolved';
@@ -647,7 +651,7 @@ export interface PortalBundle {
   progress: number;            // % global
   tasks: { title: string; done: boolean; dueDate: number | null }[]; // tareas curadas (portal_visible)
   setupSteps: { title: string; done: boolean }[]; // primeros pasos que dependen del cliente (owner='client')
-  updates: { title: string; body: string; createdAt: number }[];
+  updates: { title: string; body: string; imageUrl: string | null; createdAt: number }[];
   tickets: { id: string; title: string; description: string; status: string; reply: string | null; screenshotUrl: string | null; createdAt: number }[];
   driveLink: string;
   keyDates: { label: string; date: number }[]; // hitos reales (inicio, lanzamiento) para el widget de fechas

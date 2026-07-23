@@ -1251,13 +1251,26 @@ export function usePortalUpdates(portalId: string | null) {
     const ch = supabase.channel('portal_updates_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'portal_updates' }, load).subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [load, portalId]);
-  const add = async (portalId: string, title: string, body: string) => {
-    const { error } = await supabase.from('portal_updates').insert({ portal_id: portalId, title, body, created_at: Date.now() });
+  const add = async (portalId: string, title: string, body: string, imagePath: string | null = null) => {
+    const { error } = await supabase.from('portal_updates').insert({ portal_id: portalId, title, body, image_path: imagePath, created_at: Date.now() });
     if (error) toast('No se pudo publicar: ' + error.message, 'error'); else toast('Actualización publicada');
   };
   const remove = async (id: string) => { await supabase.from('portal_updates').delete().eq('id', id); };
   return { updates, add, remove, refresh: load };
 }
+
+// Subir una imagen para una novedad del portal (bucket privado compartido 'portal-uploads',
+// mismo que usan las capturas de los tickets del cliente)
+export const uploadPortalImage = async (file: File): Promise<string | null> => {
+  if (file.size > 5 * 1024 * 1024) { toast('La imagen supera los 5 MB', 'error'); return null; }
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `updates/${uuid()}.${ext}`;
+  const { error } = await supabase.storage.from('portal-uploads').upload(path, file, {
+    upsert: false, cacheControl: '3600', contentType: file.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+  });
+  if (error) { toast('No se pudo subir la imagen: ' + error.message, 'error'); return null; }
+  return path;
+};
 
 // Tickets (correcciones/errores) que sube el cliente; MYB los ve y responde
 export function usePortalTickets(portalId: string | null) {

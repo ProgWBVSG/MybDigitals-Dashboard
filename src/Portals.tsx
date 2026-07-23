@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
   DoorOpen, Plus, Copy, ExternalLink, Pencil, Trash2, RefreshCw, Power, X, Check, Megaphone,
-  MessageSquareWarning, Image as ImageIcon, ListPlus, CheckCircle2, Eye, Lock, Shuffle,
+  MessageSquareWarning, Image as ImageIcon, ListPlus, CheckCircle2, Eye, EyeOff, Lock, Shuffle,
 } from 'lucide-react';
-import { usePortals, useClients, useOnboardings, useTasks, usePortalUpdates, usePortalTickets, usePortalViews, portalUploadSignedUrl, toast } from './hooks';
+import { usePortals, useClients, useOnboardings, useTasks, usePortalUpdates, usePortalTickets, usePortalViews, portalUploadSignedUrl, uploadPortalImage, toast } from './hooks';
 import { supabase } from './supabase';
-import { DOMAIN_STATUS_LABELS, fmt, fmtRel, type ClientPortal, type PortalConfig, type DomainStatus, type Brand, type PortalTicket } from './utils';
+import { DOMAIN_STATUS_LABELS, fmt, fmtRel, type ClientPortal, type PortalConfig, type DomainStatus, type Brand, type PortalTicket, type Onboarding } from './utils';
 
 const TICKET_STATUS: { key: PortalTicket['status']; label: string; color: string }[] = [
   { key: 'open', label: 'Sin ver', color: '#ef4444' },
@@ -94,6 +94,7 @@ export default function Portals() {
       {editing && (
         <EditModal
           portal={editing} clientName={clientName(editing.clientId)}
+          onboarding={onboardings.find(o => o.id === editing.onboardingId) || null}
           onClose={() => setEditingId(null)}
           onSave={async (config) => { await updateConfig(editing.id, config); setEditingId(null); }}
           onRegen={async () => { const t = await regenerateToken(editing.id); if (t) copy(t); setEditingId(null); }}
@@ -126,19 +127,37 @@ export default function Portals() {
 }
 
 // ─── Novedades (timeline que ve el cliente en su portal) ───
+function UpdateImageThumb({ path }: { path: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => { let on = true; portalUploadSignedUrl(path).then(u => { if (on) setUrl(u); }); return () => { on = false; }; }, [path]);
+  if (!url) return null;
+  return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt="" style={{ marginTop: 8, maxHeight: 110, borderRadius: 8, border: '1px solid var(--border)' }} /></a>;
+}
+
 function UpdatesModal({ portal, clientName, onClose }: { portal: ClientPortal; clientName: string; onClose: () => void }) {
   const { updates, add, remove } = usePortalUpdates(portal.id);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [imagePath, setImagePath] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; e.target.value = '';
+    if (!f) return;
+    setUploading(true);
+    const path = await uploadPortalImage(f);
+    setUploading(false);
+    if (path) setImagePath(path);
+  };
 
   const publish = async () => {
     if (!title.trim()) { toast('Ponele un título a la novedad', 'error'); return; }
     setBusy(true);
-    await add(portal.id, title.trim(), body.trim());
+    await add(portal.id, title.trim(), body.trim(), imagePath);
     setBusy(false);
-    setTitle(''); setBody('');
+    setTitle(''); setBody(''); setImagePath(null);
   };
 
   return (
@@ -155,7 +174,14 @@ function UpdatesModal({ portal, clientName, onClose }: { portal: ClientPortal; c
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20, paddingBottom: 18, borderBottom: '1px solid var(--border)' }}>
           <input className="input" placeholder="Título de la novedad" value={title} onChange={e => setTitle(e.target.value)} />
           <textarea className="input" rows={3} placeholder="Detalle (opcional) — podés pegar un link" value={body} onChange={e => setBody(e.target.value)} />
-          <button className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={publish} disabled={busy}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
+              {uploading ? 'Subiendo…' : <><ImageIcon size={13} /> {imagePath ? 'Cambiar imagen' : 'Adjuntar imagen'}</>}
+              <input type="file" accept="image/*" hidden onChange={onPickImage} />
+            </label>
+            {imagePath && <button className="btn btn-ghost btn-icon btn-sm" title="Quitar imagen" onClick={() => setImagePath(null)}><X size={13} /></button>}
+          </div>
+          <button className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={publish} disabled={busy || uploading}>
             <Megaphone size={13} /> {busy ? 'Publicando…' : 'Publicar novedad'}
           </button>
         </div>
@@ -170,6 +196,7 @@ function UpdatesModal({ portal, clientName, onClose }: { portal: ClientPortal; c
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>{fmt(u.createdAt)} · {fmtRel(u.createdAt)}</div>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{u.title}</div>
                   {u.body && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3, whiteSpace: 'pre-wrap' }}>{u.body}</div>}
+                  {u.imagePath && <UpdateImageThumb path={u.imagePath} />}
                 </div>
                 <button className="btn btn-ghost btn-icon btn-sm" style={{ flexShrink: 0 }} onClick={() => setConfirmDel(u.id)}><Trash2 size={13} /></button>
               </div>
@@ -269,14 +296,23 @@ function ViewsStat({ portalId }: { portalId: string }) {
 }
 
 // ─── Editar config ───
-function EditModal({ portal, clientName, onClose, onSave, onRegen, onSetPin }: {
-  portal: ClientPortal; clientName: string;
+function EditModal({ portal, clientName, onboarding, onClose, onSave, onRegen, onSetPin }: {
+  portal: ClientPortal; clientName: string; onboarding: Onboarding | null;
   onClose: () => void; onSave: (c: PortalConfig) => void; onRegen: () => void; onSetPin: (pin: string | null) => void;
 }) {
-  const [c, setC] = useState<PortalConfig>({ sections: {}, designs: [], ...portal.config });
+  const [c, setC] = useState<PortalConfig>({ sections: {}, designs: [], phaseLabels: {}, ...portal.config });
   const set = (patch: Partial<PortalConfig>) => setC(prev => ({ ...prev, ...patch }));
   const sections = c.sections || {};
   const designs = c.designs || [];
+  const phaseLabels = c.phaseLabels || {};
+  // Fases reales del onboarding, en orden, sin repetir (los pasos vienen 1 a 1)
+  const phases = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const s of onboarding?.steps || []) if (!seen.has(s.phaseName)) seen.set(s.phaseName, s.phase);
+    return [...seen.entries()].sort((a, b) => a[1] - b[1]).map(([name]) => name);
+  }, [onboarding]);
+  const setPhase = (name: string, patch: { label?: string; hidden?: boolean }) =>
+    set({ phaseLabels: { ...phaseLabels, [name]: { ...phaseLabels[name], ...patch } } });
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -338,6 +374,30 @@ function EditModal({ portal, clientName, onClose, onSave, onRegen, onSetPin }: {
               })}
             </div>
           </div>
+
+          {phases.length > 0 && (
+            <div className="input-group">
+              <label>Fases que ve el cliente (podés renombrarlas u ocultarlas)</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {phases.map(name => {
+                  const p = phaseLabels[name] || {};
+                  return (
+                    <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input className="input" style={{ flex: 1, opacity: p.hidden ? 0.5 : 1 }} placeholder={name}
+                        value={p.label ?? ''} onChange={e => setPhase(name, { label: e.target.value })} disabled={!!p.hidden} />
+                      <button className="btn btn-ghost btn-icon btn-sm" title={p.hidden ? 'Mostrar al cliente' : 'Ocultar al cliente'}
+                        onClick={() => setPhase(name, { hidden: !p.hidden })}>
+                        {p.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '6px 0 0' }}>
+                El texto gris de cada campo es el nombre real en tu onboarding. Dejalo vacío para mostrarlo tal cual, o escribí uno nuevo para el cliente.
+              </p>
+            </div>
+          )}
 
           <div className="input-group">
             <label>PIN de acceso (opcional, extra seguridad además del link)</label>

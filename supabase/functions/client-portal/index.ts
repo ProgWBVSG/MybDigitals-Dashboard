@@ -33,8 +33,9 @@ const signReceipt = async (bucket: string, path: string): Promise<string | null>
 };
 
 interface StepRow { phase: number; phase_name: string; status: string; is_optional: boolean; owner: string; title: string }
+type PhaseLabels = Record<string, { label?: string; hidden?: boolean }>;
 
-function buildPhases(steps: StepRow[]) {
+function buildPhases(steps: StepRow[], phaseLabels: PhaseLabels = {}) {
   const byPhase = new Map<number, { name: string; total: number; done: number; anyProgress: boolean }>();
   for (const s of steps) {
     const p = byPhase.get(s.phase) || { name: s.phase_name, total: 0, done: 0, anyProgress: false };
@@ -45,20 +46,26 @@ function buildPhases(steps: StepRow[]) {
     byPhase.set(s.phase, p);
   }
   const ordered = [...byPhase.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
-  // Narrativa clara para el cliente: UNA sola fase "actual" (la primera que no está
-  // 100% terminada). Las anteriores quedan "listas", las siguientes "por venir".
+  // El progreso global (anillo %) cuenta TODOS los pasos, incluidas las fases ocultas al
+  // cliente (es el avance real, no lo que se decide mostrarle).
+  const totalSteps = ordered.reduce((s, p) => s + p.total, 0);
+  const doneSteps = ordered.reduce((s, p) => s + p.done, 0);
+  const progress = totalSteps > 0 ? Math.round((doneSteps / totalSteps) * 100) : 0;
+
+  // La lista que VE el cliente: sin las fases ocultas (ej. "Cierre & Pago"), renombradas
+  // si se configuró un nombre, y con UNA sola fase "actual" (la primera visible no
+  // terminada) — la detección de "actual" se hace DESPUÉS de sacar las ocultas, para que
+  // no quede "trabada" en algo que el cliente ni ve.
+  const visible = ordered.filter(v => !phaseLabels[v.name]?.hidden);
   let activeSet = false;
-  const phases = ordered.map(v => {
+  const phases = visible.map(v => {
     const fullyDone = v.total > 0 && v.done === v.total;
     let status: 'done' | 'active' | 'pending';
     if (fullyDone) status = 'done';
     else if (!activeSet) { status = 'active'; activeSet = true; }
     else status = 'pending';
-    return { name: v.name, status, total: v.total, done: v.done };
+    return { name: phaseLabels[v.name]?.label || v.name, status, total: v.total, done: v.done };
   });
-  const totalSteps = phases.reduce((s, p) => s + p.total, 0);
-  const doneSteps = phases.reduce((s, p) => s + p.done, 0);
-  const progress = totalSteps > 0 ? Math.round((doneSteps / totalSteps) * 100) : 0;
   return { phases, progress };
 }
 
@@ -115,7 +122,7 @@ Deno.serve(async (req) => {
       }
       const steps = await rest(`onboarding_steps?onboarding_id=eq.${portal.onboarding_id}&select=phase,phase_name,status,is_optional,owner,title&order=order.asc`);
       if (Array.isArray(steps)) {
-        const r = buildPhases(steps as StepRow[]); phases = r.phases; progress = r.progress;
+        const r = buildPhases(steps as StepRow[], config.phaseLabels || {}); phases = r.phases; progress = r.progress;
         // "Primeros pasos": lo que depende del cliente (owner='client'), primeros 5
         setupSteps = (steps as StepRow[])
           .filter(s => s.owner === 'client' && s.status !== 'skipped')
@@ -142,9 +149,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Actualizaciones
-    const updatesRaw = await rest(`portal_updates?portal_id=eq.${portal.id}&select=title,body,created_at&order=created_at.desc`);
-    const updates = Array.isArray(updatesRaw) ? updatesRaw : [];
+    // Actualizaciones — con URL firmada de la imagen si tiene
+    const updatesRaw = await rest(`portal_updates?portal_id=eq.${portal.id}&select=title,body,image_path,created_at&order=created_at.desc`);
+    const updatesList = Array.isArray(updatesRaw) ? updatesRaw : [];
+    const updates = await Promise.all(updatesList.map(async (u: Record<string, unknown>) => ({
+      title: u.title, body: u.body,
+      imageUrl: u.image_path ? await signReceipt('portal-uploads', String(u.image_path)) : null,
+      createdAt: Number(u.created_at),
+    })));
 
     // Tickets (correcciones) — con URL firmada de la captura si tiene
     const ticketsRaw = await rest(`portal_tickets?portal_id=eq.${portal.id}&select=id,title,description,status,reply,screenshot_path,created_at&order=created_at.desc`);
@@ -160,8 +172,7 @@ Deno.serve(async (req) => {
       bundle: {
         clientName, brand: config.brand || {}, serviceType, config,
         phases, progress, tasks, setupSteps,
-        updates: updates.map((u: Record<string, unknown>) => ({ title: u.title, body: u.body, createdAt: Number(u.created_at) })),
-        tickets, driveLink, keyDates,
+        updates, tickets, driveLink, keyDates,
       },
     });
   } catch (e) {
