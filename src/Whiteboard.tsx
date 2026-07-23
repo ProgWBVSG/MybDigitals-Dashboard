@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   StickyNote, Square, Circle, Diamond, Pencil, MousePointer2, ArrowRight, Trash2,
   Palette, Undo2, Link2, Video, ExternalLink, Copy, Type, GripVertical, Zap, Loader2,
+  Eraser, LayoutTemplate,
 } from 'lucide-react';
 import { toEmbed, videoPlatform } from './embed';
 import {
@@ -9,13 +10,55 @@ import {
   type BoardData, type BoardNode, type BoardStroke, type BoardShape, type NodeStageStatus,
 } from './utils';
 import { fireNodeWebhook } from './hooks';
+import { BOARD_TEMPLATES, placeTemplate, type BoardTemplate } from './boardTemplates';
 
-type Tool = 'select' | 'sticky' | 'box' | 'ellipse' | 'diamond' | 'pen' | 'connect';
+type Tool = 'select' | 'sticky' | 'box' | 'ellipse' | 'diamond' | 'pen' | 'eraser' | 'connect';
 
 const DEFAULT_SIZE: Record<BoardShape, { w: number; h: number }> = {
   sticky: { w: 180, h: 140 }, box: { w: 190, h: 90 }, ellipse: { w: 160, h: 160 },
   diamond: { w: 170, h: 130 }, link: { w: 220, h: 64 }, video: { w: 300, h: 190 },
 };
+
+const GRID = 8;           // grilla invisible a la que se ajusta todo al arrastrar/redimensionar
+const SNAP = 6;           // distancia (px) para "engancharse" a la guía de otro elemento
+const snapGrid = (v: number) => Math.round(v / GRID) * GRID;
+const ERASE_RADIUS = 14;
+
+function distToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
+  const dx = bx - ax, dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  const t = lenSq ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq)) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+function strokeHit(s: BoardStroke, x: number, y: number, r: number) {
+  const pts = s.points;
+  if (pts.length === 1) return Math.hypot(x - pts[0][0], y - pts[0][1]) <= r;
+  for (let i = 1; i < pts.length; i++) if (distToSegment(x, y, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]) <= r) return true;
+  return false;
+}
+
+// Guías inteligentes: ajusta la posición del nodo arrastrado a los bordes/centros de los
+// demás nodos (estilo Figma/Miro) y devuelve dónde dibujar la línea guía, si enganchó.
+function snapToSiblings(n: BoardNode, nx: number, ny: number, others: BoardNode[]) {
+  let x = snapGrid(nx), y = snapGrid(ny), guideX: number | null = null, guideY: number | null = null;
+  let bestDx = SNAP + 1, bestDy = SNAP + 1;
+  const myX = [nx, nx + n.w / 2, nx + n.w];
+  const myY = [ny, ny + n.h / 2, ny + n.h];
+  for (const o of others) {
+    if (o.id === n.id) continue;
+    const oX = [o.x, o.x + o.w / 2, o.x + o.w];
+    const oY = [o.y, o.y + o.h / 2, o.y + o.h];
+    myX.forEach((mx, i) => oX.forEach(ox => {
+      const d = Math.abs(mx - ox);
+      if (d < bestDx) { bestDx = d; guideX = ox; x = ox - [0, n.w / 2, n.w][i]; }
+    }));
+    myY.forEach((my, i) => oY.forEach(oy => {
+      const d = Math.abs(my - oy);
+      if (d < bestDy) { bestDy = d; guideY = oy; y = oy - [0, n.h / 2, n.h][i]; }
+    }));
+  }
+  return { x: bestDx <= SNAP ? x : snapGrid(nx), y: bestDy <= SNAP ? y : snapGrid(ny), guideX: bestDx <= SNAP ? guideX : null, guideY: bestDy <= SNAP ? guideY : null };
+}
 
 // Pizarra estilo Miro: notas/cajas/formas arrastrables y redimensionables, links y
 // videos embebidos, dibujo a mano alzada y flechas de conexión. Todo se guarda como
@@ -34,10 +77,13 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [firing, setFiring] = useState(false);
+  const [guides, setGuides] = useState<{ x: number | null; y: number | null }>({ x: null, y: null });
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Gesto activo (drag/resize) — el ref evita depender del estado en los handlers
   const gesture = useRef<{ mode: 'drag' | 'resize'; id: string; offX: number; offY: number } | null>(null);
+  const erasing = useRef(false);
   const boardRef = useRef(board);
   boardRef.current = board;
 
@@ -54,6 +100,10 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
     const r = canvasRef.current!.getBoundingClientRect();
     return { x: clientX - r.left + canvasRef.current!.scrollLeft, y: clientY - r.top + canvasRef.current!.scrollTop };
   };
+  // setPointerCapture puede fallar en algunos casos borde (el navegador ya soltó el puntero,
+  // etc.) — nunca debe cortar el gesto en curso, así que el estado ya se actualiza ANTES de
+  // llamar a esto y acá solo se intenta, sin bloquear nada si falla.
+  const tryCapture = (id: number) => { try { canvasRef.current?.setPointerCapture(id); } catch { /* noop */ } };
 
   const selectedNode = board.nodes.find(n => n.id === selected) || null;
 
@@ -82,31 +132,48 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
     setTool('select');
   };
 
-  // ─── canvas pointer (crear forma / dibujar / deseleccionar) ───
+  const eraseAt = (x: number, y: number) => {
+    setBoard(b => {
+      const kept = b.strokes.filter(s => !strokeHit(s, x, y, ERASE_RADIUS));
+      return kept.length === b.strokes.length ? b : { ...b, strokes: kept };
+    });
+  };
+
+  // ─── canvas pointer (crear forma / dibujar / borrar / deseleccionar) ───
   const onCanvasPointerDown = (e: React.PointerEvent) => {
     if (e.target !== canvasRef.current) return;
     const { x, y } = toCanvas(e.clientX, e.clientY);
     if (tool === 'sticky' || tool === 'box' || tool === 'ellipse' || tool === 'diamond') {
       addNode(tool, x, y); setTool('select');
     } else if (tool === 'pen') {
-      canvasRef.current!.setPointerCapture(e.pointerId);
       setDrawing([[x, y]]);
+      tryCapture(e.pointerId);
+    } else if (tool === 'eraser') {
+      erasing.current = true;
+      eraseAt(x, y);
+      tryCapture(e.pointerId);
     } else {
       setSelected(null);
     }
   };
   const onCanvasPointerMove = (e: React.PointerEvent) => {
     if (drawing) { const { x, y } = toCanvas(e.clientX, e.clientY); setDrawing(d => d ? [...d, [x, y]] : d); return; }
+    if (erasing.current) { const { x, y } = toCanvas(e.clientX, e.clientY); eraseAt(x, y); return; }
     const g = gesture.current;
     if (g) {
       const { x, y } = toCanvas(e.clientX, e.clientY);
-      setBoard(b => ({
-        ...b, nodes: b.nodes.map(n => {
-          if (n.id !== g.id) return n;
-          if (g.mode === 'drag') return { ...n, x: Math.max(0, x - g.offX), y: Math.max(0, y - g.offY) };
-          return { ...n, w: Math.max(80, x - n.x), h: Math.max(48, y - n.y) }; // resize
-        }),
-      }));
+      setBoard(b => {
+        const cur = b.nodes.find(n => n.id === g.id);
+        if (!cur) return b;
+        if (g.mode === 'drag') {
+          const snapped = snapToSiblings(cur, x - g.offX, y - g.offY, b.nodes);
+          setGuides({ x: snapped.guideX, y: snapped.guideY });
+          return { ...b, nodes: b.nodes.map(n => n.id === g.id ? { ...n, x: Math.max(0, snapped.x), y: Math.max(0, snapped.y) } : n) };
+        }
+        // resize: ajustado a la grilla, prolijo sin decimales sueltos
+        const w = Math.max(80, snapGrid(x - cur.x)), h = Math.max(48, snapGrid(y - cur.y));
+        return { ...b, nodes: b.nodes.map(n => n.id === g.id ? { ...n, w, h } : n) };
+      });
     }
   };
   const endGesture = () => {
@@ -114,7 +181,8 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
       if (drawing.length > 1) commit({ ...boardRef.current, strokes: [...boardRef.current.strokes, { id: uuid(), points: drawing, color, width: 2.5 } as BoardStroke] });
       setDrawing(null);
     }
-    if (gesture.current) { commit(boardRef.current); gesture.current = null; }
+    if (erasing.current) { commit(boardRef.current); erasing.current = false; }
+    if (gesture.current) { commit(boardRef.current); gesture.current = null; setGuides({ x: null, y: null }); }
   };
 
   // ─── nodo: drag / resize / connect ───
@@ -129,12 +197,12 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
     const { x, y } = toCanvas(e.clientX, e.clientY);
     gesture.current = { mode: 'drag', id: n.id, offX: x - n.x, offY: y - n.y };
     // capturar en el CANVAS (donde vive onPointerMove/Up), no en el grip
-    canvasRef.current!.setPointerCapture(e.pointerId);
+    tryCapture(e.pointerId);
   };
   const startResize = (e: React.PointerEvent, n: BoardNode) => {
     e.stopPropagation();
     gesture.current = { mode: 'resize', id: n.id, offX: 0, offY: 0 };
-    canvasRef.current!.setPointerCapture(e.pointerId);
+    tryCapture(e.pointerId);
   };
 
   // ─── ediciones sobre nodo ───
@@ -150,6 +218,13 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
   };
   const pickColor = (c: string) => { setColor(c); if (selectedNode) patchNode(selectedNode.id, { color: c }); };
   const editUrl = (n: BoardNode) => { const url = window.prompt('Editar link', n.url || ''); if (url !== null) patchNode(n.id, { url: url.trim() }); };
+
+  const insertTemplate = (tpl: BoardTemplate) => {
+    const { nodes, edges } = placeTemplate(tpl, board.nodes);
+    commit({ ...board, nodes: [...board.nodes, ...nodes], edges: [...board.edges, ...edges] });
+    setTemplatesOpen(false);
+    setTool('select');
+  };
 
   const fire = async (n: BoardNode) => {
     if (!boardId || firing) return;
@@ -195,6 +270,8 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
         <button className="wb-tool" title="Agregar video (YouTube/IG/Loom)" onClick={addVideo}><Video size={16} /></button>
         {T('connect', <ArrowRight size={16} />, 'Conectar con flecha')}
         {T('pen', <Pencil size={16} />, 'Dibujar a mano alzada')}
+        {T('eraser', <Eraser size={16} />, 'Goma de borrar (tocá o arrastrá sobre un trazo)')}
+        <button className="wb-tool" title="Plantillas inteligentes" onClick={() => setTemplatesOpen(true)}><LayoutTemplate size={16} /></button>
         <span className="wb-sep" />
         <div className="wb-colors"><Palette size={14} style={{ color: 'var(--text-muted)' }} />
           {BOARD_STICKY_COLORS.map(c => <button key={c} className={`wb-color ${color === c ? 'on' : ''}`} style={{ background: c }} onClick={() => pickColor(c)} />)}
@@ -228,6 +305,8 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
           })}
           {board.strokes.map(s => <path key={s.id} d={pathOf(s.points)} stroke={s.color} strokeWidth={s.width} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}
           {drawing && <path d={pathOf(drawing)} stroke={color} strokeWidth={2.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />}
+          {guides.x != null && <line x1={guides.x} y1={0} x2={guides.x} y2={2600} stroke="#f472b6" strokeWidth={1.5} strokeDasharray="5 4" />}
+          {guides.y != null && <line x1={0} y1={guides.y} x2={4000} y2={guides.y} stroke="#f472b6" strokeWidth={1.5} strokeDasharray="5 4" />}
           <defs><marker id="wb-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#818cf8" /></marker></defs>
         </svg>
 
@@ -311,6 +390,27 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
           {firing ? <><Loader2 size={14} className="wb-spin" /> Disparando…</> : <><Zap size={14} /> Disparar automatización</>}
         </button>
         <p className="wb-panel-hint">Envía el contexto de este nodo a n8n vía POST. Queda logueado.</p>
+      </div>
+    )}
+
+    {templatesOpen && (
+      <div className="modal-overlay" onClick={() => setTemplatesOpen(false)}>
+        <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
+          <h2>Plantillas inteligentes</h2>
+          <p className="confirm-text" style={{ marginBottom: 4 }}>Se insertan ya armadas y conectadas, debajo de lo que tengas en la pizarra.</p>
+          <div className="wb-tpl-grid">
+            {BOARD_TEMPLATES.map(t => (
+              <button key={t.key} className="wb-tpl-card" onClick={() => insertTemplate(t)}>
+                <span className="wb-tpl-emoji">{t.emoji}</span>
+                <strong>{t.label}</strong>
+                <span>{t.description}</span>
+              </button>
+            ))}
+          </div>
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={() => setTemplatesOpen(false)}>Cerrar</button>
+          </div>
+        </div>
       </div>
     )}
     </div>
