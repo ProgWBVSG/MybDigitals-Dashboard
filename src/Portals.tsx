@@ -29,6 +29,7 @@ export default function Portals() {
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [updatesForId, setUpdatesForId] = useState<string | null>(null);
   const [ticketsForId, setTicketsForId] = useState<string | null>(null);
+  const [justCreated, setJustCreated] = useState<{ token: string; pin: string } | null>(null);
   // Siempre el portal "vivo" (con realtime), no una foto fija del momento en que se abrió el modal
   const editing = portals.find(p => p.id === editingId) || null;
   const updatesFor = portals.find(p => p.id === updatesForId) || null;
@@ -37,6 +38,7 @@ export default function Portals() {
   const clientName = (id: string | null) => clients.find(c => c.id === id)?.name || 'Cliente';
 
   const copy = (token: string) => { navigator.clipboard.writeText(portalLink(token)); toast('Link copiado'); };
+  const copyText = (text: string, label: string) => { navigator.clipboard.writeText(text); toast(`${label} copiado`); };
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
@@ -84,9 +86,9 @@ export default function Portals() {
           clients={clients} onboardings={onboardings}
           onClose={() => setCreating(false)}
           onCreate={async (clientId, onboardingId, config) => {
-            const token = await create(clientId, { onboardingId, config });
+            const res = await create(clientId, { onboardingId, config });
             setCreating(false);
-            if (token) { copy(token); }
+            if (res) setJustCreated(res);
           }}
         />
       )}
@@ -121,6 +123,34 @@ export default function Portals() {
 
       {ticketsFor && (
         <TicketsModal portal={ticketsFor} clientName={clientName(ticketsFor.clientId)} onClose={() => setTicketsForId(null)} />
+      )}
+
+      {justCreated && (
+        <div className="modal-overlay" onClick={() => setJustCreated(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <h2>Portal creado</h2>
+            <p className="confirm-text">Mandale al cliente el link Y el código, por separado (ej. link por mail, código por WhatsApp) — así ninguno de los dos por sí solo abre el portal.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 6 }}>
+              <div className="input-group">
+                <label>Link</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input className="input" readOnly value={portalLink(justCreated.token)} />
+                  <button className="btn btn-secondary btn-sm" onClick={() => copy(justCreated.token)}><Copy size={13} /></button>
+                </div>
+              </div>
+              <div className="input-group">
+                <label>Código de acceso</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{ fontFamily: 'monospace', fontSize: 22, letterSpacing: 3, fontWeight: 700 }}>{justCreated.pin}</span>
+                  <button className="btn btn-secondary btn-sm" onClick={() => copyText(justCreated.pin, 'Código')}><Copy size={13} /> Copiar código</button>
+                </div>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-primary" onClick={() => setJustCreated(null)}>Listo</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -405,11 +435,11 @@ function EditModal({ portal, clientName, onboarding, onClose, onSave, onRegen, o
               {portal.pin ? (
                 <>
                   <span className="ig-badge soft" style={{ background: 'var(--bg-hover)', fontFamily: 'monospace', fontSize: 15, letterSpacing: 2, padding: '6px 12px' }}>{portal.pin}</span>
-                  <button className="btn btn-secondary btn-sm" onClick={() => onSetPin(String(Math.floor(1000 + Math.random() * 9000)))}><Shuffle size={13} /> Generar otro</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => onSetPin(String(Math.floor(100000 + Math.random() * 900000)))}><Shuffle size={13} /> Generar otro</button>
                   <button className="btn btn-ghost btn-sm" onClick={() => onSetPin(null)}>Quitar</button>
                 </>
               ) : (
-                <button className="btn btn-secondary btn-sm" onClick={() => onSetPin(String(Math.floor(1000 + Math.random() * 9000)))}><Lock size={13} /> Activar PIN</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => onSetPin(String(Math.floor(100000 + Math.random() * 900000)))}><Lock size={13} /> Activar PIN</button>
               )}
             </div>
             <p style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '6px 0 0' }}>Se lo pasás al cliente aparte del link (ej. por WhatsApp).</p>

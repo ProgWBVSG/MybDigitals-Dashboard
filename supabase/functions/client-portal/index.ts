@@ -81,11 +81,42 @@ Deno.serve(async (req) => {
     }
     if (!token) return json({ ok: false, error: 'Link inválido.' }, 400);
 
-    const portals = await rest(`client_portals?token=eq.${encodeURIComponent(token)}&select=id,client_id,onboarding_id,enabled,pin,config`);
+    const portals = await rest(`client_portals?token=eq.${encodeURIComponent(token)}&select=id,client_id,onboarding_id,enabled,pin,failed_pin_attempts,locked_until,config`);
     const portal = Array.isArray(portals) ? portals[0] : null;
     if (!portal) return json({ ok: false, error: 'Este portal no existe o fue dado de baja.' }, 404);
     if (!portal.enabled) return json({ ok: false, error: 'Este portal está pausado. Escribile a MYB Digitals.' }, 403);
-    if (portal.pin && portal.pin !== pin) return json({ ok: false, needsPin: true, error: pin ? 'PIN incorrecto.' : 'Este portal pide un PIN.' }, 401);
+
+    if (portal.pin) {
+      const now = Date.now();
+      // Bloqueo anti fuerza-bruta: tras 5 intentos fallidos, 15 min de espera. Sin esto un
+      // PIN de pocos dígitos es adivinable por prueba y error automatizada.
+      if (portal.locked_until && portal.locked_until > now) {
+        const mins = Math.max(1, Math.ceil((portal.locked_until - now) / 60000));
+        return json({ ok: false, needsPin: true, error: `Demasiados intentos. Probá de nuevo en ${mins} min.` }, 429);
+      }
+      if (portal.pin !== pin) {
+        const attempts = (portal.failed_pin_attempts || 0) + 1;
+        const patch: Record<string, unknown> = attempts >= 5
+          ? { failed_pin_attempts: 0, locked_until: now + 15 * 60 * 1000 }
+          : { failed_pin_attempts: attempts };
+        fetch(`${SUPA_URL}/rest/v1/client_portals?id=eq.${portal.id}`, {
+          method: 'PATCH',
+          headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify(patch),
+        }).catch(() => {});
+        const remaining = Math.max(0, 5 - attempts);
+        const msg = attempts >= 5 ? 'Demasiados intentos. Probá de nuevo en 15 min.' : (pin ? `PIN incorrecto (${remaining} intentos antes de bloquearse).` : 'Este portal pide un PIN.');
+        return json({ ok: false, needsPin: true, error: msg }, 401);
+      }
+      // PIN correcto: si venía con intentos fallidos acumulados, se resetean.
+      if (portal.failed_pin_attempts) {
+        fetch(`${SUPA_URL}/rest/v1/client_portals?id=eq.${portal.id}`, {
+          method: 'PATCH',
+          headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({ failed_pin_attempts: 0 }),
+        }).catch(() => {});
+      }
+    }
 
     if (logView) {
       fetch(`${SUPA_URL}/rest/v1/portal_views`, {

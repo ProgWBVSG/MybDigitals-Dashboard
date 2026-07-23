@@ -1219,14 +1219,17 @@ export function usePortals() {
   }, [load]);
 
   // Crea el portal autollenando desde el cliente/onboarding (objetivos del discovery, dominio,
-  // marca de la propuesta si existe). Devuelve el token del link.
-  const create = async (clientId: string, opts: { onboardingId?: string | null; config?: PortalConfig } = {}): Promise<string | null> => {
+  // marca de la propuesta si existe). Cada portal nace con un código de acceso propio (6
+  // dígitos, único por cliente) además del link — hace falta el link Y el código, y el
+  // código tiene protección anti fuerza-bruta en la Edge Function (bloqueo tras 5 intentos).
+  const create = async (clientId: string, opts: { onboardingId?: string | null; config?: PortalConfig } = {}): Promise<{ token: string; pin: string } | null> => {
     const token = uuid() + uuid().replace(/-/g, ''); // token largo, difícil de adivinar
+    const pin = String(Math.floor(100000 + Math.random() * 900000));
     const { error } = await supabase.from('client_portals').insert({
-      client_id: clientId, onboarding_id: opts.onboardingId || null, token, enabled: true, config: opts.config || {},
+      client_id: clientId, onboarding_id: opts.onboardingId || null, token, pin, enabled: true, config: opts.config || {},
     });
     if (error) { toast('No se pudo crear el portal: ' + error.message, 'error'); return null; }
-    toast('Portal creado'); return token;
+    toast('Portal creado'); return { token, pin };
   };
   const updateConfig = async (id: string, config: PortalConfig) => {
     const { error } = await supabase.from('client_portals').update({ config, updated_at: Date.now() }).eq('id', id);
