@@ -693,11 +693,14 @@ input[type="number"] {
   --dp: #6366f1; --ds: #10b981;            /* se sobreescriben inline con la marca */
   position: fixed; inset: 0; z-index: 400; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 52px 56px 0;
+  overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
   background:
     radial-gradient(70% 60% at 14% 6%, color-mix(in srgb, var(--dp) 22%, transparent), transparent 55%),
     radial-gradient(70% 60% at 86% 96%, color-mix(in srgb, var(--ds) 16%, transparent), transparent 55%),
     #0a0f1e;
 }
+.deck-stage { flex-shrink: 0; }
+.deck-footer { flex-shrink: 0; }
 .deck-progress { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,0.06); z-index: 2; }
 .deck-progress > div { height: 100%; background: linear-gradient(90deg, var(--dp), var(--ds)); transition: width 0.4s ease; }
 .deck-close { position: absolute; top: 18px; right: 22px; background: none; border: none; color: var(--text-muted); cursor: pointer; z-index: 3; }
@@ -790,16 +793,39 @@ input[type="number"] {
 @keyframes deckHintPulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.8; } }
 
 @media (max-width: 768px) {
-  .deck-overlay { padding: 40px 20px 0; }
-  .deck-slide h1 { font-size: 38px; letter-spacing: -1.5px; }
-  .deck-slide h2 { font-size: 26px; }
-  .deck-lead { font-size: 17px; }
-  .deck-section.has-img { grid-template-columns: 1fr; gap: 20px; }
+  /* En mobile el contenido puede ser más alto que la pantalla — se ancla arriba (no
+     centrado) para que al hacer scroll se pueda llegar tanto al principio como al final
+     de la diapositiva, en vez de quedar "flotando" cortada arriba y/o abajo. */
+  .deck-overlay { padding: 30px 18px 28px; justify-content: flex-start; }
+  .deck-stage { margin: auto 0; } /* si entra en pantalla, sigue quedando centrada */
+  .deck-slide h1 { font-size: 34px; letter-spacing: -1.2px; }
+  .deck-slide h2 { font-size: 24px; margin-bottom: 16px; }
+  .deck-lead { font-size: 16px; }
+  .deck-eyebrow { margin-bottom: 12px; }
+  .deck-cover.has-cover { padding: 32px 22px; }
+  .deck-closing h2 { font-size: 30px; }
+  .deck-center-text { font-size: 16px; }
+  .deck-section.has-img { grid-template-columns: 1fr; gap: 16px; }
   .deck-sec-img { aspect-ratio: 16 / 10; }
-  .deck-bullets li { font-size: 16px; }
-  .deck-metric-val { font-size: 42px; }
+  .deck-bullets { gap: 12px; }
+  .deck-bullets li { font-size: 15.5px; padding-left: 24px; }
+  .deck-pillars { gap: 9px; margin-top: 20px; }
+  .deck-pillar { padding: 11px 14px; font-size: 14.5px; }
+  .deck-metrics { gap: 20px 34px; }
+  .deck-metric-val { font-size: 36px; }
+  .deck-quotes { gap: 14px; margin-top: 22px; }
+  .deck-quote { min-width: 0; padding: 16px 18px; }
+  .deck-cta { padding: 13px 22px; font-size: 15px; margin-top: 22px; }
+  .deck-footer { padding: 14px 0 16px; }
   .deck-foot-client { display: none; }
   .deck-hint { display: none; }
+}
+@media (max-width: 400px) {
+  .deck-overlay { padding: 24px 14px 24px; }
+  .deck-slide h1 { font-size: 28px; }
+  .deck-slide h2 { font-size: 21px; }
+  .deck-logo-img { max-height: 50px; max-width: 170px; }
+  .deck-logo-mark { width: 48px; height: 48px; font-size: 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .deck-slide, .reveal { animation: none; opacity: 1; }
