@@ -191,7 +191,13 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
     setSelected(n.id);
     if (tool === 'connect') {
       if (!connectFrom) setConnectFrom(n.id);
-      else if (connectFrom !== n.id) { commit({ ...board, edges: [...board.edges, { id: uuid(), from: connectFrom, to: n.id }] }); setConnectFrom(null); setTool('select'); }
+      else if (connectFrom !== n.id) {
+        commit({ ...board, edges: [...board.edges, { id: uuid(), from: connectFrom, to: n.id }] });
+        // Sigue en modo "conectar" y encadena desde el nodo recién unido (A→B, tocás C y
+        // sigue B→C, etc.) — así se conectan varias partes seguidas sin volver a tocar la
+        // herramienta cada vez. Tocar el mismo botón de nuevo, Esc, o "Seleccionar" corta la cadena.
+        setConnectFrom(n.id);
+      }
       return;
     }
     const { x, y } = toCanvas(e.clientX, e.clientY);
@@ -291,7 +297,7 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
         <button className="wb-tool" title="Deshacer último trazo" onClick={undoStroke} disabled={!board.strokes.length}><Undo2 size={16} /></button>
         <button className="wb-tool" title="Borrar seleccionado" onClick={() => selected && deleteNode(selected)} disabled={!selected}><Trash2 size={16} /></button>
         <button className="wb-clear" onClick={clearAll}>Vaciar</button>
-        {tool === 'connect' && <span className="wb-hint">{connectFrom ? 'Tocá el segundo elemento…' : 'Tocá el primer elemento a conectar'}</span>}
+        {tool === 'connect' && <span className="wb-hint">{connectFrom ? 'Tocá el siguiente para conectarlo (podés seguir encadenando)' : 'Tocá el primer elemento a conectar'}</span>}
       </div>
 
       <div ref={canvasRef} className={`wb-canvas tool-${tool}`}
