@@ -608,6 +608,36 @@ export interface NodeEvent {
   responseSummary: string | null; createdAt: number;
 }
 
+// ─── DOCUMENTOS ESTRATÉGICOS (editor tipo Google Doc/Notion, blanco, por bloques) ───
+// A diferencia de la pizarra (posiciones libres en un canvas), un documento es una
+// secuencia ORDENADA de bloques — para texto explicativo largo, citar una fuente externa
+// (ej. una estrategia que vimos en un video) y conectar con partes reales del dashboard.
+export type DocBlockType = 'heading' | 'paragraph' | 'bullets' | 'quote' | 'callout' | 'connection' | 'divider';
+export type ConnTargetType = 'client' | 'skill' | 'tab';
+export interface DocBlock {
+  id: string; type: DocBlockType;
+  text?: string;              // heading / paragraph / callout
+  level?: 2 | 3;               // heading
+  items?: string[];            // bullets
+  author?: string;             // quote: quién lo dijo (ej. "Kallaway")
+  sourceUrl?: string;          // quote: link a la fuente (ej. el video de YouTube)
+  color?: string;              // callout
+  connType?: ConnTargetType;   // connection
+  connId?: string;             // connection: id real (client.id / skill.id) — vacío si connType='tab'
+  connTab?: string;            // connection: tab del dashboard (ej. 'metrics', 'clients')
+  connLabel?: string;          // connection: texto a mostrar
+}
+export interface StrategyDoc {
+  id: string; title: string; docType: string; blocks: DocBlock[]; tags: string[];
+  clientId: string | null; createdAt: number; updatedAt: number;
+}
+export const DOC_CONNECTION_TABS: { key: string; label: string }[] = [
+  { key: 'metrics', label: 'Métricas / Inversión' }, { key: 'clients', label: 'Clientes' },
+  { key: 'skills', label: 'Skills' }, { key: 'history', label: 'Historial' },
+  { key: 'onboarding', label: 'Onboarding' }, { key: 'tasks', label: 'Tasks' },
+  { key: 'content', label: 'IG Content' }, { key: 'guide', label: 'Guía' },
+];
+
 // ─── PORTAL DEL CLIENTE (link público con la marca del cliente) ───
 export type DomainStatus = 'none' | 'pending' | 'purchased' | 'pointed' | 'live';
 export const DOMAIN_STATUS_LABELS: Record<DomainStatus, string> = {

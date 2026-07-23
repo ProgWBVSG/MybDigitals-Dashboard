@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { Target, Plus, X, Trash2, Pencil, BookOpen, LayoutDashboard, ArrowRight } from 'lucide-react';
+import { Target, Plus, X, Trash2, Pencil, BookOpen, LayoutDashboard, ArrowRight, FileText } from 'lucide-react';
 import { useWhiteboards, useGuide, useClients, toast } from './hooks';
 import Whiteboard from './Whiteboard';
 import Markdown from './Markdown';
+import StrategyDocs from './StrategyDocs';
 import { GUIDE_CAT_MAP, type GuideCategory } from './utils';
 
 const STRATEGY_CATS: GuideCategory[] = ['comercial', 'crecimiento'];
 
-export default function Estrategia({ onGoToGuide }: { onGoToGuide?: () => void }) {
-  const [tab, setTab] = useState<'pizarras' | 'guia'>('pizarras');
+export default function Estrategia({ onNavigate }: { onNavigate?: (tab: string) => void }) {
+  const [tab, setTab] = useState<'docs' | 'pizarras' | 'guia'>('docs');
   const wb = useWhiteboards('embudo');
   const { topics } = useGuide();
   const { clients } = useClients();
@@ -56,13 +57,16 @@ export default function Estrategia({ onGoToGuide }: { onGoToGuide?: () => void }
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Estrategia</h2>
       </div>
       <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 16px' }}>
-        Armá embudos visuales (estilo Miro) y consultá la guía para conseguir clientes por internet y hacerles seguimiento.
+        Documentos estratégicos, embudos visuales (estilo Miro) y la guía para conseguir clientes por internet y hacerles seguimiento.
       </p>
 
       <div className="ig-tabs" style={{ marginBottom: 18 }}>
+        <button className={tab === 'docs' ? 'active' : ''} onClick={() => setTab('docs')}><FileText size={14} style={{ marginRight: 6, verticalAlign: '-2px' }} />Documentos</button>
         <button className={tab === 'pizarras' ? 'active' : ''} onClick={() => setTab('pizarras')}><LayoutDashboard size={14} style={{ marginRight: 6, verticalAlign: '-2px' }} />Pizarras de embudos</button>
         <button className={tab === 'guia' ? 'active' : ''} onClick={() => setTab('guia')}><BookOpen size={14} style={{ marginRight: 6, verticalAlign: '-2px' }} />Guía de captación</button>
       </div>
+
+      {tab === 'docs' && <StrategyDocs onNavigate={onNavigate} />}
 
       {tab === 'pizarras' && (
         <>
@@ -106,8 +110,8 @@ export default function Estrategia({ onGoToGuide }: { onGoToGuide?: () => void }
               </div>
             );
           })}
-          {onGoToGuide && (
-            <button className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={onGoToGuide}>
+          {onNavigate && (
+            <button className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={() => onNavigate('guide')}>
               Ver toda la Guía (editar / más temas) <ArrowRight size={14} />
             </button>
           )}

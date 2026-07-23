@@ -161,7 +161,7 @@ function Dashboard() {
         {tab === 'competencia' && <Competitors />}
         {tab === 'onboarding' && <Onboarding />}
         {tab === 'notas' && <Notes />}
-        {tab === 'estrategia' && <Estrategia onGoToGuide={() => setTab('guide')} />}
+        {tab === 'estrategia' && <Estrategia onNavigate={t => setTab(t as Tab)} />}
         {tab === 'tasks' && <Tasks />}
         {tab === 'calendar' && <CalendarView />}
         {tab === 'clients' && <Clients />}

@@ -5,7 +5,8 @@ import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client
   type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic,
   type ContentPost, type ContentSource, type Competitor,
   type Note, type Whiteboard, type BoardData, EMPTY_BOARD_DATA, REPEAT_LABELS, type NodeEvent, type BoardNode,
-  type ClientPortal, type PortalConfig, type PortalUpdate, type PortalTicket } from './utils';
+  type ClientPortal, type PortalConfig, type PortalUpdate, type PortalTicket,
+  type StrategyDoc, type DocBlock } from './utils';
 import { getPlaybook } from './playbooks';
 import { GUIDE_SEED } from './guideSeed';
 import { supabase } from './supabase';
@@ -155,8 +156,8 @@ export function useTasks() {
   useEffect(() => { if (activeBoardId) loadCards(activeBoardId); }, [activeBoardId, loadCards]);
 
   useEffect(() => {
-    const subBoards = supabase.channel('boards_changes').on('postgres_changes', { event: '*', schema: 'public', table: 'boards' }, loadBoards).subscribe();
-    const subTasks = supabase.channel('tasks_changes').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+    const subBoards = supabase.channel('boards_changes_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'boards' }, loadBoards).subscribe();
+    const subTasks = supabase.channel('tasks_changes_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
       if (activeBoardId) loadCards(activeBoardId);
     }).subscribe();
     return () => { supabase.removeChannel(subBoards); supabase.removeChannel(subTasks); };
@@ -306,9 +307,9 @@ export function useClients() {
 
   useEffect(() => {
     load();
-    const subC = supabase.channel('clients_ch').on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, load).subscribe();
-    const subP = supabase.channel('projs_ch').on('postgres_changes', { event: '*', schema: 'public', table: 'client_projects' }, load).subscribe();
-    const subN = supabase.channel('notes_ch').on('postgres_changes', { event: '*', schema: 'public', table: 'client_notes' }, load).subscribe();
+    const subC = supabase.channel('clients_ch_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, load).subscribe();
+    const subP = supabase.channel('projs_ch_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'client_projects' }, load).subscribe();
+    const subN = supabase.channel('notes_ch_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'client_notes' }, load).subscribe();
     return () => { supabase.removeChannel(subC); supabase.removeChannel(subP); supabase.removeChannel(subN); };
   }, [load]);
 
@@ -690,7 +691,7 @@ export function useNotifications() {
   }, []);
   useEffect(() => {
     loadRem();
-    const ch = supabase.channel('reminders_ch').on('postgres_changes', { event: '*', schema: 'public', table: 'reminders' }, loadRem).subscribe();
+    const ch = supabase.channel('reminders_ch_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'reminders' }, loadRem).subscribe();
     const t = setInterval(() => setTick(x => x + 1), 60000); // re-evalúa tiempos cada minuto
     return () => { supabase.removeChannel(ch); clearInterval(t); };
   }, [loadRem]);
@@ -1166,6 +1167,40 @@ export async function fireNodeWebhook(boardId: string, node: BoardNode): Promise
   });
   toast(ok ? `Webhook disparado (${summary})` : `Falló el webhook: ${summary}`, ok ? 'success' : 'error');
   return { ok, summary };
+}
+
+// ─── DOCUMENTOS ESTRATÉGICOS (editor por bloques, tipo Google Doc) ───
+export function useStrategyDocs() {
+  const [docs, setDocs] = useState<StrategyDoc[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('strategy_docs').select('*').order('updated_at', { ascending: false });
+    if (data) setDocs(data.map(mapToCamel) as StrategyDoc[]);
+    setLoading(false);
+  }, []);
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('strategy_docs_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'strategy_docs' }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+
+  const create = async (title: string, docType: string, blocks: DocBlock[] = []): Promise<string | null> => {
+    const { data, error } = await supabase.from('strategy_docs').insert(mapToSnake({ title, docType, blocks, tags: [], clientId: null })).select('id').single();
+    if (error) { toast('No se pudo crear el documento: ' + error.message, 'error'); return null; }
+    toast('Documento creado');
+    return data?.id as string;
+  };
+  const saveBlocks = async (id: string, blocks: DocBlock[]) => {
+    await supabase.from('strategy_docs').update({ blocks, updated_at: Date.now() }).eq('id', id);
+  };
+  const update = async (id: string, patch: Partial<StrategyDoc>) => {
+    // updated_at es bigint (epoch ms): se escribe crudo, NUNCA vía mapToSnake (convertiría
+    // 'updatedAt' a fecha ISO y rompería el insert — mismo bug ya visto en otras tablas).
+    await supabase.from('strategy_docs').update({ ...mapToSnake(patch), updated_at: Date.now() }).eq('id', id);
+  };
+  const remove = async (id: string) => { await supabase.from('strategy_docs').delete().eq('id', id); toast('Documento eliminado'); };
+
+  return { docs, loading, create, saveBlocks, update, remove, refresh: load };
 }
 
 // ─── PORTAL DEL CLIENTE (lado interno / dashboard) ───
