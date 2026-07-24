@@ -572,7 +572,7 @@ export interface Note {
 
 // ─── PIZARRAS ESTILO MIRO (notas y embudos) ───
 export type BoardKind = 'idea' | 'embudo';
-export type BoardShape = 'sticky' | 'box' | 'ellipse' | 'diamond' | 'link' | 'video';
+export type BoardShape = 'sticky' | 'box' | 'ellipse' | 'diamond' | 'link' | 'video' | 'image' | 'videoFile';
 export type NodeStageStatus = 'pending' | 'active' | 'done' | 'blocked';
 export const NODE_STAGE_STATUSES: { key: NodeStageStatus; label: string; color: string }[] = [
   { key: 'pending', label: 'Sin empezar', color: '#64748b' },

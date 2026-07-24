@@ -2,14 +2,14 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   StickyNote, Square, Circle, Diamond, Pencil, MousePointer2, ArrowRight, Trash2,
   Palette, Undo2, Link2, Video, ExternalLink, Copy, Type, GripVertical, Zap, Loader2,
-  Eraser, LayoutTemplate,
+  Eraser, LayoutTemplate, Image as ImageIcon, FileVideo,
 } from 'lucide-react';
 import { toEmbed, videoPlatform } from './embed';
 import {
   BOARD_STICKY_COLORS, BOARD_FONT_SIZES, NODE_STAGE_STATUSES, uuid,
   type BoardData, type BoardNode, type BoardStroke, type BoardShape, type NodeStageStatus,
 } from './utils';
-import { fireNodeWebhook } from './hooks';
+import { fireNodeWebhook, uploadBoardAsset } from './hooks';
 import { BOARD_TEMPLATES, placeTemplate, type BoardTemplate } from './boardTemplates';
 
 type Tool = 'select' | 'sticky' | 'box' | 'ellipse' | 'diamond' | 'pen' | 'eraser' | 'connect';
@@ -17,6 +17,7 @@ type Tool = 'select' | 'sticky' | 'box' | 'ellipse' | 'diamond' | 'pen' | 'erase
 const DEFAULT_SIZE: Record<BoardShape, { w: number; h: number }> = {
   sticky: { w: 180, h: 140 }, box: { w: 190, h: 90 }, ellipse: { w: 160, h: 160 },
   diamond: { w: 170, h: 130 }, link: { w: 220, h: 64 }, video: { w: 300, h: 190 },
+  image: { w: 260, h: 200 }, videoFile: { w: 320, h: 200 },
 };
 
 const GRID = 8;           // grilla invisible a la que se ajusta todo al arrastrar/redimensionar
@@ -79,6 +80,9 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
   const [firing, setFiring] = useState(false);
   const [guides, setGuides] = useState<{ x: number | null; y: number | null }>({ x: null, y: null });
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [uploadingAsset, setUploadingAsset] = useState<'image' | 'video' | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Gesto activo (drag/resize) — el ref evita depender del estado en los handlers
@@ -130,6 +134,23 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
     const c = toCanvas(0, 0);
     addNode('video', c.x + 40, c.y + 40, { url: url.trim(), text: videoPlatform(url) });
     setTool('select');
+  };
+
+  const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; e.target.value = '';
+    if (!f) return;
+    setUploadingAsset('image');
+    const url = await uploadBoardAsset(f, 'image');
+    setUploadingAsset(null);
+    if (url) { const c = toCanvas(0, 0); addNode('image', c.x + 40, c.y + 40, { url }); }
+  };
+  const onPickVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; e.target.value = '';
+    if (!f) return;
+    setUploadingAsset('video');
+    const url = await uploadBoardAsset(f, 'video');
+    setUploadingAsset(null);
+    if (url) { const c = toCanvas(0, 0); addNode('videoFile', c.x + 40, c.y + 40, { url }); }
   };
 
   const eraseAt = (x: number, y: number) => {
@@ -214,7 +235,15 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
   // ─── ediciones sobre nodo ───
   const patchNode = (id: string, patch: Partial<BoardNode>) => commit({ ...board, nodes: board.nodes.map(n => n.id === id ? { ...n, ...patch } : n) });
   const deleteNode = (id: string) => { commit({ ...board, nodes: board.nodes.filter(n => n.id !== id), edges: board.edges.filter(e => e.from !== id && e.to !== id) }); setSelected(null); };
-  const duplicateNode = (n: BoardNode) => { const c = addNode(n.shape, n.x + 24, n.y + 24, { text: n.text, url: n.url, color: n.color, fontSize: n.fontSize }); patchNode(c.id, { w: n.w, h: n.h }); };
+  // Copia TODO el nodo (tamaño, url, campos de automatización, etc.) en un solo commit.
+  // (Antes hacía addNode()+patchNode() en dos pasos: como ambos leen `board` del closure
+  // del mismo render, el segundo commit pisaba al primero con el estado viejo y el
+  // duplicado terminaba con el tamaño por defecto o, en casos borde, desaparecía.)
+  const duplicateNode = (n: BoardNode) => {
+    const node: BoardNode = { ...n, id: uuid(), x: n.x + 24, y: n.y + 24 };
+    commit({ ...board, nodes: [...board.nodes, node] });
+    setSelected(node.id);
+  };
   const bumpFont = (n: BoardNode, dir: 1 | -1) => {
     const cur = n.fontSize || 15; let idx = BOARD_FONT_SIZES.findIndex(s => s === cur);
     if (idx < 0) idx = BOARD_FONT_SIZES.findIndex(s => s >= cur);
@@ -261,7 +290,10 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
     <button className={`wb-tool ${tool === t ? 'on' : ''}`} title={label} onClick={() => { setTool(t); setConnectFrom(null); }}>{icon}</button>
   );
 
-  const stageAutomation = automation && !!selectedNode && selectedNode.shape !== 'link' && selectedNode.shape !== 'video';
+  // Automatización de etapa: solo tiene sentido en las formas "de paso" (sticky/caja/óvalo/
+  // rombo), no en link/video/imagen/archivo de video.
+  const isStageShape = (s: BoardShape) => s === 'sticky' || s === 'box' || s === 'ellipse' || s === 'diamond';
+  const stageAutomation = automation && !!selectedNode && isStageShape(selectedNode.shape);
 
   return (
     <div className="wb-outer">
@@ -274,6 +306,14 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
         {T('diamond', <Diamond size={16} />, 'Rombo / decisión')}
         <button className="wb-tool" title="Agregar link" onClick={addLink}><Link2 size={16} /></button>
         <button className="wb-tool" title="Agregar video (YouTube/IG/Loom)" onClick={addVideo}><Video size={16} /></button>
+        <button className="wb-tool" title="Subir imagen (PNG/JPG)" disabled={uploadingAsset === 'image'} onClick={() => imageInputRef.current?.click()}>
+          {uploadingAsset === 'image' ? <Loader2 size={16} className="wb-spin" /> : <ImageIcon size={16} />}
+        </button>
+        <button className="wb-tool" title="Subir video (archivo, hasta 50 MB)" disabled={uploadingAsset === 'video'} onClick={() => videoInputRef.current?.click()}>
+          {uploadingAsset === 'video' ? <Loader2 size={16} className="wb-spin" /> : <FileVideo size={16} />}
+        </button>
+        <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={onPickImage} />
+        <input ref={videoInputRef} type="file" accept="video/*" hidden onChange={onPickVideo} />
         {T('connect', <ArrowRight size={16} />, 'Conectar con flecha')}
         {T('pen', <Pencil size={16} />, 'Dibujar a mano alzada')}
         {T('eraser', <Eraser size={16} />, 'Goma de borrar (tocá o arrastrá sobre un trazo)')}
@@ -355,7 +395,18 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
                 </div>
               )}
 
-              {automation && n.stageStatus && n.shape !== 'link' && n.shape !== 'video' && (
+              {n.shape === 'image' && (
+                <>
+                  <img className="wb-img" src={n.url} alt="" onPointerDown={e => e.stopPropagation()} draggable={false} />
+                  <a className="wb-mini wb-img-open" href={n.url} target="_blank" rel="noreferrer" onPointerDown={e => e.stopPropagation()} title="Ver tamaño completo"><ExternalLink size={12} /></a>
+                </>
+              )}
+
+              {n.shape === 'videoFile' && (
+                <video className="wb-videofile" src={n.url} controls onPointerDown={e => e.stopPropagation()} />
+              )}
+
+              {automation && n.stageStatus && isStageShape(n.shape) && (
                 <span className="wb-status-dot" style={{ background: NODE_STAGE_STATUSES.find(s => s.key === n.stageStatus)?.color }} title={NODE_STAGE_STATUSES.find(s => s.key === n.stageStatus)?.label} />
               )}
 

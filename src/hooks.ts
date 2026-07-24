@@ -1299,6 +1299,20 @@ export function usePortalUpdates(portalId: string | null) {
 
 // Subir una imagen para una novedad del portal (bucket privado compartido 'portal-uploads',
 // mismo que usan las capturas de los tickets del cliente)
+// Sube una imagen o video a la pizarra (bucket público 'board-uploads' — como brand-assets,
+// solo vos podés escribir pero el link es de lectura directa, sin firmar; nadie lo
+// encuentra sin el link porque el nombre de archivo es un uuid). Devuelve la URL pública
+// lista para usar en el nodo, no un path.
+export const uploadBoardAsset = async (file: File, kind: 'image' | 'video'): Promise<string | null> => {
+  const maxMB = kind === 'video' ? 50 : 8;
+  if (file.size > maxMB * 1024 * 1024) { toast(`El archivo supera los ${maxMB} MB`, 'error'); return null; }
+  const ext = (file.name.split('.').pop() || (kind === 'video' ? 'mp4' : 'jpg')).toLowerCase();
+  const path = `${kind}s/${uuid()}.${ext}`;
+  const { error } = await supabase.storage.from('board-uploads').upload(path, file, { upsert: false, cacheControl: '3600', contentType: file.type || undefined });
+  if (error) { toast('No se pudo subir el archivo: ' + error.message, 'error'); return null; }
+  return supabase.storage.from('board-uploads').getPublicUrl(path).data.publicUrl;
+};
+
 export const uploadPortalImage = async (file: File): Promise<string | null> => {
   if (file.size > 5 * 1024 * 1024) { toast('La imagen supera los 5 MB', 'error'); return null; }
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
