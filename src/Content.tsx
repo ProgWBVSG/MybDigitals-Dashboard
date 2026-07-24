@@ -8,11 +8,12 @@ import {
 } from './utils';
 import './Content.css';
 
-type Tab = 'resumen' | 'ideas' | 'guiones' | 'pipeline' | 'calendario' | 'generador' | 'fuentes' | 'conexion';
+type Tab = 'resumen' | 'ideas' | 'guiones' | 'tabla' | 'pipeline' | 'calendario' | 'generador' | 'fuentes' | 'conexion';
 const TABS: { k: Tab; label: string }[] = [
   { k: 'resumen', label: 'Resumen' },
   { k: 'ideas', label: 'Ideas ✨' },
   { k: 'guiones', label: 'Guiones 🎬' },
+  { k: 'tabla', label: 'Tabla ⚡' },
   { k: 'pipeline', label: 'Pipeline' },
   { k: 'calendario', label: 'Calendario' },
   { k: 'generador', label: 'Generador' },
@@ -42,6 +43,7 @@ export default function Content() {
         {tab === 'resumen' && <Resumen posts={c.posts} onGo={setTab} />}
         {tab === 'ideas' && <Ideas c={c} />}
         {tab === 'guiones' && <Guiones c={c} />}
+        {tab === 'tabla' && <Tabla c={c} />}
         {tab === 'pipeline' && <Pipeline c={c} />}
         {tab === 'calendario' && <Calendario posts={c.posts} />}
         {tab === 'generador' && <Generador c={c} onDone={() => setTab('pipeline')} />}
@@ -256,6 +258,134 @@ function Calendario({ posts }: { posts: ContentPost[] }) {
 
 type GenOut = { titulo: string; hook: string; guion: string[]; caption: string; hashtags: string[]; cta: string };
 
+// Mismo formato de texto plano en los dos lugares que guardan una pieza generada por IA
+// (Generador y la Tabla), así el Pipeline/Calendario ven siempre la misma estructura.
+const buildContentText = (out: GenOut) => [
+  `HOOK: ${out.hook}`, '',
+  'GUION:', ...(out.guion || []).map((g, i) => `${i + 1}. ${g}`), '',
+  `CAPTION: ${out.caption}`, '',
+  `CTA: ${out.cta}`, '',
+  (out.hashtags || []).join(' '),
+].join('\n');
+
+// Para la vista de tabla: extrae solo la línea del hook como preview corta de la pieza.
+const parseHook = (content: string) => {
+  const m = content.match(/^HOOK:\s*(.+)$/m);
+  return m ? m[1].trim() : content.split('\n')[0]?.trim() || '';
+};
+
+// Vista tipo spreadsheet (estilo Sandcastle): muchas piezas en filas, edición inline de
+// título/formato/objetivo/estado/fecha, y un botón "Generar" por fila que escribe el hook
+// con IA sin salir de la tabla — pensada para cargar/revisar varias ideas de un saque, en
+// vez de una pieza a la vez como el Generador.
+function Tabla({ c }: { c: ReturnType<typeof useContent> }) {
+  const [genRow, setGenRow] = useState<string | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkText, setBulkText] = useState('');
+  const [editing, setEditing] = useState<ContentPost | null>(null);
+
+  const addRow = () => c.addPost({ title: '', format: 'reel', objective: CONTENT_OBJECTIVES[0], status: 'borrador', content: '' });
+
+  const addBulk = () => {
+    const lines = bulkText.split('\n').map(l => l.trim()).filter(Boolean);
+    lines.forEach(title => c.addPost({ title, format: 'reel', objective: CONTENT_OBJECTIVES[0], status: 'borrador', content: '' }));
+    setBulkText(''); setBulkOpen(false);
+  };
+
+  const generarFila = async (p: ContentPost) => {
+    if (!p.title.trim()) { return; }
+    setGenRow(p.id);
+    const res = await c.generateScript({ format: CONTENT_FORMAT_LABELS[p.format], objective: p.objective, tema: p.title });
+    setGenRow(null);
+    if (res) c.updatePost(p.id, { content: buildContentText(res as GenOut) });
+  };
+
+  return (
+    <div className="ig-card">
+      <div className="ig-card-head">
+        <div><p className="ig-eyebrow">Batch — estilo Sandcastle</p><h3>Tabla de contenido</h3></div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary btn-sm" onClick={() => setBulkOpen(true)}>+ Varias ideas</button>
+          <button className="btn btn-primary btn-sm" onClick={addRow}><Plus size={14} /> Nueva fila</button>
+        </div>
+      </div>
+
+      {c.posts.length === 0 ? (
+        <div className="ig-empty-inline">Todavía no hay piezas. Agregá una fila o pegá varias ideas de un saque.</div>
+      ) : (
+        <div className="ig-table-wrap">
+          <table className="ig-table">
+            <thead>
+              <tr><th>Título / tema</th><th>Formato</th><th>Objetivo</th><th>Estado</th><th>Hook</th><th>Fecha</th><th /></tr>
+            </thead>
+            <tbody>
+              {c.posts.map(p => (
+                <tr key={p.id}>
+                  <td>
+                    <input className="ig-cell-input" value={p.title} placeholder="Tema de la pieza…"
+                      onChange={e => c.updatePost(p.id, { title: e.target.value })} />
+                  </td>
+                  <td>
+                    <select className="ig-cell-select" value={p.format} onChange={e => c.updatePost(p.id, { format: e.target.value as ContentFormat })}>
+                      {CONTENT_FORMATS.map(f => <option key={f} value={f}>{CONTENT_FORMAT_LABELS[f]}</option>)}
+                    </select>
+                  </td>
+                  <td>
+                    <select className="ig-cell-select" value={p.objective} onChange={e => c.updatePost(p.id, { objective: e.target.value })}>
+                      {CONTENT_OBJECTIVES.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </td>
+                  <td>
+                    <select className="ig-cell-select" value={p.status} onChange={e => c.updatePost(p.id, { status: e.target.value as ContentStatus })}>
+                      {CONTENT_STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                    </select>
+                  </td>
+                  <td className="ig-cell-hook">
+                    {p.content ? (
+                      <span title={parseHook(p.content)} onClick={() => setEditing(p)}>{parseHook(p.content) || '(sin hook)'}</span>
+                    ) : (
+                      <button className="btn btn-ghost btn-sm" disabled={genRow === p.id || !p.title.trim()} onClick={() => generarFila(p)}>
+                        <Sparkles size={13} /> {genRow === p.id ? 'Generando…' : 'Generar'}
+                      </button>
+                    )}
+                  </td>
+                  <td>
+                    <input className="ig-cell-input" type="date" style={{ minWidth: 128 }}
+                      value={p.scheduledFor ? new Date(p.scheduledFor).toISOString().split('T')[0] : ''}
+                      onChange={e => c.updatePost(p.id, { scheduledFor: e.target.value ? new Date(e.target.value + 'T12:00').getTime() : null })} />
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button className="btn btn-ghost btn-icon btn-sm" title="Editar/ver completo" onClick={() => setEditing(p)}><ChevronRight size={14} /></button>
+                      <button className="btn btn-ghost btn-icon btn-sm" title="Borrar" onClick={() => c.removePost(p.id)}><Trash2 size={13} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {bulkOpen && (
+        <div className="modal-overlay" onClick={() => setBulkOpen(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
+            <h2>Agregar varias ideas</h2>
+            <p className="confirm-text" style={{ marginBottom: 10 }}>Una idea por línea — se crea una fila por cada una, lista para generar.</p>
+            <textarea className="input" rows={8} autoFocus value={bulkText} placeholder={'3 errores al vender por IG\nCómo armar un reel sin mostrar la cara\nMitos del algoritmo de Instagram'} onChange={e => setBulkText(e.target.value)} />
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setBulkOpen(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={addBulk} disabled={!bulkText.trim()}>Agregar filas</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editing && <PostForm initial={editing} onClose={() => setEditing(null)} onSave={p => c.updatePost(editing.id, p)} />}
+    </div>
+  );
+}
+
 function Generador({ c, onDone }: { c: ReturnType<typeof useContent>; onDone: () => void }) {
   const [format, setFormat] = useState<ContentFormat>('reel');
   const [objective, setObjective] = useState(CONTENT_OBJECTIVES[0]);
@@ -274,14 +404,7 @@ function Generador({ c, onDone }: { c: ReturnType<typeof useContent>; onDone: ()
 
   const guardar = () => {
     if (!out) return;
-    const content = [
-      `HOOK: ${out.hook}`, '',
-      'GUION:', ...(out.guion || []).map((g, i) => `${i + 1}. ${g}`), '',
-      `CAPTION: ${out.caption}`, '',
-      `CTA: ${out.cta}`, '',
-      (out.hashtags || []).join(' '),
-    ].join('\n');
-    c.addPost({ format, objective, title: out.titulo || tema, content, status: 'borrador' });
+    c.addPost({ format, objective, title: out.titulo || tema, content: buildContentText(out), status: 'borrador' });
     onDone();
   };
 

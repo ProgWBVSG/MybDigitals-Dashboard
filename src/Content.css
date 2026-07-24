@@ -163,3 +163,17 @@
   .ig-grid-2 { grid-template-columns: 1fr; }
   .ig-sources { grid-template-columns: 1fr; }
 }
+
+/* ─── Tabla de contenido (vista batch estilo Sandcastle) ─── */
+.ig-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+.ig-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ig-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 700; padding: 10px 12px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.ig-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.ig-table tbody tr:last-child td { border-bottom: none; }
+.ig-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+.ig-cell-input, .ig-cell-select { width: 100%; min-width: 110px; background: none; border: 1px solid transparent; border-radius: 7px; padding: 7px 8px; font-size: 13px; color: var(--text-primary); font-family: inherit; }
+.ig-cell-input:hover, .ig-cell-select:hover { border-color: var(--border); }
+.ig-cell-input:focus, .ig-cell-select:focus { outline: none; border-color: var(--primary); background: var(--bg-hover); }
+.ig-cell-hook { max-width: 280px; }
+.ig-cell-hook span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; color: var(--text-secondary); padding: 4px 6px; border-radius: 6px; }
+.ig-cell-hook span:hover { background: var(--bg-hover); color: var(--text-primary); }
