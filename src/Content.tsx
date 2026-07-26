@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Sparkles, Plug, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Send, Maximize2, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { useContent } from './hooks';
+import { useContent, useClients } from './hooks';
 import {
   CONTENT_STATUSES, CONTENT_FORMATS, CONTENT_FORMAT_LABELS, CONTENT_OBJECTIVES, CONTENT_KINDS, uuid,
-  AD_FORMATS, AD_FORMAT_LABELS, AD_OBJECTIVES, AD_OBJECTIVE_RESULT_LABEL, AD_STATUSES,
+  AD_FORMATS, AD_FORMAT_LABELS, AD_OBJECTIVES, AD_OBJECTIVE_RESULT_LABEL, AD_STATUSES, CONTENT_GAMES,
   type ContentPost, type ContentStatus, type ContentFormat, type ContentAd, type AdFormat, type AdStatus,
 } from './utils';
 import {
@@ -706,19 +706,24 @@ const OBJETIVOS_G = ['Viral / alcance', 'Ventas', 'Educativo', 'Autoridad'];
 const DURACIONES = ['7-15s', '20-30s', '45-60s'];
 
 function Guiones({ c }: { c: ReturnType<typeof useContent> }) {
+  const { clients } = useClients();
   const [plataforma, setPlataforma] = useState(PLATAFORMAS[0]);
   const [objetivo, setObjetivo] = useState(OBJETIVOS_G[0]);
   const [duracion, setDuracion] = useState(DURACIONES[1]);
   const [tema, setTema] = useState('');
   const [publico, setPublico] = useState('');
+  const [clientId, setClientId] = useState('');
   const [gen, setGen] = useState(false);
   const [out, setOut] = useState<ViralScript | null>(null);
   const [hookSel, setHookSel] = useState(0);
 
+  const cliente = clients.find(cl => cl.id === clientId);
+  const juegoInfo = cliente?.contentGame ? CONTENT_GAMES.find(g => g.key === cliente.contentGame) : undefined;
+
   const generar = async () => {
     if (!tema.trim()) return;
     setGen(true); setOut(null);
-    const r = await c.generateViralScript({ plataforma, objetivo, duracion, tema, publico });
+    const r = await c.generateViralScript({ plataforma, objetivo, duracion, tema, publico: publico || cliente?.name || '', juego: cliente?.contentGame || undefined });
     setGen(false);
     if (r) { setOut(r as ViralScript); setHookSel(0); }
   };
@@ -749,12 +754,19 @@ function Guiones({ c }: { c: ReturnType<typeof useContent> }) {
         <div className="ig-card-head"><div><p className="ig-eyebrow">Estudio de guiones</p><h3>Guion viral</h3></div></div>
         <div className="ig-form">
           <label>Tema<input className="input" value={tema} placeholder="Ej: por qué tu web no vende" onChange={e => setTema(e.target.value)} /></label>
+          <label>Cliente (opcional, ajusta el ángulo según su juego de contenido)
+            <select className="select" value={clientId} onChange={e => setClientId(e.target.value)}>
+              <option value="">— sin cliente —</option>
+              {clients.map(cl => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
+            </select>
+          </label>
+          {juegoInfo && <div className="ig-notice">🎯 <b>{juegoInfo.label}</b>: {juegoInfo.hint}</div>}
           <label>Plataforma<select className="select" value={plataforma} onChange={e => setPlataforma(e.target.value)}>{PLATAFORMAS.map(x => <option key={x}>{x}</option>)}</select></label>
           <div style={{ display: 'flex', gap: 10 }}>
             <label style={{ flex: 1 }}>Objetivo<select className="select" value={objetivo} onChange={e => setObjetivo(e.target.value)}>{OBJETIVOS_G.map(x => <option key={x}>{x}</option>)}</select></label>
             <label style={{ flex: 1 }}>Duración<select className="select" value={duracion} onChange={e => setDuracion(e.target.value)}>{DURACIONES.map(x => <option key={x}>{x}</option>)}</select></label>
           </div>
-          <label>Público / marca (opcional)<input className="input" value={publico} placeholder="Ej: dueños de estética" onChange={e => setPublico(e.target.value)} /></label>
+          <label>Público / marca (opcional)<input className="input" value={publico} placeholder={cliente?.name || 'Ej: dueños de estética'} onChange={e => setPublico(e.target.value)} /></label>
           <button className="btn btn-primary" onClick={generar} disabled={gen || !tema.trim()}>
             <Sparkles size={15} /> {gen ? 'Escribiendo el guion…' : 'Generar guion viral'}
           </button>

@@ -7,13 +7,13 @@ import { useClients, toast } from './hooks';
 import {
   uuid, fmt, fmtMoney, fmtUSD,
   CLIENT_STATUSES, CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS,
-  PROJECT_STATUSES, PROJECT_STATUS_LABELS,
-  type Client, type ClientProject, type ClientNote
+  PROJECT_STATUSES, PROJECT_STATUS_LABELS, CONTENT_GAMES,
+  type Client, type ClientProject, type ClientNote, type ContentGame
 } from './utils';
 
 const emptyClient: Omit<Client, 'id' | 'createdAt' | 'updatedAt'> = {
   name: '', contact: { email: '', whatsapp: '', instagram: '' },
-  status: 'prospect', projects: [], notes: [], totalRevenue: 0, totalRevenueUSD: 0,
+  status: 'prospect', projects: [], notes: [], totalRevenue: 0, totalRevenueUSD: 0, contentGame: '',
 };
 
 const emptyProject: ClientProject = {
@@ -403,6 +403,14 @@ export default function Clients() {
                   <label>Email</label>
                   <input className="input" value={form.contact.email} onChange={e => setForm(f => ({ ...f, contact: { ...f.contact, email: e.target.value } }))} placeholder="email@..." />
                 </div>
+              </div>
+              <div className="input-group">
+                <label>Juego de contenido (redes)</label>
+                <select className="select" value={form.contentGame} onChange={e => setForm(f => ({ ...f, contentGame: e.target.value as ContentGame | '' }))}>
+                  <option value="">— sin definir —</option>
+                  {CONTENT_GAMES.map(g => <option key={g.key} value={g.key}>{g.label}</option>)}
+                </select>
+                {form.contentGame && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0' }}>{CONTENT_GAMES.find(g => g.key === form.contentGame)?.hint}</p>}
               </div>
               <div className="input-group">
                 <label>Instagram</label>

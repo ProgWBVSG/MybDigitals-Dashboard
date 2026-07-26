@@ -980,7 +980,7 @@ export function useContent() {
   };
 
   // Estudio de guiones virales (Reels/Shorts/TikTok/ventas)
-  const generateViralScript = async (input: { plataforma: string; objetivo: string; duracion: string; tema: string; publico?: string }): Promise<any | null> => {
+  const generateViralScript = async (input: { plataforma: string; objetivo: string; duracion: string; tema: string; publico?: string; juego?: string }): Promise<any | null> => {
     const { data, error } = await supabase.functions.invoke('generate-viral-script', { body: input });
     let err = '';
     if (error) { err = error.message; try { const b = await (error as { context?: { json?: () => Promise<{ error?: string }> } }).context?.json?.(); if (b?.error) err = b.error; } catch { /* noop */ } }

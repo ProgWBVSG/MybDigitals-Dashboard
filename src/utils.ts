@@ -192,8 +192,21 @@ export interface Client {
   notes: ClientNote[];
   totalRevenue: number;
   totalRevenueUSD: number;
+  contentGame: ContentGame | '';
   createdAt: number; updatedAt: number;
 }
+
+// ─── LOS 5 JUEGOS DE CONTENIDO (framework de Kallaway) ───
+// Qué "juego" está jugando la cuenta de un cliente en redes — determina el ángulo
+// que debe usar el generador de guiones (TAM, tono, y hacia qué empuja el CTA).
+export type ContentGame = 'fama_masiva' | 'fama_categoria' | 'producto_intuitivo' | 'producto_explicativo' | 'autoridad';
+export const CONTENT_GAMES: { key: ContentGame; label: string; hint: string }[] = [
+  { key: 'fama_masiva', label: 'Juego 1 — Fama masiva', hint: 'Máximo alcance total con ideas masivamente aplicables (cultura, dinero, deportes). Monetiza con marca/CPM, no vende un producto puntual.' },
+  { key: 'fama_categoria', label: 'Juego 2 — Fama de categoría', hint: 'Máximo alcance pero sin salirse del rubro del cliente, para volverse la referencia de esa categoría.' },
+  { key: 'producto_intuitivo', label: 'Juego 3 — Producto intuitivo', hint: 'Vende un producto que NO necesita explicación (ropa, comida, decoración, gimnasio en sí). Convierte por vibe/estética/lifestyle.' },
+  { key: 'producto_explicativo', label: 'Juego 4 — Producto explicativo', hint: 'Vende un producto/servicio que SÍ necesita educar antes de comprar (suplementos, apps, servicios técnicos). El contenido educativo cierra la brecha antes del CTA.' },
+  { key: 'autoridad', label: 'Juego 5 — Autoridad / Leads', hint: 'Construye confianza y expertise para vender consultoría/mentoría/servicios de alto ticket. CTA hacia leads (comentario/DM), no venta directa.' },
+];
 
 // ─── ONBOARDING TYPES ───
 // Datos crudos de la reunión de discovery con el cliente (input para generar docs)

@@ -79,6 +79,16 @@ Devolvé ÚNICAMENTE un JSON válido con EXACTAMENTE esta forma:
 }
 - "hooks": exactamente 3, con fórmulas distintas entre sí. "guion": 4 a 7 beats con tiempos que arrancan en 7s (después del re-hook) y suman la duración pedida, siguiendo los pasos reales del "formato" elegido.`;
 
+// Los 5 juegos de contenido (framework de Kallaway): qué está jugando la cuenta del
+// cliente en redes, para ajustar el ángulo del guion (TAM, tono, hacia dónde empuja el CTA).
+const GAME_GUIDANCE: Record<string, string> = {
+  fama_masiva: 'Juego 1 (Fama masiva): priorizá el TAM más amplio posible, temas masivos (cultura, dinero, deportes, relaciones, salud). Sensacionalismo y shareability por encima de la venta directa. El CTA debe ser de categoría "seguir" o "interacción", nunca de venta.',
+  fama_categoria: 'Juego 2 (Fama de categoría): TAM amplio PERO sin salirte del rubro del cliente aunque un tema más masivo tiente más. Cuanto más doloroso el tema dentro del avatar del rubro, mejor. CTA de "seguir".',
+  producto_intuitivo: 'Juego 3 (Producto intuitivo): el objetivo es la conversión directa de un producto que NO necesita explicación (se entiende con solo verlo). Priorizá contenido de entretenimiento/vibe/estilo de vida donde el producto se vea en uso por gente que el viewer quiere imitar. CTA de "leads" o directo a comprar.',
+  producto_explicativo: 'Juego 4 (Producto explicativo): el objetivo es la conversión de un producto que SÍ necesita educar antes de comprar. El desarrollo tiene que cerrar la brecha de "por qué esto me sirve" antes de pedir la acción. CTA de "leads".',
+  autoridad: 'Juego 5 (Autoridad / Leads): el objetivo es construir confianza y posicionarte como experto para vender consultoría/mentoría/servicios de alto ticket, no venta directa. Contenido educativo o storytelling en primera persona con algo no obvio y tácticamente aplicable. CTA de "leads" (comentario/DM), nunca venta directa en el mismo video.',
+};
+
 const GEN_CONFIG = { temperature: 0.9, maxOutputTokens: 4096, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 1024 } };
 const MODELS = [MODEL, 'gemini-2.0-flash'];
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -105,7 +115,7 @@ async function geminiGenerate(prompt: string): Promise<any> {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const { plataforma, objetivo, duracion, tema, publico } = await req.json();
+    const { plataforma, objetivo, duracion, tema, publico, juego } = await req.json();
     if (!tema || !String(tema).trim()) throw new Error('Falta el tema');
     const brief = [
       `Plataforma: ${plataforma || 'Reel de Instagram'}`,
@@ -113,6 +123,7 @@ Deno.serve(async (req) => {
       `Duración objetivo: ${duracion || '20-30s'}`,
       `Tema: ${tema}`,
       publico ? `Público / marca: ${publico}` : '',
+      juego && GAME_GUIDANCE[juego] ? `Juego de contenido del cliente: ${GAME_GUIDANCE[juego]}` : '',
     ].filter(Boolean).join('\n');
     const prompt = `${SYSTEM_PROMPT}\n\n=== BRIEF ===\n${brief}\n=== FIN ===\nEscribí el guion en JSON.`;
 
