@@ -31,11 +31,25 @@ Las dos combinaciones ganadoras (elegí una):
 Nunca combines idea poco común + lente poco común: se vuelve tan nicho que nadie la comparte.
 
 === APERTURA: HOOK (0-3s) + RE-HOOK (3-7s) ===
-HOOK — verbal + visual SIMULTÁNEOS. Cero cortesías ("hola, cómo están"), entrá directo al dolor o beneficio. El primer frame visual tiene que mostrar acción o algo fuera de lo común (cambio brusco de lugar, objeto llamativo, texto grande y polémico en pantalla). Elegí la fórmula (de las 13 del catálogo, ver abajo) que mejor encaje.
-RE-HOOK / PUENTE — justifica el gancho y sube la expectativa antes de que la retención caiga en el segundo 4 (esto es lo que más se olvida, y por eso hooks buenos igual pierden gente acá). Ej: "Y no es por lo que pensás...", "Te lo explico en 30 segundos con un ejemplo real...".
+El hook real combina TRES capas simultáneas — nunca es solo la frase hablada:
+1. HOOK VERBAL — lo que se dice/narra. Cero cortesías ("hola, cómo están"), directo al dolor o beneficio.
+2. HOOK VISUAL — lo que se VE en el primer frame, independiente de la voz. Tiene que mostrar acción o algo fuera de lo común.
+3. HOOK DE TEXTO — el texto grande en pantalla, que puede no ser exactamente lo mismo que se dice.
+RE-HOOK / PUENTE (3-7s) — justifica el gancho y sube la expectativa antes de que la retención caiga en el segundo 4 (esto es lo que más se olvida, y por eso hooks buenos igual pierden gente acá). Ej: "Y no es por lo que pensás...", "Te lo explico en 30 segundos con un ejemplo real...".
 
-=== 13 FÓRMULAS DE HOOK (elegí 3 distintas para las variantes) ===
+=== 13 FÓRMULAS DE HOOK VERBAL (elegí 3 distintas para las variantes) ===
 Secreto/Revelación (algo antes desconocido) · Case Study (método/logro de alguien) · Problema (nombra un problema + promete solución simple) · Contrarian (contradice la opinión popular / myth-bust) · Negativo (advierte contra una acción, sugiere alternativa) · Educativo (enseña una habilidad directo) · Lista (opciones para lograr algo) · Escenario/Hipotético · Comparación (A vs B) · Pregunta (pregunta intrigante que ya se están haciendo) · Ranking/Rating · Autoridad (credibilidad propia, resultados demostrados) · Experiencia personal (primera persona).
+
+=== HOOKS VISUALES (elegí 1 categoría + una mecánica concreta de esa categoría para cada hook) ===
+- Movimiento del sujeto: señalar hacia el visual con el dedo, entrar caminando al cuadro, whip de cámara, saltar al cuadro, doble de vos mismo filmado dos veces, mirar fuera de cámara (estilo podcast), simular un desastre a punto de pasar, atrapar un objeto lanzado a cuadro, sostener un prop que se vuelve el foco, escribir en la lente con marcador, hablarle a un espejo.
+- Overlays de texto/gráfico: comparación A vs B en gráfico, texto del título deslizándose, cuenta regresiva 3-2-1 antes de revelar algo, flecha + texto señalando el visual.
+- Selección de visual: B-roll base con mucho movimiento, primera imagen/escena inusual que rompe el patrón, reacción en silencio (picture-in-picture) y después hablás.
+- Pattern interrupt / cambio de plano: arrancar con un clip viral y cortar a tu contenido (stitch), match cut de una serie rápida de visuales que encajan, cambio de plano usando una acción del primer plano como puente.
+- Efecto/transición: speed ramp entre tomas, zoom lento sobre vos, cámara picada desde arriba, lente ojo de pez, transición de color (blanco y negro a color al ritmo de la música).
+
+=== HOOK DE TEXTO EN PANTALLA (elegí un tipo, según lo que enfatice mejor) ===
+Contenido: beneficio/resultado prometido · el tema del video repetido · el core takeaway · la pregunta central que se va a responder.
+Layout/movimiento: fuente simple sobre fondo de color sólido · mensaje central en dos fuentes distintas · texto deslizándose al entrar · subtítulos que trackean palabra por palabra integrados al visual · primeras palabras fijas y el resto aparece a medida que se dicen · frase completa fija con una sola palabra resaltada/más grande.
 
 === FORMATO NARRATIVO (elegí 1 que mejor encaje con el tema, y armá el DESARROLLO siguiendo SU estructura) ===
 Educativos: Breakdown/Explainer (explicá qué pasó y por qué importa) · Case Study (cómo un caso puntual logró un resultado: contexto/métricas iniciales → cómo se logró → insight clave) · Problem-Solution (agitás el dolor → solución → implicancia) · Common Mistake (nombrás la trampa → por qué pasa → corrección táctica) · Tutorial (objetivo → pasos numerados, camino más corto al resultado) · Listicle (lista numerada, un ítem por beat) · Scenario (escenario hipotético → cómo lo resolverías) · Comparación A vs B (criterios → diferencias → ganador) · Q&A (contexto de por qué importa → respuesta) · Ranking/Tier List (escala → ranking rápido) · Levels (niveles progresivos, un dato único por nivel) · Reaction (dejás correr el clip original → tu take no obvio).
@@ -69,7 +83,7 @@ Devolvé ÚNICAMENTE un JSON válido con EXACTAMENTE esta forma:
     "comparteFactor": "siente" | "aprende",
     "razon": "1-2 frases: por qué esta combinación tiene potencial real de compartidos, no solo de vistas"
   },
-  "hooks": [ { "texto": "hook completo, listo para decir", "formula": "una de las 13 fórmulas del catálogo" } ],
+  "hooks": [ { "texto": "hook verbal completo, listo para decir", "formula": "una de las 13 fórmulas verbales", "hookVisual": "la mecánica visual concreta elegida del catálogo (ej: 'Whip de cámara', 'Cuenta regresiva 3-2-1')", "textoPantalla": "el texto grande que aparece en pantalla en el hook" } ],
   "reHook": "la frase puente de los segundos 3-7 que justifica el hook",
   "guion": [ { "tiempo": "7-12s", "voz": "lo que se dice/narra", "pantalla": "texto en pantalla (corto)", "visual": "toma, B-roll o corte sugerido", "gatillo": "qué paso de la estructura del formato es este beat (ej: 'contexto', 'paso 2', 'momento eureka', 'open loop')" } ],
   "cta": { "categoria": "seguir" | "interaccion" | "leads", "mecanica": "la mecánica elegida (ej: 'Guardar', 'Comentario-por-info')", "texto": "el CTA completo, listo para decir" },

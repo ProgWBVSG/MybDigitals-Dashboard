@@ -241,6 +241,7 @@
 .scr-ciclo p { margin: 4px 0 0; font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; }
 .scr-ciclo-razon { color: var(--text-muted) !important; font-style: italic; }
 .scr-hook-formula { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--primary-light); margin-bottom: 3px; }
+.scr-hook-extra { display: block; font-size: 11.5px; color: var(--text-muted); margin-top: 5px; font-style: italic; }
 .scr-rehook, .scr-cta { font-size: 13px; color: var(--text-secondary); background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; line-height: 1.45; }
 .scr-rehook b, .scr-cta b { color: var(--text-primary); }
 .scr-gatillo { color: var(--primary-light) !important; }

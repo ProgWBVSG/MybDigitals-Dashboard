@@ -695,7 +695,7 @@ function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
 type ViralScript = {
   framework: string; formato: string;
   cicloViral: { idea: string; lente: string; comparteFactor: string; razon: string };
-  hooks: { texto: string; formula: string }[];
+  hooks: { texto: string; formula: string; hookVisual: string; textoPantalla: string }[];
   reHook: string;
   guion: { tiempo: string; voz: string; pantalla: string; visual: string; gatillo: string }[];
   cta: { categoria: string; mecanica: string; texto: string };
@@ -738,7 +738,10 @@ function Guiones({ c }: { c: ReturnType<typeof useContent> }) {
     // Guarda directo como guion por bloques (mismo formato que edita el Pipeline):
     // Hook+Re-Hook como bloque "hook", cada beat como "desarrollo", cierre como "cta".
     const blocks: ScriptBlock[] = [
-      { id: uuid(), phase: 'hook', text: [hook?.texto, out.reHook].filter(Boolean).join('\n\n'), seconds: 7, visual: hook?.formula ? `Fórmula de hook: ${hook.formula}` : '' },
+      {
+        id: uuid(), phase: 'hook', text: [hook?.texto, out.reHook].filter(Boolean).join('\n\n'), seconds: 7,
+        visual: [hook?.hookVisual && `Visual: ${hook.hookVisual}`, hook?.textoPantalla && `En pantalla: ${hook.textoPantalla}`].filter(Boolean).join(' · '),
+      },
       ...(out.guion || []).map(g => ({
         id: uuid(), phase: 'desarrollo' as const, text: g.voz, seconds: parseRange(g.tiempo),
         visual: [g.pantalla && `En pantalla: ${g.pantalla}`, g.visual, g.gatillo && `Gatillo: ${g.gatillo}`].filter(Boolean).join(' · '),
@@ -794,6 +797,13 @@ function Guiones({ c }: { c: ReturnType<typeof useContent> }) {
               {(out.hooks || []).map((h, k) => (
                 <button key={k} className={`scr-hook ${hookSel === k ? 'on' : ''}`} onClick={() => setHookSel(k)}>
                   <span className="scr-hook-formula">{h.formula}</span>{h.texto}
+                  {(h.hookVisual || h.textoPantalla) && (
+                    <span className="scr-hook-extra">
+                      {h.hookVisual && <>🎥 {h.hookVisual}</>}
+                      {h.hookVisual && h.textoPantalla && ' · '}
+                      {h.textoPantalla && <>🔤 "{h.textoPantalla}"</>}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
