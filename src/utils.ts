@@ -205,7 +205,7 @@ export const CONTENT_GAMES: { key: ContentGame; label: string; hint: string }[] 
   { key: 'fama_categoria', label: 'Juego 2 — Fama de categoría', hint: 'Máximo alcance pero sin salirse del rubro del cliente, para volverse la referencia de esa categoría.' },
   { key: 'producto_intuitivo', label: 'Juego 3 — Producto intuitivo', hint: 'Vende un producto que NO necesita explicación (ropa, comida, decoración, gimnasio en sí). Convierte por vibe/estética/lifestyle.' },
   { key: 'producto_explicativo', label: 'Juego 4 — Producto explicativo', hint: 'Vende un producto/servicio que SÍ necesita educar antes de comprar (suplementos, apps, servicios técnicos). El contenido educativo cierra la brecha antes del CTA.' },
-  { key: 'autoridad', label: 'Juego 5 — Autoridad / Leads', hint: 'Construye confianza y expertise para vender consultoría/mentoría/servicios de alto ticket. CTA hacia leads (comentario/DM), no venta directa.' },
+  { key: 'autoridad', label: 'Juego 5 — Autoridad / Leads', hint: 'El que Kallaway más recomienda cuando ya hay expertise + algo para ofrecer. Construye confianza para vender consultoría/mentoría/alto ticket. Métrica correcta: "on-target views" (los que pueden comprar), no vistas totales. CTA hacia leads (comentario/DM), no venta directa.' },
 ];
 
 // ─── ONBOARDING TYPES ───

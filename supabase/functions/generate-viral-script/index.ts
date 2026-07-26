@@ -31,10 +31,10 @@ Las dos combinaciones ganadoras (elegí una):
 Nunca combines idea poco común + lente poco común: se vuelve tan nicho que nadie la comparte.
 
 === APERTURA: HOOK (0-3s) + RE-HOOK (3-7s) ===
-El hook real combina TRES capas simultáneas — nunca es solo la frase hablada:
+El 85% de la gente scrollea sin sonido: el orden real en que el cerebro procesa un video es (1) el visual frena el scroll ("visual stun gun"), (2) los ojos leen el texto en pantalla, (3) recién ahí procesa el audio de fondo, (4) compara lo visual con lo que prometió el texto. Por eso el hook real combina TRES capas simultáneas que tienen que decir LO MISMO — si no están alineadas, el viewer siente que le mintieron y rebota:
 1. HOOK VERBAL — lo que se dice/narra. Cero cortesías ("hola, cómo están"), directo al dolor o beneficio.
 2. HOOK VISUAL — lo que se VE en el primer frame, independiente de la voz. Tiene que mostrar acción o algo fuera de lo común.
-3. HOOK DE TEXTO — el texto grande en pantalla, que puede no ser exactamente lo mismo que se dice.
+3. HOOK DE TEXTO — el texto grande en pantalla. Tiene que reforzar la misma promesa del hook verbal, no una idea distinta.
 RE-HOOK / PUENTE (3-7s) — justifica el gancho y sube la expectativa antes de que la retención caiga en el segundo 4 (esto es lo que más se olvida, y por eso hooks buenos igual pierden gente acá). Ej: "Y no es por lo que pensás...", "Te lo explico en 30 segundos con un ejemplo real...".
 
 === 13 FÓRMULAS DE HOOK VERBAL (elegí 3 distintas para las variantes) ===
@@ -65,6 +65,9 @@ Nunca plano. Metés un "gatillo de re-enganche" cada 3-5 segundos siguiendo los 
 - LEADS/VENTA: Lead magnet ("comentá [PALABRA] y te mando gratis [recurso]", pensado para automatizar con ManyChat/DM) · Comentario-por-info ("comentá [PALABRA] para más detalles") · Transformación+Trigger (mini-historia de antes/después + "comentá X") · Oferta directa de servicio.
 Opcional: cerrá con un LOOP perfecto — la última frase conecta gramaticalmente con la primera del hook para que el video se repita solo (mejora watch time y rewatch rate).
 
+=== CÓMO GENERAR COMENTARIOS (si el CTA es de categoría "interacción") ===
+La gente comenta cuando está en desacuerdo, no cuando está en el medio. Si el CTA busca comentarios, hacé que el guion tome una postura FUERTE (no neutral) sobre el tema, llevá el framing a la versión más extrema posible sin perder honestidad (ej. no "esto ayuda a vender" sino "esto es la única forma real de vender"), y si aplica, apoyate en marcas/temas que ya generan opinión dividida en el rubro del cliente. El objetivo es generar debate genuino, nunca odio real.
+
 === EDICIÓN 2026 ===
 Subtítulos dinámicos palabra por palabra centrados (70% ve sin sonido), 9:16 vertical, ritmo de voz 10-15% más rápido que el habla normal sin pausas muertas ni muletillas.
 
@@ -93,14 +96,17 @@ Devolvé ÚNICAMENTE un JSON válido con EXACTAMENTE esta forma:
 }
 - "hooks": exactamente 3, con fórmulas distintas entre sí. "guion": 4 a 7 beats con tiempos que arrancan en 7s (después del re-hook) y suman la duración pedida, siguiendo los pasos reales del "formato" elegido.`;
 
-// Los 5 juegos de contenido (framework de Kallaway): qué está jugando la cuenta del
-// cliente en redes, para ajustar el ángulo del guion (TAM, tono, hacia dónde empuja el CTA).
+// Los 5 juegos de contenido (framework de Kallaway, doc "How To Win On Social Media"):
+// qué está jugando la cuenta del cliente en redes, para ajustar el ángulo del guion
+// (TAM, métrica que importa, tono, hacia dónde empuja el CTA). Kallaway remarca que
+// "views ≠ dólares": la métrica correcta a optimizar cambia según el juego, no es
+// siempre "más vistas". Nunca se pueden jugar dos juegos bien en la misma cuenta.
 const GAME_GUIDANCE: Record<string, string> = {
-  fama_masiva: 'Juego 1 (Fama masiva): priorizá el TAM más amplio posible, temas masivos (cultura, dinero, deportes, relaciones, salud). Sensacionalismo y shareability por encima de la venta directa. El CTA debe ser de categoría "seguir" o "interacción", nunca de venta.',
-  fama_categoria: 'Juego 2 (Fama de categoría): TAM amplio PERO sin salirte del rubro del cliente aunque un tema más masivo tiente más. Cuanto más doloroso el tema dentro del avatar del rubro, mejor. CTA de "seguir".',
-  producto_intuitivo: 'Juego 3 (Producto intuitivo): el objetivo es la conversión directa de un producto que NO necesita explicación (se entiende con solo verlo). Priorizá contenido de entretenimiento/vibe/estilo de vida donde el producto se vea en uso por gente que el viewer quiere imitar. CTA de "leads" o directo a comprar.',
-  producto_explicativo: 'Juego 4 (Producto explicativo): el objetivo es la conversión de un producto que SÍ necesita educar antes de comprar. El desarrollo tiene que cerrar la brecha de "por qué esto me sirve" antes de pedir la acción. CTA de "leads".',
-  autoridad: 'Juego 5 (Autoridad / Leads): el objetivo es construir confianza y posicionarte como experto para vender consultoría/mentoría/servicios de alto ticket, no venta directa. Contenido educativo o storytelling en primera persona con algo no obvio y tácticamente aplicable. CTA de "leads" (comentario/DM), nunca venta directa en el mismo video.',
+  fama_masiva: 'Juego 1 (Fama masiva): priorizá el TAM más amplio posible, temas masivos (cultura, dinero, deportes, relaciones, salud), máximo sensacionalismo/shareability/comments. La métrica que importa acá es vistas totales, no conversión — monetiza con marca/CPM, no vendiendo algo puntual. CTA de categoría "seguir" o "interacción", nunca de venta.',
+  fama_categoria: 'Juego 2 (Fama de categoría): TAM lo más amplio posible PERO sin salirte del rubro del cliente, aunque un tema más masivo tiente más. Cuanto más doloroso el tema dentro del avatar del rubro, mejor. La métrica sigue siendo vistas/followers dentro de la categoría. CTA de "seguir".',
+  producto_intuitivo: 'Juego 3 (Producto intuitivo): el objetivo es la conversión directa de un producto que NO necesita explicación (se entiende con solo verlo). Priorizá contenido de entretenimiento/vibe/estilo de vida donde el producto se vea en uso por gente que el viewer quiere imitar. La conversión suele ser multi-touch (varios videos antes de comprar), por eso el top-of-funnel amplio importa. CTA de "leads" o directo a comprar.',
+  producto_explicativo: 'Juego 4 (Producto explicativo): el objetivo es la conversión de un producto que SÍ necesita educar antes de comprar (puede cerrarse en una sola sesión, sin funnel largo). El desarrollo tiene que cerrar la brecha de "por qué esto me sirve" antes de pedir la acción. CTA de "leads".',
+  autoridad: 'Juego 5 (Autoridad / Leads) — el que Kallaway más recomienda cuando el cliente ya tiene expertise real y algo para ofrecer: el objetivo NO es viralidad extrema sino construir confianza para vender consultoría/mentoría/servicios de alto ticket. La métrica correcta son "on-target views" (los que realmente pueden comprar), no vistas totales — 1.000 vistas con 500 compradores potenciales vale más que 100.000 vistas con 50. Contenido educativo o storytelling en primera persona con algo NO obvio y tácticamente aplicable (no solo teoría). Dar el 100% del conocimiento gratis en el video; lo que se vende es la implementación/personalización, no información retenida. CTA de "leads" (comentario/DM), nunca venta directa en el mismo video.',
 };
 
 const GEN_CONFIG = { temperature: 0.9, maxOutputTokens: 4096, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 1024 } };
