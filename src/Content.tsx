@@ -1,11 +1,15 @@
 import { useState, useMemo } from 'react';
-import { Sparkles, Plug, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Send } from 'lucide-react';
+import { Sparkles, Plug, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Send, Maximize2, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useContent } from './hooks';
 import {
-  CONTENT_STATUSES, CONTENT_FORMATS, CONTENT_FORMAT_LABELS, CONTENT_OBJECTIVES,
+  CONTENT_STATUSES, CONTENT_FORMATS, CONTENT_FORMAT_LABELS, CONTENT_OBJECTIVES, uuid,
   type ContentPost, type ContentStatus, type ContentFormat,
 } from './utils';
+import {
+  SCRIPT_PHASES, SCRIPT_PHASE_LABELS, SCRIPT_PHASE_COLORS, emptyScript, decodeScript, encodeScript, scriptPreview, totalSeconds, isStructuredScript,
+  type ScriptBlock, type ScriptPhase,
+} from './script';
 import './Content.css';
 
 type Tab = 'resumen' | 'ideas' | 'guiones' | 'tabla' | 'pipeline' | 'calendario' | 'generador' | 'fuentes' | 'conexion';
@@ -165,26 +169,117 @@ function Resumen({ posts, onGo }: { posts: ContentPost[]; onGo: (t: Tab) => void
   );
 }
 
+// Editor de un bloque del guion: fase + segundos arriba, guion/idea a la izquierda,
+// visual-edición a la derecha (lo que hay que mostrar en pantalla o cortar en ese momento).
+function ScriptBlockEditor({ block, index, total, onChange, onRemove, onMove }: {
+  block: ScriptBlock; index: number; total: number;
+  onChange: (b: ScriptBlock) => void; onRemove: () => void; onMove: (dir: 1 | -1) => void;
+}) {
+  return (
+    <div className="scr-block" style={{ borderLeftColor: SCRIPT_PHASE_COLORS[block.phase] }}>
+      <div className="scr-block-head">
+        <select className="select scr-phase" value={block.phase} onChange={e => onChange({ ...block, phase: e.target.value as ScriptPhase })}>
+          {SCRIPT_PHASES.map(p => <option key={p} value={p}>{SCRIPT_PHASE_LABELS[p]}</option>)}
+        </select>
+        <label className="scr-sec">
+          <input type="number" min={0} className="input" value={block.seconds} onChange={e => onChange({ ...block, seconds: Math.max(0, +e.target.value || 0) })} />
+          <span>seg</span>
+        </label>
+        <div className="scr-block-actions">
+          <button type="button" title="Subir" disabled={index === 0} onClick={() => onMove(-1)}><ArrowUp size={13} /></button>
+          <button type="button" title="Bajar" disabled={index === total - 1} onClick={() => onMove(1)}><ArrowDown size={13} /></button>
+          <button type="button" title="Quitar bloque" onClick={onRemove}><Trash2 size={13} /></button>
+        </div>
+      </div>
+      <div className="scr-block-cols">
+        <label>Guion<textarea className="input" rows={3} placeholder="Qué decís en este momento…" value={block.text} onChange={e => onChange({ ...block, text: e.target.value })} /></label>
+        <label>Visual / edición<textarea className="input" rows={3} placeholder="Qué se ve o qué corte hacer acá…" value={block.visual} onChange={e => onChange({ ...block, visual: e.target.value })} /></label>
+      </div>
+    </div>
+  );
+}
+
+// Modo grabación: guion completo a pantalla grande, ordenado por bloque, para
+// tenerlo a mano mientras grabás (estilo teleprompter simple).
+function Teleprompter({ title, blocks, onClose }: { title: string; blocks: ScriptBlock[]; onClose: () => void }) {
+  const [big, setBig] = useState(false);
+  return (
+    <div className="tp-overlay" onClick={onClose}>
+      <div className="tp-sheet" onClick={e => e.stopPropagation()}>
+        <div className="tp-bar">
+          <div><strong>{title || 'Sin título'}</strong><span>{totalSeconds(blocks)}s en total</span></div>
+          <div className="tp-bar-actions">
+            <button className="btn btn-secondary btn-sm" onClick={() => setBig(v => !v)}>{big ? 'Texto normal' : 'Texto más grande'}</button>
+            <button className="btn btn-secondary btn-sm" onClick={onClose}><X size={15} /> Cerrar</button>
+          </div>
+        </div>
+        <div className={`tp-content ${big ? 'big' : ''}`}>
+          {blocks.filter(b => b.text.trim() || b.visual.trim()).map(b => (
+            <div key={b.id} className="tp-block">
+              <div className="tp-block-tag" style={{ color: SCRIPT_PHASE_COLORS[b.phase] }}>{SCRIPT_PHASE_LABELS[b.phase]}{b.seconds ? ` · ${b.seconds}s` : ''}</div>
+              {b.text.trim() && <p className="tp-text">{b.text}</p>}
+              {b.visual.trim() && <p className="tp-visual">🎬 {b.visual}</p>}
+            </div>
+          ))}
+          {blocks.every(b => !b.text.trim() && !b.visual.trim()) && <div className="ig-empty-inline">Todavía no escribiste el guion.</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PostForm({ initial, onSave, onClose }: { initial?: Partial<ContentPost>; onSave: (p: Partial<ContentPost>) => void; onClose: () => void }) {
-  const [f, setF] = useState<Partial<ContentPost>>({ format: 'reel', objective: CONTENT_OBJECTIVES[0], title: '', content: '', edgeLevel: 3, status: 'borrador', ...initial });
+  const [f, setF] = useState<Partial<ContentPost>>({ format: 'reel', objective: CONTENT_OBJECTIVES[0], title: '', edgeLevel: 3, status: 'borrador', ...initial });
+  const [blocks, setBlocks] = useState<ScriptBlock[]>(() => initial?.content ? decodeScript(initial.content) : emptyScript());
+  const [tele, setTele] = useState(false);
+
+  const setBlock = (i: number, b: ScriptBlock) => setBlocks(bs => bs.map((x, idx) => idx === i ? b : x));
+  const removeBlock = (i: number) => setBlocks(bs => bs.filter((_, idx) => idx !== i));
+  const moveBlock = (i: number, dir: 1 | -1) => setBlocks(bs => {
+    const j = i + dir; if (j < 0 || j >= bs.length) return bs;
+    const copy = [...bs]; [copy[i], copy[j]] = [copy[j], copy[i]]; return copy;
+  });
+  const addBlock = () => setBlocks(bs => [...bs, { id: uuid(), phase: 'desarrollo', text: '', seconds: 10, visual: '' }]);
+
+  const save = () => {
+    if (!(f.title || '').trim()) return;
+    onSave({ ...f, content: encodeScript(blocks) });
+    onClose();
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
-        <h2>{initial?.id ? 'Editar pieza' : 'Nueva pieza'}</h2>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 720 }}>
+        <div className="scr-form-head">
+          <h2>{initial?.id ? 'Editar pieza' : 'Nueva pieza'}</h2>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setTele(true)}><Maximize2 size={14} /> Modo grabación</button>
+        </div>
         <div className="ig-form">
           <label>Título<input className="input" value={f.title || ''} autoFocus placeholder="Ej: 3 errores al vender por IG" onChange={e => setF({ ...f, title: e.target.value })} /></label>
           <div style={{ display: 'flex', gap: 10 }}>
             <label style={{ flex: 1 }}>Formato<select className="select" value={f.format} onChange={e => setF({ ...f, format: e.target.value as ContentFormat })}>{CONTENT_FORMATS.map(x => <option key={x} value={x}>{CONTENT_FORMAT_LABELS[x]}</option>)}</select></label>
             <label style={{ flex: 1 }}>Objetivo<select className="select" value={f.objective} onChange={e => setF({ ...f, objective: e.target.value })}>{CONTENT_OBJECTIVES.map(x => <option key={x} value={x}>{x}</option>)}</select></label>
           </div>
-          <label>Guion / idea<textarea className="input" rows={4} value={f.content || ''} placeholder="Hook, desarrollo, CTA…" onChange={e => setF({ ...f, content: e.target.value })} /></label>
           <label>Fecha de publicación (opcional)<input className="input" type="date" value={f.scheduledFor ? new Date(f.scheduledFor).toISOString().split('T')[0] : ''} onChange={e => setF({ ...f, scheduledFor: e.target.value ? new Date(e.target.value + 'T12:00').getTime() : null })} /></label>
         </div>
+
+        <div className="scr-blocks-head">
+          <span>Guion por fases <em>({totalSeconds(blocks)}s en total)</em></span>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={addBlock}><Plus size={13} /> Agregar bloque</button>
+        </div>
+        <div className="scr-blocks">
+          {blocks.map((b, i) => (
+            <ScriptBlockEditor key={b.id} block={b} index={i} total={blocks.length}
+              onChange={nb => setBlock(i, nb)} onRemove={() => removeBlock(i)} onMove={dir => moveBlock(i, dir)} />
+          ))}
+        </div>
+
         <div className="modal-actions">
           <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-primary" onClick={() => { if ((f.title || '').trim()) { onSave(f); onClose(); } }}>{initial?.id ? 'Guardar' : 'Crear'}</button>
+          <button className="btn btn-primary" onClick={save}>{initial?.id ? 'Guardar' : 'Crear'}</button>
         </div>
       </div>
+      {tele && <Teleprompter title={f.title || ''} blocks={blocks} onClose={() => setTele(false)} />}
     </div>
   );
 }
@@ -211,7 +306,7 @@ function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
               {items.map(p => (
                 <div key={p.id} className="ig-post" onClick={() => setForm(p)}>
                   <h4>{p.title || 'Sin título'}</h4>
-                  {p.content && <p>{p.content}</p>}
+                  {scriptPreview(p.content) && <p>{scriptPreview(p.content)}</p>}
                   <div className="ig-post-meta">{fmtBadge(p.format)}{p.objective && <span className="ig-badge soft">{p.objective}</span>}</div>
                   <div className="ig-post-actions" onClick={e => e.stopPropagation()}>
                     <button title="Mover atrás" disabled={p.status === 'borrador'} onClick={() => move(p, -1)}><ChevronLeft size={14} /></button>
@@ -268,8 +363,11 @@ const buildContentText = (out: GenOut) => [
   (out.hashtags || []).join(' '),
 ].join('\n');
 
-// Para la vista de tabla: extrae solo la línea del hook como preview corta de la pieza.
+// Para la vista de tabla: extrae solo el hook como preview corta de la pieza
+// (soporta el guion estructurado por bloques y el texto plano viejo de la IA).
 const parseHook = (content: string) => {
+  if (!content) return '';
+  if (isStructuredScript(content)) return scriptPreview(content);
   const m = content.match(/^HOOK:\s*(.+)$/m);
   return m ? m[1].trim() : content.split('\n')[0]?.trim() || '';
 };

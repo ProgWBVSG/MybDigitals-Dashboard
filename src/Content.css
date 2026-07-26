@@ -177,3 +177,38 @@
 .ig-cell-hook { max-width: 280px; }
 .ig-cell-hook span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; color: var(--text-secondary); padding: 4px 6px; border-radius: 6px; }
 .ig-cell-hook span:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* ─── Editor de guion por bloques (Pipeline → Nueva/Editar pieza) ─── */
+.scr-form-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.scr-form-head h2 { margin: 0; }
+.scr-blocks-head { display: flex; align-items: center; justify-content: space-between; margin: 18px 0 10px; }
+.scr-blocks-head span { font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.scr-blocks-head em { font-style: normal; color: var(--text-muted); font-weight: 500; text-transform: none; letter-spacing: 0; }
+.scr-blocks { display: flex; flex-direction: column; gap: 12px; max-height: 46vh; overflow-y: auto; padding-right: 2px; }
+.scr-block { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: 10px; padding: 12px; }
+.scr-block-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.scr-phase { width: auto; flex: 0 0 150px; }
+.scr-sec { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+.scr-sec input { width: 56px; text-align: center; }
+.scr-block-actions { display: flex; gap: 6px; margin-left: auto; }
+.scr-block-actions button { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 7px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text-secondary); cursor: pointer; }
+.scr-block-actions button:hover:not(:disabled) { color: var(--text-primary); background: var(--bg-hover); }
+.scr-block-actions button:last-child:hover { color: var(--danger); }
+.scr-block-actions button:disabled { opacity: 0.3; cursor: default; }
+.scr-block-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.scr-block-cols label { display: flex; flex-direction: column; gap: 5px; font-size: 11px; font-weight: 600; color: var(--text-muted); }
+@media (max-width: 640px) { .scr-block-cols { grid-template-columns: 1fr; } }
+
+/* ─── Modo grabación (teleprompter) ─── */
+.tp-overlay { position: fixed; inset: 0; background: rgba(4,6,12,0.86); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 300; padding: 24px; }
+.tp-sheet { width: 100%; max-width: 780px; max-height: 88vh; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
+.tp-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.tp-bar strong { display: block; font-size: 16px; color: var(--text-primary); }
+.tp-bar span { font-size: 12px; color: var(--text-muted); }
+.tp-bar-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.tp-content { overflow-y: auto; padding: 24px 28px 32px; display: flex; flex-direction: column; gap: 22px; }
+.tp-block-tag { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+.tp-text { margin: 0; font-size: 22px; line-height: 1.5; color: var(--text-primary); font-weight: 600; }
+.tp-visual { margin: 6px 0 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+.tp-content.big .tp-text { font-size: 30px; }
+.tp-content.big .tp-visual { font-size: 16px; }
