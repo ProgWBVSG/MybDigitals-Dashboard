@@ -693,7 +693,7 @@ function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
 }
 
 type ViralScript = {
-  framework: string; formato: string;
+  framework: string; formato: string; categoriaContenido: string; valorClave: string;
   cicloViral: { idea: string; lente: string; comparteFactor: string; razon: string };
   hooks: { texto: string; formula: string; hookVisual: string; textoPantalla: string }[];
   reHook: string;
@@ -778,7 +778,7 @@ function Guiones({ c }: { c: ReturnType<typeof useContent> }) {
 
       <div className="ig-card">
         <div className="ig-card-head">
-          <div><p className="ig-eyebrow">{out?.formato || 'Guion listo para grabar'}</p><h3>{out ? out.framework : 'Salida'}</h3></div>
+          <div><p className="ig-eyebrow">{out ? [out.categoriaContenido, out.formato].filter(Boolean).join(' · ') : 'Guion listo para grabar'}</p><h3>{out ? out.framework : 'Salida'}</h3></div>
           {out && <button className="btn btn-primary btn-sm" onClick={guardar}><Plus size={14} /> Guardar en Pipeline</button>}
         </div>
         {!out ? (
@@ -792,6 +792,7 @@ function Guiones({ c }: { c: ReturnType<typeof useContent> }) {
                 <p className="scr-ciclo-razon">{out.cicloViral.razon}</p>
               </div>
             )}
+            {out.valorClave && <div className="scr-valor"><b>🎯 Valor clave (walkaway value):</b> {out.valorClave}</div>}
             <div className="scr-hooks">
               <div className="scr-label">🎣 Elegí tu hook (0-3s)</div>
               {(out.hooks || []).map((h, k) => (
