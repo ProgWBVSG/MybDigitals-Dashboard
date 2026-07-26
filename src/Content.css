@@ -233,3 +233,15 @@
 .ad-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
 .ad-stats span { display: block; font-size: 10.5px; color: var(--text-muted); margin-bottom: 2px; }
 .ad-stats strong { font-size: 13px; color: var(--text-primary); }
+
+/* ─── Estudio de guiones: ciclo viral / re-hook / CTA (metodología Kallaway) ─── */
+.scr-ciclo { background: color-mix(in srgb, var(--primary) 8%, transparent); border: 1px solid color-mix(in srgb, var(--primary) 24%, transparent); border-radius: 10px; padding: 12px 14px; }
+.scr-ciclo-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.scr-ciclo-row b { color: var(--text-primary); font-size: 12.5px; margin-right: 10px; }
+.scr-ciclo p { margin: 4px 0 0; font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; }
+.scr-ciclo-razon { color: var(--text-muted) !important; font-style: italic; }
+.scr-hook-formula { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--primary-light); margin-bottom: 3px; }
+.scr-rehook, .scr-cta { font-size: 13px; color: var(--text-secondary); background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; line-height: 1.45; }
+.scr-rehook b, .scr-cta b { color: var(--text-primary); }
+.scr-gatillo { color: var(--primary-light) !important; }
+.scr-gatillo b { color: var(--primary-light); }

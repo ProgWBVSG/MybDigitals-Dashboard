@@ -693,9 +693,13 @@ function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
 }
 
 type ViralScript = {
-  framework: string; hooks: string[];
-  guion: { tiempo: string; voz: string; pantalla: string; visual: string }[];
-  caption: string; hashtags: string[]; loop: string; porQue: string;
+  framework: string;
+  cicloViral: { idea: string; lente: string; comparteFactor: string; razon: string };
+  hooks: { texto: string; formula: string }[];
+  reHook: string;
+  guion: { tiempo: string; voz: string; pantalla: string; visual: string; gatillo: string }[];
+  cta: { tipo: string; texto: string };
+  loop: string; caption: string; hashtags: string[];
 };
 const PLATAFORMAS = ['Reel de Instagram', 'YouTube Short', 'TikTok'];
 const OBJETIVOS_G = ['Viral / alcance', 'Ventas', 'Educativo', 'Autoridad'];
@@ -718,14 +722,25 @@ function Guiones({ c }: { c: ReturnType<typeof useContent> }) {
     setGen(false);
     if (r) { setOut(r as ViralScript); setHookSel(0); }
   };
+  // Rango tipo "7-12s" → duración en segundos, para precargar el editor de bloques del Pipeline.
+  const parseRange = (t: string): number => {
+    const nums = (t.match(/\d+/g) || []).map(Number);
+    return nums.length >= 2 ? Math.max(1, nums[1] - nums[0]) : 8;
+  };
   const guardar = () => {
     if (!out) return;
-    const content = [
-      `HOOK: ${out.hooks?.[hookSel] || ''}`, '', 'GUION:',
-      ...(out.guion || []).map(g => `[${g.tiempo}] ${g.voz}${g.pantalla ? `  · pantalla: ${g.pantalla}` : ''}${g.visual ? `  · visual: ${g.visual}` : ''}`),
-      '', `LOOP: ${out.loop}`, '', `CAPTION: ${out.caption}`, '', (out.hashtags || []).join(' '),
-    ].join('\n');
-    c.addPost({ format: 'reel', objective: objetivo, title: tema, content, status: 'borrador' });
+    const hook = out.hooks?.[hookSel];
+    // Guarda directo como guion por bloques (mismo formato que edita el Pipeline):
+    // Hook+Re-Hook como bloque "hook", cada beat como "desarrollo", cierre como "cta".
+    const blocks: ScriptBlock[] = [
+      { id: uuid(), phase: 'hook', text: [hook?.texto, out.reHook].filter(Boolean).join('\n\n'), seconds: 7, visual: hook?.formula ? `Fórmula de hook: ${hook.formula}` : '' },
+      ...(out.guion || []).map(g => ({
+        id: uuid(), phase: 'desarrollo' as const, text: g.voz, seconds: parseRange(g.tiempo),
+        visual: [g.pantalla && `En pantalla: ${g.pantalla}`, g.visual, g.gatillo && `Gatillo: ${g.gatillo}`].filter(Boolean).join(' · '),
+      })),
+      { id: uuid(), phase: 'cta', text: out.cta?.texto || '', seconds: 5, visual: out.loop ? `Loop: ${out.loop}` : '' },
+    ];
+    c.addPost({ format: 'reel', objective: objetivo, title: tema, content: encodeScript(blocks), status: 'borrador', kind: 'organico' });
   };
 
   return (
@@ -755,12 +770,22 @@ function Guiones({ c }: { c: ReturnType<typeof useContent> }) {
           <div className="ig-empty-inline" style={{ minHeight: 240 }}>{gen ? 'La IA está escribiendo tu guion viral…' : 'Completá el tema y generá. Vas a tener 3 hooks, el guion por segundos y el cierre en loop.'}</div>
         ) : (
           <div className="scr-out">
+            {out.cicloViral && (
+              <div className="scr-ciclo">
+                <div className="scr-ciclo-row"><span>Idea</span><b>{out.cicloViral.idea}</b><span>Comparten porque</span><b>{out.cicloViral.comparteFactor === 'siente' ? 'sienten algo 💥' : 'aprenden algo 💡'}</b></div>
+                <p><b>Lente:</b> {out.cicloViral.lente}</p>
+                <p className="scr-ciclo-razon">{out.cicloViral.razon}</p>
+              </div>
+            )}
             <div className="scr-hooks">
-              <div className="scr-label">🎣 Elegí tu hook (primeros 3s)</div>
+              <div className="scr-label">🎣 Elegí tu hook (0-3s)</div>
               {(out.hooks || []).map((h, k) => (
-                <button key={k} className={`scr-hook ${hookSel === k ? 'on' : ''}`} onClick={() => setHookSel(k)}>{h}</button>
+                <button key={k} className={`scr-hook ${hookSel === k ? 'on' : ''}`} onClick={() => setHookSel(k)}>
+                  <span className="scr-hook-formula">{h.formula}</span>{h.texto}
+                </button>
               ))}
             </div>
+            {out.reHook && <div className="scr-rehook"><b>🌉 Re-hook (3-7s):</b> {out.reHook}</div>}
             <div className="scr-beats">
               {(out.guion || []).map((g, k) => (
                 <div key={k} className="scr-beat">
@@ -769,14 +794,15 @@ function Guiones({ c }: { c: ReturnType<typeof useContent> }) {
                     <p className="scr-voz">{g.voz}</p>
                     {g.pantalla && <p className="scr-mini"><b>En pantalla:</b> {g.pantalla}</p>}
                     {g.visual && <p className="scr-mini"><b>Visual:</b> {g.visual}</p>}
+                    {g.gatillo && <p className="scr-mini scr-gatillo"><b>⚡ Gatillo:</b> {g.gatillo}</p>}
                   </div>
                 </div>
               ))}
             </div>
+            {out.cta?.texto && <div className="scr-cta"><b>📢 CTA ({out.cta.tipo}):</b> {out.cta.texto}</div>}
             {out.loop && <div className="scr-loop"><b>🔁 Loop:</b> {out.loop}</div>}
             <div className="ig-gen-block"><span>Caption</span><p>{out.caption}</p></div>
             {(out.hashtags || []).length > 0 && <div className="ig-gen-tags">{out.hashtags.map((h, i) => <span key={i}>{h.startsWith('#') ? h : '#' + h}</span>)}</div>}
-            {out.porQue && <div className="scr-why">💡 {out.porQue}</div>}
           </div>
         )}
       </div>
