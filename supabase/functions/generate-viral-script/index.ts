@@ -1,9 +1,10 @@
 // Edge Function: estudio de guiones virales para Reels/Shorts/TikTok y ventas (Gemini).
-// Metodología Kallaway: fórmula de viralidad (idea × audiencia × punto de vista × hook ×
-// historia × suerte) + optimización de share rate (shares/reach, la métrica que más pesa
-// para el algoritmo) + estructura de 4 bloques (Hook / Re-Hook / Desarrollo / CTA-Loop).
-// Fuente: manual de guionismo corto + transcripciones oficiales de Kallaway (virality
-// formula breakdown + "the only metric that matters"), cargadas por MYB Digitals.
+// Metodología Kallaway + Short-Form Lego Bricks: fórmula de viralidad (idea × audiencia ×
+// punto de vista × hook × historia × suerte), share rate (shares/reach, la métrica que más
+// pesa para el algoritmo), apertura Hook(0-3s)/Re-Hook(3-7s), 20 formatos narrativos con su
+// estructura propia, 13 fórmulas de hook y CTAs categorizados (seguir/interacción/leads).
+// Fuente: manual de guionismo corto + transcripciones oficiales de Kallaway + su documento
+// "Short-Form Video Lego Bricks Database", cargados por MYB Digitals.
 // Secrets: GEMINI_API_KEY
 
 const corsHeaders = {
@@ -29,18 +30,26 @@ Las dos combinaciones ganadoras (elegí una):
 - Idea POCO COMÚN + audiencia amplia + punto de vista normal (lo poco común ya alcanza; sumarle una lente rara la vuelve demasiado nicho y pierde alcance).
 Nunca combines idea poco común + lente poco común: se vuelve tan nicho que nadie la comparte.
 
-=== ESTRUCTURA DE 4 BLOQUES (SEGUNDO A SEGUNDO) ===
-1. HOOK (0-3s) — verbal + visual SIMULTÁNEOS. Cero cortesías ("hola, cómo están"), entrá directo al dolor o beneficio. El primer frame visual tiene que mostrar acción o algo fuera de lo común (cambio brusco de lugar, objeto llamativo, texto grande y polémico en pantalla). Usá UNA de estas fórmulas:
-   - Negación/Contrarian: "Dejá de hacer [X] si querés lograr [resultado]" / "El 90% comete este error al [objetivo]"
-   - Secreto/Acceso exclusivo: "Nadie te dice esto sobre [tema]" / "Lo que usan los que sí les funciona para [resultado]"
-   - Pregunta específica (filtra audiencia): "¿Por qué sentís que [problema muy específico de tu público]?"
-   - Visual puro: la imagen sola genera el pattern interrupt, la voz la refuerza.
-2. RE-HOOK / PUENTE (3-7s) — justifica el gancho y sube la expectativa antes de que la retención caiga (esto es lo que más se olvida y por eso los hooks buenos igual pierden gente en el segundo 4). Ej: "Y no es por lo que pensás...", "Te lo explico en 30 segundos con un ejemplo real...".
-3. DESARROLLO (7s hasta el CTA) — nunca plano. Metés un "gatillo de re-enganche" cada 3-5 segundos: pasos numerados (el cerebro ama saber cuánto falta), cambio de plano/B-roll o texto resaltado, un "open loop" ("el último punto es el que casi nadie aplica..."), storytelling condensado (problema → momento eureka → solución).
-4. CTA + CIERRE — elegí según el objetivo:
-   - Transaccional: "Comentá [PALABRA] y te mando la guía/acceso por privado" (para automatizar con ManyChat/DM).
-   - Algorítmico: "Guardá esto para cuando..." (el guardado pesa mucho) o "Mandale esto a [persona específica]".
-   - Loop perfecto: la última frase conecta gramaticalmente con la primera del hook para que el video se repita solo (mejora watch time y rewatch rate).
+=== APERTURA: HOOK (0-3s) + RE-HOOK (3-7s) ===
+HOOK — verbal + visual SIMULTÁNEOS. Cero cortesías ("hola, cómo están"), entrá directo al dolor o beneficio. El primer frame visual tiene que mostrar acción o algo fuera de lo común (cambio brusco de lugar, objeto llamativo, texto grande y polémico en pantalla). Elegí la fórmula (de las 13 del catálogo, ver abajo) que mejor encaje.
+RE-HOOK / PUENTE — justifica el gancho y sube la expectativa antes de que la retención caiga en el segundo 4 (esto es lo que más se olvida, y por eso hooks buenos igual pierden gente acá). Ej: "Y no es por lo que pensás...", "Te lo explico en 30 segundos con un ejemplo real...".
+
+=== 13 FÓRMULAS DE HOOK (elegí 3 distintas para las variantes) ===
+Secreto/Revelación (algo antes desconocido) · Case Study (método/logro de alguien) · Problema (nombra un problema + promete solución simple) · Contrarian (contradice la opinión popular / myth-bust) · Negativo (advierte contra una acción, sugiere alternativa) · Educativo (enseña una habilidad directo) · Lista (opciones para lograr algo) · Escenario/Hipotético · Comparación (A vs B) · Pregunta (pregunta intrigante que ya se están haciendo) · Ranking/Rating · Autoridad (credibilidad propia, resultados demostrados) · Experiencia personal (primera persona).
+
+=== FORMATO NARRATIVO (elegí 1 que mejor encaje con el tema, y armá el DESARROLLO siguiendo SU estructura) ===
+Educativos: Breakdown/Explainer (explicá qué pasó y por qué importa) · Case Study (cómo un caso puntual logró un resultado: contexto/métricas iniciales → cómo se logró → insight clave) · Problem-Solution (agitás el dolor → solución → implicancia) · Common Mistake (nombrás la trampa → por qué pasa → corrección táctica) · Tutorial (objetivo → pasos numerados, camino más corto al resultado) · Listicle (lista numerada, un ítem por beat) · Scenario (escenario hipotético → cómo lo resolverías) · Comparación A vs B (criterios → diferencias → ganador) · Q&A (contexto de por qué importa → respuesta) · Ranking/Tier List (escala → ranking rápido) · Levels (niveles progresivos, un dato único por nivel) · Reaction (dejás correr el clip original → tu take no obvio).
+Storytelling: Skit/Humor · Hero's Journey (estado inicial → llamado → obstáculos → transformación → nueva realidad) · Personal Learning/Epiphany (resultado con prueba → punto de partida humilde → proceso → lección) · Day in the Life · Personal Update · About Me (quién sos → vida normal → momento de cambio → cómo te transformó) · Episode/Social Show · Challenge.
+Si el tema no calza perfecto en ninguno, usá el más cercano y adaptalo — la lógica de fondo (contexto → entrega del valor central → cierre que conecta con el objetivo) se mantiene siempre.
+
+=== DESARROLLO (7s hasta el CTA) ===
+Nunca plano. Metés un "gatillo de re-enganche" cada 3-5 segundos siguiendo los pasos del formato elegido: pasos numerados (el cerebro ama saber cuánto falta), cambio de plano/B-roll o texto resaltado, un "open loop" ("el último punto es el que casi nadie aplica..."), storytelling condensado (problema → momento eureka → solución).
+
+=== CTA (elegí la categoría y mecánica que mejor sirvan al objetivo) ===
+- SEGUIR: Promesa de valor ("enseño X, seguime para más") · Historia de transformación ("pasé de X a Y, seguime si querés lo mismo") · Avatar específico ("si sos [avatar] que busca [resultado], seguime").
+- INTERACCIÓN/ALGORÍTMICO (pesa mucho para el algoritmo): Guardar ("guardá esto para cuando...") · Etiquetar ("etiquetá a alguien que necesita ver esto") · Comentario/opinión ("¿vos qué pensás de esto?").
+- LEADS/VENTA: Lead magnet ("comentá [PALABRA] y te mando gratis [recurso]", pensado para automatizar con ManyChat/DM) · Comentario-por-info ("comentá [PALABRA] para más detalles") · Transformación+Trigger (mini-historia de antes/después + "comentá X") · Oferta directa de servicio.
+Opcional: cerrá con un LOOP perfecto — la última frase conecta gramaticalmente con la primera del hook para que el video se repita solo (mejora watch time y rewatch rate).
 
 === EDICIÓN 2026 ===
 Subtítulos dinámicos palabra por palabra centrados (70% ve sin sonido), 9:16 vertical, ritmo de voz 10-15% más rápido que el habla normal sin pausas muertas ni muletillas.
@@ -52,22 +61,23 @@ Subtítulos dinámicos palabra por palabra centrados (70% ve sin sonido), 9:16 v
 
 Devolvé ÚNICAMENTE un JSON válido con EXACTAMENTE esta forma:
 {
-  "framework": "resumen corto del enfoque (ej: 'Idea común + lente de negocio, contrarian hook, loop perfecto')",
+  "framework": "resumen corto del enfoque (ej: 'Common Mistake + lente de negocio, hook contrarian, CTA de leads')",
+  "formato": "el formato narrativo elegido del catálogo (ej: 'Tutorial', 'Hero's Journey', 'Common Mistake')",
   "cicloViral": {
     "idea": "común" | "poco común",
     "lente": "el punto de vista único elegido, en una frase",
     "comparteFactor": "siente" | "aprende",
     "razon": "1-2 frases: por qué esta combinación tiene potencial real de compartidos, no solo de vistas"
   },
-  "hooks": [ { "texto": "hook completo, listo para decir", "formula": "Contrarian" | "Secreto" | "Pregunta específica" | "Visual" } ],
+  "hooks": [ { "texto": "hook completo, listo para decir", "formula": "una de las 13 fórmulas del catálogo" } ],
   "reHook": "la frase puente de los segundos 3-7 que justifica el hook",
-  "guion": [ { "tiempo": "7-12s", "voz": "lo que se dice/narra", "pantalla": "texto en pantalla (corto)", "visual": "toma, B-roll o corte sugerido", "gatillo": "qué re-enganche usa este beat (paso N / open loop / dato / cambio visual)" } ],
-  "cta": { "tipo": "transaccional" | "algoritmico" | "loop", "texto": "el CTA completo, listo para decir" },
-  "loop": "cómo la última frase conecta gramaticalmente con el hook para que el video se repita",
+  "guion": [ { "tiempo": "7-12s", "voz": "lo que se dice/narra", "pantalla": "texto en pantalla (corto)", "visual": "toma, B-roll o corte sugerido", "gatillo": "qué paso de la estructura del formato es este beat (ej: 'contexto', 'paso 2', 'momento eureka', 'open loop')" } ],
+  "cta": { "categoria": "seguir" | "interaccion" | "leads", "mecanica": "la mecánica elegida (ej: 'Guardar', 'Comentario-por-info')", "texto": "el CTA completo, listo para decir" },
+  "loop": "cómo la última frase conecta gramaticalmente con el hook para que el video se repita (vacío si no aplica)",
   "caption": "texto del posteo (2-4 frases, voz de marca)",
   "hashtags": ["#etiqueta"]
 }
-- "hooks": exactamente 3, con fórmulas distintas entre sí. "guion": 4 a 7 beats con tiempos que arrancan en 7s (después del re-hook) y suman la duración pedida.`;
+- "hooks": exactamente 3, con fórmulas distintas entre sí. "guion": 4 a 7 beats con tiempos que arrancan en 7s (después del re-hook) y suman la duración pedida, siguiendo los pasos reales del "formato" elegido.`;
 
 const GEN_CONFIG = { temperature: 0.9, maxOutputTokens: 4096, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 1024 } };
 const MODELS = [MODEL, 'gemini-2.0-flash'];

@@ -693,12 +693,12 @@ function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
 }
 
 type ViralScript = {
-  framework: string;
+  framework: string; formato: string;
   cicloViral: { idea: string; lente: string; comparteFactor: string; razon: string };
   hooks: { texto: string; formula: string }[];
   reHook: string;
   guion: { tiempo: string; voz: string; pantalla: string; visual: string; gatillo: string }[];
-  cta: { tipo: string; texto: string };
+  cta: { categoria: string; mecanica: string; texto: string };
   loop: string; caption: string; hashtags: string[];
 };
 const PLATAFORMAS = ['Reel de Instagram', 'YouTube Short', 'TikTok'];
@@ -763,7 +763,7 @@ function Guiones({ c }: { c: ReturnType<typeof useContent> }) {
 
       <div className="ig-card">
         <div className="ig-card-head">
-          <div><p className="ig-eyebrow">Guion listo para grabar</p><h3>{out ? out.framework : 'Salida'}</h3></div>
+          <div><p className="ig-eyebrow">{out?.formato || 'Guion listo para grabar'}</p><h3>{out ? out.framework : 'Salida'}</h3></div>
           {out && <button className="btn btn-primary btn-sm" onClick={guardar}><Plus size={14} /> Guardar en Pipeline</button>}
         </div>
         {!out ? (
@@ -799,7 +799,7 @@ function Guiones({ c }: { c: ReturnType<typeof useContent> }) {
                 </div>
               ))}
             </div>
-            {out.cta?.texto && <div className="scr-cta"><b>📢 CTA ({out.cta.tipo}):</b> {out.cta.texto}</div>}
+            {out.cta?.texto && <div className="scr-cta"><b>📢 CTA ({out.cta.categoria} · {out.cta.mecanica}):</b> {out.cta.texto}</div>}
             {out.loop && <div className="scr-loop"><b>🔁 Loop:</b> {out.loop}</div>}
             <div className="ig-gen-block"><span>Caption</span><p>{out.caption}</p></div>
             {(out.hashtags || []).length > 0 && <div className="ig-gen-tags">{out.hashtags.map((h, i) => <span key={i}>{h.startsWith('#') ? h : '#' + h}</span>)}</div>}
