@@ -322,8 +322,9 @@ export const HISTORY_KIND_LABELS: Record<HistoryKind, string> = Object.fromEntri
 // ─── IG CONTENT ───
 export type ContentStatus = 'borrador' | 'aprobado' | 'listo';
 export type ContentFormat = 'reel' | 'carrusel' | 'story' | 'ad';
+export type ContentKind = 'organico' | 'anuncio';
 export interface ContentPost {
-  id: string; format: ContentFormat; objective: string; status: ContentStatus;
+  id: string; format: ContentFormat; objective: string; status: ContentStatus; kind: ContentKind;
   title: string; content: string; edgeLevel: number; score: number;
   scheduledFor: number | null; createdAt: string; updatedAt: string;
 }
@@ -336,6 +337,39 @@ export const CONTENT_STATUSES: { key: ContentStatus; label: string }[] = [
 export const CONTENT_FORMATS: ContentFormat[] = ['reel', 'carrusel', 'story', 'ad'];
 export const CONTENT_FORMAT_LABELS: Record<ContentFormat, string> = { reel: 'Reel', carrusel: 'Carrusel', story: 'Story', ad: 'Ad' };
 export const CONTENT_OBJECTIVES = ['Mensajes (DM)', 'Venta', 'Alcance', 'Seguidores', 'Autoridad'];
+export const CONTENT_KINDS: { key: ContentKind; label: string }[] = [
+  { key: 'organico', label: 'Orgánico' },
+  { key: 'anuncio', label: 'Anuncio' },
+];
+
+// ─── ANUNCIOS (Meta Ads) ───
+// Formato visual del creativo (independiente del objetivo de campaña).
+export type AdFormat = 'reel' | 'carrusel' | 'story' | 'imagen';
+export const AD_FORMATS: AdFormat[] = ['reel', 'carrusel', 'story', 'imagen'];
+export const AD_FORMAT_LABELS: Record<AdFormat, string> = { reel: 'Reel', carrusel: 'Carrusel', story: 'Story', imagen: 'Imagen única' };
+
+// Objetivos reales de campaña de Meta Ads Manager (Sales/Leads/Engagement/Awareness),
+// nombrados como los usa MYB. "Mensajes (DM)" = funnel Engagement→ThruPlay (comentario a DM),
+// no un objetivo separado de Meta, pero es el más usado por los clientes de MYB.
+export type AdObjective = 'Mensajes (DM)' | 'Ventas' | 'Leads / Newsletter' | 'Interacción (ThruPlay)' | 'Alcance';
+export const AD_OBJECTIVES: AdObjective[] = ['Mensajes (DM)', 'Ventas', 'Leads / Newsletter', 'Interacción (ThruPlay)', 'Alcance'];
+// Qué cuenta como "resultado" según el objetivo (así el campo de resultado se entiende sin ambigüedad).
+export const AD_OBJECTIVE_RESULT_LABEL: Record<AdObjective, string> = {
+  'Mensajes (DM)': 'Conversaciones iniciadas', 'Ventas': 'Ventas', 'Leads / Newsletter': 'Leads / suscripciones',
+  'Interacción (ThruPlay)': 'ThruPlays (15s+)', 'Alcance': 'Personas alcanzadas',
+};
+export type AdStatus = 'activo' | 'pausado' | 'finalizado';
+export const AD_STATUSES: { key: AdStatus; label: string }[] = [
+  { key: 'activo', label: 'Activo' }, { key: 'pausado', label: 'Pausado' }, { key: 'finalizado', label: 'Finalizado' },
+];
+export interface ContentAd {
+  id: string; postId: string | null; format: AdFormat; objective: string; status: AdStatus;
+  budget: number; currency: string; durationDays: number;
+  audience: string; placement: string; cta: string; copy: string;
+  notes: string; startedAt: number | null; endedAt: number | null;
+  spend: number; impressions: number; reach: number; results: number; ctr: number;
+  createdAt: string; updatedAt: string;
+}
 
 // ─── ANÁLISIS DE COMPETENCIA ───
 export interface CompetitorAnalysis {

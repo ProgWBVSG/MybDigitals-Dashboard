@@ -212,3 +212,24 @@
 .tp-visual { margin: 6px 0 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
 .tp-content.big .tp-text { font-size: 30px; }
 .tp-content.big .tp-visual { font-size: 16px; }
+
+/* Toggle Orgánico / Anuncio en el formulario de pieza */
+.scr-kind { display: flex; gap: 6px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
+.scr-kind button { flex: 1; border: none; background: none; color: var(--text-secondary); font-size: 12.5px; font-weight: 700; padding: 7px; border-radius: 7px; cursor: pointer; }
+.scr-kind button.active { background: var(--primary); color: #fff; }
+.ig-badge.kind-ad { background: #ffaa3a; color: #1a1205; }
+
+/* ─── Anuncios (Meta Ads) ─── */
+.scr-subhead { margin: 4px 0 -4px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--primary-light); }
+.scr-cpr { flex-shrink: 0; text-align: right; font-size: 11px; color: var(--text-muted); }
+.scr-cpr strong { display: block; font-size: 15px; color: var(--text-primary); }
+.ad-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.ad-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 14px; cursor: pointer; }
+.ad-card:hover { border-color: var(--primary); }
+.ad-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.ad-status { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; color: #06120c; padding: 3px 9px; border-radius: 999px; }
+.ad-card h4 { margin: 0 0 6px; font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.ad-audience { margin: 0 0 12px; font-size: 12.5px; color: var(--text-muted); line-height: 1.4; }
+.ad-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+.ad-stats span { display: block; font-size: 10.5px; color: var(--text-muted); margin-bottom: 2px; }
+.ad-stats strong { font-size: 13px; color: var(--text-primary); }

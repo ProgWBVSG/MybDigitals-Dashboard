@@ -3,8 +3,9 @@ import { Sparkles, Plug, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle2, 
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useContent } from './hooks';
 import {
-  CONTENT_STATUSES, CONTENT_FORMATS, CONTENT_FORMAT_LABELS, CONTENT_OBJECTIVES, uuid,
-  type ContentPost, type ContentStatus, type ContentFormat,
+  CONTENT_STATUSES, CONTENT_FORMATS, CONTENT_FORMAT_LABELS, CONTENT_OBJECTIVES, CONTENT_KINDS, uuid,
+  AD_FORMATS, AD_FORMAT_LABELS, AD_OBJECTIVES, AD_OBJECTIVE_RESULT_LABEL, AD_STATUSES,
+  type ContentPost, type ContentStatus, type ContentFormat, type ContentAd, type AdFormat, type AdStatus,
 } from './utils';
 import {
   SCRIPT_PHASES, SCRIPT_PHASE_LABELS, SCRIPT_PHASE_COLORS, emptyScript, decodeScript, encodeScript, scriptPreview, totalSeconds, isStructuredScript,
@@ -12,7 +13,7 @@ import {
 } from './script';
 import './Content.css';
 
-type Tab = 'resumen' | 'ideas' | 'guiones' | 'tabla' | 'pipeline' | 'calendario' | 'generador' | 'fuentes' | 'conexion';
+type Tab = 'resumen' | 'ideas' | 'guiones' | 'tabla' | 'pipeline' | 'calendario' | 'generador' | 'anuncios' | 'fuentes' | 'conexion';
 const TABS: { k: Tab; label: string }[] = [
   { k: 'resumen', label: 'Resumen' },
   { k: 'ideas', label: 'Ideas ✨' },
@@ -21,6 +22,7 @@ const TABS: { k: Tab; label: string }[] = [
   { k: 'pipeline', label: 'Pipeline' },
   { k: 'calendario', label: 'Calendario' },
   { k: 'generador', label: 'Generador' },
+  { k: 'anuncios', label: 'Anuncios 📊' },
   { k: 'fuentes', label: 'Fuentes' },
   { k: 'conexion', label: 'Conexión IG' },
 ];
@@ -51,6 +53,7 @@ export default function Content() {
         {tab === 'pipeline' && <Pipeline c={c} />}
         {tab === 'calendario' && <Calendario posts={c.posts} />}
         {tab === 'generador' && <Generador c={c} onDone={() => setTab('pipeline')} />}
+        {tab === 'anuncios' && <Anuncios c={c} />}
         {tab === 'fuentes' && <Fuentes c={c} />}
         {tab === 'conexion' && <Conexion />}
       </div>
@@ -229,7 +232,7 @@ function Teleprompter({ title, blocks, onClose }: { title: string; blocks: Scrip
 }
 
 function PostForm({ initial, onSave, onClose }: { initial?: Partial<ContentPost>; onSave: (p: Partial<ContentPost>) => void; onClose: () => void }) {
-  const [f, setF] = useState<Partial<ContentPost>>({ format: 'reel', objective: CONTENT_OBJECTIVES[0], title: '', edgeLevel: 3, status: 'borrador', ...initial });
+  const [f, setF] = useState<Partial<ContentPost>>({ format: 'reel', objective: CONTENT_OBJECTIVES[0], title: '', edgeLevel: 3, status: 'borrador', kind: 'organico', ...initial });
   const [blocks, setBlocks] = useState<ScriptBlock[]>(() => initial?.content ? decodeScript(initial.content) : emptyScript());
   const [tele, setTele] = useState(false);
 
@@ -255,11 +258,19 @@ function PostForm({ initial, onSave, onClose }: { initial?: Partial<ContentPost>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => setTele(true)}><Maximize2 size={14} /> Modo grabación</button>
         </div>
         <div className="ig-form">
+          <div className="scr-kind">
+            {CONTENT_KINDS.map(k => (
+              <button key={k.key} type="button" className={f.kind === k.key ? 'active' : ''} onClick={() => setF({ ...f, kind: k.key })}>{k.label}</button>
+            ))}
+          </div>
           <label>Título<input className="input" value={f.title || ''} autoFocus placeholder="Ej: 3 errores al vender por IG" onChange={e => setF({ ...f, title: e.target.value })} /></label>
           <div style={{ display: 'flex', gap: 10 }}>
             <label style={{ flex: 1 }}>Formato<select className="select" value={f.format} onChange={e => setF({ ...f, format: e.target.value as ContentFormat })}>{CONTENT_FORMATS.map(x => <option key={x} value={x}>{CONTENT_FORMAT_LABELS[x]}</option>)}</select></label>
             <label style={{ flex: 1 }}>Objetivo<select className="select" value={f.objective} onChange={e => setF({ ...f, objective: e.target.value })}>{CONTENT_OBJECTIVES.map(x => <option key={x} value={x}>{x}</option>)}</select></label>
           </div>
+          {f.kind === 'anuncio' && (
+            <div className="ig-notice">Esta pieza es la base creativa. Cargá el presupuesto, audiencia y resultados en la pestaña <b>Anuncios</b> una vez que la corras.</div>
+          )}
           <label>Fecha de publicación (opcional)<input className="input" type="date" value={f.scheduledFor ? new Date(f.scheduledFor).toISOString().split('T')[0] : ''} onChange={e => setF({ ...f, scheduledFor: e.target.value ? new Date(e.target.value + 'T12:00').getTime() : null })} /></label>
         </div>
 
@@ -307,7 +318,7 @@ function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
                 <div key={p.id} className="ig-post" onClick={() => setForm(p)}>
                   <h4>{p.title || 'Sin título'}</h4>
                   {scriptPreview(p.content) && <p>{scriptPreview(p.content)}</p>}
-                  <div className="ig-post-meta">{fmtBadge(p.format)}{p.objective && <span className="ig-badge soft">{p.objective}</span>}</div>
+                  <div className="ig-post-meta">{p.kind === 'anuncio' && <span className="ig-badge kind-ad">📊 Anuncio</span>}{fmtBadge(p.format)}{p.objective && <span className="ig-badge soft">{p.objective}</span>}</div>
                   <div className="ig-post-actions" onClick={e => e.stopPropagation()}>
                     <button title="Mover atrás" disabled={p.status === 'borrador'} onClick={() => move(p, -1)}><ChevronLeft size={14} /></button>
                     <button title="Mover adelante" disabled={p.status === 'listo'} onClick={() => move(p, 1)}><ChevronRight size={14} /></button>
@@ -769,6 +780,133 @@ function Guiones({ c }: { c: ReturnType<typeof useContent> }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Formulario de un anuncio corrido: formato+objetivo (campaña), configuración
+// (audiencia/ubicaciones/presupuesto/copy, nivel Ad Set + Ad de Meta) y resultados reales.
+function AdForm({ initial, posts, onSave, onClose }: {
+  initial?: Partial<ContentAd>; posts: ContentPost[]; onSave: (a: Partial<ContentAd>) => void; onClose: () => void;
+}) {
+  const [a, setA] = useState<Partial<ContentAd>>({
+    format: 'reel', objective: AD_OBJECTIVES[0], status: 'activo', budget: 0, currency: 'ARS', durationDays: 7,
+    audience: '', placement: 'Advantage+ (automático)', cta: '', copy: '', notes: '',
+    spend: 0, impressions: 0, reach: 0, results: 0, ctr: 0, postId: null, ...initial,
+  });
+  const resultLabel = AD_OBJECTIVE_RESULT_LABEL[a.objective as keyof typeof AD_OBJECTIVE_RESULT_LABEL] || 'Resultados';
+  const costPerResult = a.results ? (a.spend || 0) / (a.results || 1) : 0;
+  const num = (v: string) => Math.max(0, +v || 0);
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 640 }}>
+        <h2>{initial?.id ? 'Editar anuncio' : 'Nuevo anuncio'}</h2>
+        <div className="ig-form">
+          <div style={{ display: 'flex', gap: 10 }}>
+            <label style={{ flex: 1 }}>Formato<select className="select" value={a.format} onChange={e => setA({ ...a, format: e.target.value as AdFormat })}>{AD_FORMATS.map(x => <option key={x} value={x}>{AD_FORMAT_LABELS[x]}</option>)}</select></label>
+            <label style={{ flex: 1 }}>Objetivo de campaña<select className="select" value={a.objective} onChange={e => setA({ ...a, objective: e.target.value })}>{AD_OBJECTIVES.map(x => <option key={x} value={x}>{x}</option>)}</select></label>
+            <label style={{ flex: 1 }}>Estado<select className="select" value={a.status} onChange={e => setA({ ...a, status: e.target.value as AdStatus })}>{AD_STATUSES.map(x => <option key={x.key} value={x.key}>{x.label}</option>)}</select></label>
+          </div>
+          <label>Pieza creativa usada (opcional)
+            <select className="select" value={a.postId || ''} onChange={e => setA({ ...a, postId: e.target.value || null })}>
+              <option value="">— sin vincular —</option>
+              {posts.map(p => <option key={p.id} value={p.id}>{p.title || 'Sin título'}</option>)}
+            </select>
+          </label>
+
+          <p className="scr-subhead">Configuración (Ad Set / Ad)</p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <label style={{ flex: 1 }}>Presupuesto diario<input type="number" min={0} className="input" value={a.budget} onChange={e => setA({ ...a, budget: num(e.target.value) })} /></label>
+            <label style={{ width: 90 }}>Moneda<input className="input" value={a.currency} onChange={e => setA({ ...a, currency: e.target.value })} /></label>
+            <label style={{ width: 120 }}>Duración (días)<input type="number" min={0} className="input" value={a.durationDays} onChange={e => setA({ ...a, durationDays: num(e.target.value) })} /></label>
+          </div>
+          <label>Audiencia / segmentación<textarea className="input" rows={2} placeholder="Ej: Amplio 18-45, todo género, Córdoba capital" value={a.audience} onChange={e => setA({ ...a, audience: e.target.value })} /></label>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <label style={{ flex: 1 }}>Ubicaciones<input className="input" placeholder="Advantage+ / Feed+Stories+Reels" value={a.placement} onChange={e => setA({ ...a, placement: e.target.value })} /></label>
+            <label style={{ flex: 1 }}>CTA<input className="input" placeholder="Enviar mensaje / Comprar ahora" value={a.cta} onChange={e => setA({ ...a, cta: e.target.value })} /></label>
+          </div>
+          <label>Copy / texto del anuncio<textarea className="input" rows={2} value={a.copy} onChange={e => setA({ ...a, copy: e.target.value })} /></label>
+
+          <p className="scr-subhead">Resultados</p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <label style={{ flex: 1 }}>Gasto total<input type="number" min={0} className="input" value={a.spend} onChange={e => setA({ ...a, spend: num(e.target.value) })} /></label>
+            <label style={{ flex: 1 }}>Impresiones<input type="number" min={0} className="input" value={a.impressions} onChange={e => setA({ ...a, impressions: num(e.target.value) })} /></label>
+            <label style={{ flex: 1 }}>Alcance<input type="number" min={0} className="input" value={a.reach} onChange={e => setA({ ...a, reach: num(e.target.value) })} /></label>
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+            <label style={{ flex: 1 }}>{resultLabel}<input type="number" min={0} className="input" value={a.results} onChange={e => setA({ ...a, results: num(e.target.value) })} /></label>
+            <label style={{ flex: 1 }}>CTR %<input type="number" min={0} step={0.01} className="input" value={a.ctr} onChange={e => setA({ ...a, ctr: num(e.target.value) })} /></label>
+            <div className="scr-cpr">Costo por resultado<strong>{costPerResult ? `${a.currency} ${costPerResult.toFixed(0)}` : '—'}</strong></div>
+          </div>
+          <label>Notas / aprendizajes<textarea className="input" rows={2} placeholder="Qué funcionó, qué cambiar la próxima" value={a.notes} onChange={e => setA({ ...a, notes: e.target.value })} /></label>
+        </div>
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" onClick={() => { onSave(a); onClose(); }}>{initial?.id ? 'Guardar' : 'Registrar'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const AD_STATUS_COLOR: Record<AdStatus, string> = { activo: '#10b981', pausado: '#ffaa3a', finalizado: '#64748b' };
+
+function Anuncios({ c }: { c: ReturnType<typeof useContent> }) {
+  const [form, setForm] = useState<Partial<ContentAd> | null>(null);
+  const [filter, setFilter] = useState<AdStatus | 'todos'>('todos');
+  const ads = c.ads.filter(a => filter === 'todos' || a.status === filter);
+
+  const totalInvertido = c.ads.reduce((s, a) => s + (a.spend || 0), 0);
+  const activos = c.ads.filter(a => a.status === 'activo').length;
+  const conResultados = c.ads.filter(a => a.results > 0);
+  const cprPromedio = conResultados.length
+    ? conResultados.reduce((s, a) => s + a.spend / a.results, 0) / conResultados.length : 0;
+
+  return (
+    <div className="ig-stack">
+      <div className="ig-metrics">
+        <div className="ig-metric"><div className="ig-metric-top"><span>Invertido (todo)</span></div><strong>${totalInvertido.toFixed(0)}</strong></div>
+        <div className="ig-metric"><div className="ig-metric-top"><span>Anuncios activos</span></div><strong>{activos}</strong></div>
+        <div className="ig-metric"><div className="ig-metric-top"><span>Costo por resultado prom.</span></div><strong>{cprPromedio ? `$${cprPromedio.toFixed(0)}` : '—'}</strong></div>
+        <div className="ig-metric"><div className="ig-metric-top"><span>Total registrados</span></div><strong>{c.ads.length}</strong></div>
+      </div>
+
+      <div className="ig-card">
+        <div className="ig-card-head">
+          <div><p className="ig-eyebrow">Meta Ads</p><h3>Anuncios corridos</h3></div>
+          <button className="btn btn-primary btn-sm" onClick={() => setForm({})}><Plus size={14} /> Nuevo anuncio</button>
+        </div>
+        <div className="ig-chips" style={{ marginBottom: 14 }}>
+          <button className={filter === 'todos' ? 'active' : ''} onClick={() => setFilter('todos')}>Todos</button>
+          {AD_STATUSES.map(s => <button key={s.key} className={filter === s.key ? 'active' : ''} onClick={() => setFilter(s.key)}>{s.label}</button>)}
+        </div>
+        {ads.length === 0 ? (
+          <div className="ig-empty-inline">Todavía no cargaste ningún anuncio. Registrá cada campaña que corras: formato, configuración y cómo te fue.</div>
+        ) : (
+          <div className="ad-grid">
+            {ads.map(a => {
+              const cpr = a.results ? a.spend / a.results : 0;
+              return (
+                <div key={a.id} className="ad-card" onClick={() => setForm(a)}>
+                  <div className="ad-card-top">
+                    <span className="ad-status" style={{ background: AD_STATUS_COLOR[a.status] }}>{AD_STATUSES.find(s => s.key === a.status)?.label}</span>
+                    <button className="btn btn-ghost btn-icon btn-sm" onClick={e => { e.stopPropagation(); c.removeAd(a.id); }}><Trash2 size={13} /></button>
+                  </div>
+                  <h4>{AD_FORMAT_LABELS[a.format]} · {a.objective}</h4>
+                  {a.audience && <p className="ad-audience">{a.audience}</p>}
+                  <div className="ad-stats">
+                    <div><span>Gasto</span><strong>{a.currency} {a.spend.toFixed(0)}</strong></div>
+                    <div><span>{AD_OBJECTIVE_RESULT_LABEL[a.objective as keyof typeof AD_OBJECTIVE_RESULT_LABEL] || 'Resultados'}</span><strong>{a.results}</strong></div>
+                    <div><span>Costo/resultado</span><strong>{cpr ? `${a.currency} ${cpr.toFixed(0)}` : '—'}</strong></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {form && <AdForm initial={form} posts={c.posts} onClose={() => setForm(null)} onSave={p => form.id ? c.updateAd(form.id, p) : c.addAd(p)} />}
     </div>
   );
 }

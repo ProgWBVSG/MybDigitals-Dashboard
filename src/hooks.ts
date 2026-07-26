@@ -3,7 +3,7 @@ import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client
   type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type ServiceType, type Prospect,
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
   type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic,
-  type ContentPost, type ContentSource, type Competitor,
+  type ContentPost, type ContentSource, type ContentAd, type Competitor,
   type Note, type Whiteboard, type BoardData, EMPTY_BOARD_DATA, REPEAT_LABELS, type NodeEvent, type BoardNode,
   type ClientPortal, type PortalConfig, type PortalUpdate, type PortalTicket,
   type StrategyDoc, type DocBlock } from './utils';
@@ -901,12 +901,15 @@ export function useGuide() {
 export function useContent() {
   const [posts, setPosts] = useState<ContentPost[]>([]);
   const [sources, setSources] = useState<ContentSource[]>([]);
+  const [ads, setAds] = useState<ContentAd[]>([]);
   const [loading, setLoading] = useState(true);
   const load = useCallback(async () => {
     const { data: p } = await supabase.from('content_posts').select('*').order('updated_at', { ascending: false });
     const { data: s } = await supabase.from('content_sources').select('*').order('created_at', { ascending: false });
+    const { data: a } = await supabase.from('content_ads').select('*').order('created_at', { ascending: false });
     if (p) setPosts(p.map(mapToCamel) as ContentPost[]);
     if (s) setSources(s.map(mapToCamel) as ContentSource[]);
+    if (a) setAds(a.map(mapToCamel) as ContentAd[]);
     setLoading(false);
   }, []);
   useEffect(() => {
@@ -914,13 +917,14 @@ export function useContent() {
     const ch = supabase.channel('content_' + uuid())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_posts' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_sources' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_ads' }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [load]);
 
   const addPost = async (p: Partial<ContentPost>) => {
     const { error } = await supabase.from('content_posts').insert(mapToSnake({
-      format: p.format || 'reel', objective: p.objective || '', status: p.status || 'borrador',
+      format: p.format || 'reel', objective: p.objective || '', status: p.status || 'borrador', kind: p.kind || 'organico',
       title: p.title || '', content: p.content || '', edgeLevel: p.edgeLevel ?? 3, score: p.score ?? 0,
       scheduledFor: p.scheduledFor ?? null,
     }));
@@ -937,6 +941,23 @@ export function useContent() {
     if (error) toast('No se pudo guardar la fuente', 'error'); else { toast('Fuente agregada'); load(); }
   };
   const removeSource = async (id: string) => { await supabase.from('content_sources').delete().eq('id', id); load(); };
+
+  // ─── Anuncios (seguimiento de campañas de Meta Ads corridas) ───
+  const addAd = async (a: Partial<ContentAd>) => {
+    const { error } = await supabase.from('content_ads').insert(mapToSnake({
+      postId: a.postId ?? null, format: a.format || 'reel', objective: a.objective || '', status: a.status || 'activo',
+      budget: a.budget ?? 0, currency: a.currency || 'ARS', durationDays: a.durationDays ?? 0,
+      audience: a.audience || '', placement: a.placement || '', cta: a.cta || '', copy: a.copy || '', notes: a.notes || '',
+      startedAt: a.startedAt ?? null, endedAt: a.endedAt ?? null,
+      spend: a.spend ?? 0, impressions: a.impressions ?? 0, reach: a.reach ?? 0, results: a.results ?? 0, ctr: a.ctr ?? 0,
+    }));
+    if (error) toast('No se pudo crear el anuncio', 'error'); else { toast('Anuncio registrado'); load(); }
+  };
+  const updateAd = async (id: string, u: Partial<ContentAd>) => {
+    const { error } = await supabase.from('content_ads').update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
+    if (error) toast('Error al actualizar', 'error'); else load();
+  };
+  const removeAd = async (id: string) => { await supabase.from('content_ads').delete().eq('id', id); load(); };
 
   // Genera una pieza con IA (guion/caption/hashtags). Devuelve el contenido o null.
   const generateScript = async (input: { format?: string; objective?: string; tema: string; notas?: string }): Promise<any | null> => {
@@ -968,7 +989,7 @@ export function useContent() {
     return data.script;
   };
 
-  return { posts, sources, loading, addPost, updatePost, removePost, addSource, removeSource, generateScript, generateIdeas, generateViralScript, refresh: load };
+  return { posts, sources, ads, loading, addPost, updatePost, removePost, addSource, removeSource, addAd, updateAd, removeAd, generateScript, generateIdeas, generateViralScript, refresh: load };
 }
 
 // ─── ANÁLISIS DE COMPETENCIA ───
