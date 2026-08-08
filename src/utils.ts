@@ -336,10 +336,37 @@ export const HISTORY_KIND_LABELS: Record<HistoryKind, string> = Object.fromEntri
 export type ContentStatus = 'borrador' | 'aprobado' | 'listo';
 export type ContentFormat = 'reel' | 'carrusel' | 'story' | 'ad';
 export type ContentKind = 'organico' | 'anuncio';
+
+// Ángulo del contenido: a qué juega la pieza dentro del feed. No es el formato
+// (reel/carrusel) sino la intención — el "Formato" de la planilla de guiones.
+export type ContentAngle = 'valor' | 'tendencia' | 'venta';
+export const CONTENT_ANGLES: { key: ContentAngle; label: string; color: string; hint: string }[] = [
+  { key: 'valor', label: 'Valor', color: '#6366f1', hint: 'Enseña algo concreto y accionable. Construye autoridad y guardados.' },
+  { key: 'tendencia', label: 'Tendencia', color: '#f59e0b', hint: 'Monta una ola existente (audio, formato, tema). Busca alcance nuevo.' },
+  { key: 'venta', label: 'Venta', color: '#10b981', hint: 'Empuja hacia la oferta. Menor alcance, mayor intención.' },
+];
+export const CONTENT_ANGLE_LABELS: Record<ContentAngle, string> = Object.fromEntries(CONTENT_ANGLES.map(a => [a.key, a.label])) as Record<ContentAngle, string>;
+
+// Escalera de consciencia (Eugene Schwartz): en qué escalón está el que mira.
+// Dolor mueve a los primeros dos, ganancia a los últimos tres.
+export type Awareness = 'inconsciente' | 'problema' | 'solucion' | 'producto' | 'decision';
+export const AWARENESS_LEVELS: { key: Awareness; label: string; step: number; driver: 'dolor' | 'ganancia'; hint: string }[] = [
+  { key: 'inconsciente', label: 'Inconsciente', step: 1, driver: 'dolor', hint: 'No sabe que tiene el problema. Mostrale el costo oculto de seguir igual.' },
+  { key: 'problema', label: 'Problema', step: 2, driver: 'dolor', hint: 'Siente el dolor pero no sabe que hay solución. Nombrá el problema con precisión.' },
+  { key: 'solucion', label: 'Solución', step: 3, driver: 'ganancia', hint: 'Sabe que existe la solución, compara caminos. Mostrá el mecanismo.' },
+  { key: 'producto', label: 'Producto', step: 4, driver: 'ganancia', hint: 'Evalúa opciones concretas. Diferenciate con prueba y especificidad.' },
+  { key: 'decision', label: 'Decisión', step: 5, driver: 'ganancia', hint: 'Está por comprar. Sacá el riesgo y dale el próximo paso.' },
+];
+export const AWARENESS_LABELS: Record<Awareness, string> = Object.fromEntries(AWARENESS_LEVELS.map(a => [a.key, a.label])) as Record<Awareness, string>;
+
 export interface ContentPost {
   id: string; format: ContentFormat; objective: string; status: ContentStatus; kind: ContentKind;
   title: string; content: string; edgeLevel: number; score: number;
   scheduledFor: number | null; createdAt: string; updatedAt: string;
+  // Campos de guionismo (equivalen a las filas de la planilla de reels)
+  angle: ContentAngle; awareness: Awareness | ''; theme: string;
+  howToRecord: string; refLink: string; cta: string; caption: string;
+  hashtagsIg: string; hashtagsTt: string; recorded: boolean; edited: boolean;
 }
 export interface ContentSource { id: string; type: string; title: string; content: string; tags: string; createdAt: string; updatedAt: string; }
 export const CONTENT_STATUSES: { key: ContentStatus; label: string }[] = [
@@ -381,6 +408,36 @@ export interface ContentAd {
   audience: string; placement: string; cta: string; copy: string;
   notes: string; startedAt: number | null; endedAt: number | null;
   spend: number; impressions: number; reach: number; results: number; ctr: number;
+  createdAt: string; updatedAt: string;
+}
+
+// ─── MÉTRICAS DE RENDIMIENTO (por pieza publicada) ───
+// Los números que devuelve Instagram Insights. Todo lo derivado (engagement,
+// share rate, score) se calcula en metrics.ts, no se guarda, así nunca queda desfasado.
+export interface ContentMetric {
+  id: string; postId: string | null; title: string; publishedAt: number | null;
+  views: number; reach: number; impressions: number; nonFollowersPct: number;
+  likes: number; saves: number; shares: number; comments: number; newFollowers: number;
+  retentionPct: number; avgWatchSec: number; durationSec: number;
+  notes: string; createdAt: string; updatedAt: string;
+}
+
+// ─── REFERENTES (swipe file) ───
+export type RefCategory = 'venta' | 'tendencia' | 'viral' | 'educativo';
+export const REF_CATEGORIES: { key: RefCategory; label: string; color: string }[] = [
+  { key: 'venta', label: 'Venta', color: '#10b981' },
+  { key: 'tendencia', label: 'Tendencia', color: '#f59e0b' },
+  { key: 'viral', label: 'Viral', color: '#f9587a' },
+  { key: 'educativo', label: 'Educativo', color: '#6366f1' },
+];
+export const REF_CATEGORY_LABELS: Record<RefCategory, string> = Object.fromEntries(REF_CATEGORIES.map(r => [r.key, r.label])) as Record<RefCategory, string>;
+export const REF_PLATFORMS = ['Instagram', 'TikTok', 'YouTube Shorts'];
+
+export interface ContentRef {
+  id: string; url: string; creator: string; platform: string;
+  category: RefCategory | ''; hook: string; hookFormula: string; narrative: string;
+  whyWorks: string; howToAdapt: string; notes: string;
+  saved: boolean; analyzedAt: number | null;
   createdAt: string; updatedAt: string;
 }
 

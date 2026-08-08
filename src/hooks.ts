@@ -3,7 +3,7 @@ import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client
   type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type ServiceType, type Prospect,
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
   type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic,
-  type ContentPost, type ContentSource, type ContentAd, type Competitor,
+  type ContentPost, type ContentSource, type ContentAd, type ContentMetric, type ContentRef, type Competitor,
   type Note, type Whiteboard, type BoardData, EMPTY_BOARD_DATA, REPEAT_LABELS, type NodeEvent, type BoardNode,
   type ClientPortal, type PortalConfig, type PortalUpdate, type PortalTicket,
   type StrategyDoc, type DocBlock } from './utils';
@@ -902,14 +902,20 @@ export function useContent() {
   const [posts, setPosts] = useState<ContentPost[]>([]);
   const [sources, setSources] = useState<ContentSource[]>([]);
   const [ads, setAds] = useState<ContentAd[]>([]);
+  const [metrics, setMetrics] = useState<ContentMetric[]>([]);
+  const [refs, setRefs] = useState<ContentRef[]>([]);
   const [loading, setLoading] = useState(true);
   const load = useCallback(async () => {
     const { data: p } = await supabase.from('content_posts').select('*').order('updated_at', { ascending: false });
     const { data: s } = await supabase.from('content_sources').select('*').order('created_at', { ascending: false });
     const { data: a } = await supabase.from('content_ads').select('*').order('created_at', { ascending: false });
+    const { data: m } = await supabase.from('content_metrics').select('*').order('published_at', { ascending: false, nullsFirst: false });
+    const { data: r } = await supabase.from('content_refs').select('*').order('created_at', { ascending: false });
     if (p) setPosts(p.map(mapToCamel) as ContentPost[]);
     if (s) setSources(s.map(mapToCamel) as ContentSource[]);
     if (a) setAds(a.map(mapToCamel) as ContentAd[]);
+    if (m) setMetrics(m.map(mapToCamel) as ContentMetric[]);
+    if (r) setRefs(r.map(mapToCamel) as ContentRef[]);
     setLoading(false);
   }, []);
   useEffect(() => {
@@ -918,6 +924,8 @@ export function useContent() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_posts' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_sources' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_ads' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_metrics' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_refs' }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [load]);
@@ -927,6 +935,10 @@ export function useContent() {
       format: p.format || 'reel', objective: p.objective || '', status: p.status || 'borrador', kind: p.kind || 'organico',
       title: p.title || '', content: p.content || '', edgeLevel: p.edgeLevel ?? 3, score: p.score ?? 0,
       scheduledFor: p.scheduledFor ?? null,
+      angle: p.angle || 'valor', awareness: p.awareness || '', theme: p.theme || '',
+      howToRecord: p.howToRecord || '', refLink: p.refLink || '', cta: p.cta || '', caption: p.caption || '',
+      hashtagsIg: p.hashtagsIg || '', hashtagsTt: p.hashtagsTt || '',
+      recorded: p.recorded ?? false, edited: p.edited ?? false,
     }));
     if (error) toast('No se pudo crear la pieza', 'error'); else { toast('Pieza creada'); load(); }
   };
@@ -989,7 +1001,55 @@ export function useContent() {
     return data.script;
   };
 
-  return { posts, sources, ads, loading, addPost, updatePost, removePost, addSource, removeSource, addAd, updateAd, removeAd, generateScript, generateIdeas, generateViralScript, refresh: load };
+  // ─── Métricas de rendimiento (números crudos de Instagram Insights) ───
+  const addMetric = async (m: Partial<ContentMetric>) => {
+    const { error } = await supabase.from('content_metrics').insert(mapToSnake({
+      postId: m.postId ?? null, title: m.title || '', publishedAt: m.publishedAt ?? null,
+      views: m.views ?? 0, reach: m.reach ?? 0, impressions: m.impressions ?? 0, nonFollowersPct: m.nonFollowersPct ?? 0,
+      likes: m.likes ?? 0, saves: m.saves ?? 0, shares: m.shares ?? 0, comments: m.comments ?? 0, newFollowers: m.newFollowers ?? 0,
+      retentionPct: m.retentionPct ?? 0, avgWatchSec: m.avgWatchSec ?? 0, durationSec: m.durationSec ?? 0, notes: m.notes || '',
+    }));
+    if (error) toast('No se pudo guardar la métrica', 'error'); else { toast('Métrica cargada'); load(); }
+  };
+  const updateMetric = async (id: string, u: Partial<ContentMetric>) => {
+    const { error } = await supabase.from('content_metrics').update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
+    if (error) toast('Error al actualizar', 'error'); else load();
+  };
+  const removeMetric = async (id: string) => { await supabase.from('content_metrics').delete().eq('id', id); load(); };
+
+  // ─── Referentes (swipe file de videos que funcionan) ───
+  const addRef = async (r: Partial<ContentRef>) => {
+    const { error } = await supabase.from('content_refs').insert(mapToSnake({
+      url: r.url || '', creator: r.creator || '', platform: r.platform || 'Instagram',
+      category: r.category || '', hook: r.hook || '', hookFormula: r.hookFormula || '', narrative: r.narrative || '',
+      whyWorks: r.whyWorks || '', howToAdapt: r.howToAdapt || '', notes: r.notes || '',
+      saved: r.saved ?? false, analyzedAt: r.analyzedAt ?? null,
+    }));
+    if (error) toast('No se pudo guardar el referente', 'error'); else { toast('Referente guardado'); load(); }
+  };
+  const updateRef = async (id: string, u: Partial<ContentRef>) => {
+    const { error } = await supabase.from('content_refs').update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
+    if (error) toast('Error al actualizar', 'error'); else load();
+  };
+  const removeRef = async (id: string) => { await supabase.from('content_refs').delete().eq('id', id); load(); };
+
+  // Clasifica un referente con IA: categoría (venta/tendencia/viral/educativo),
+  // fórmula de hook, formato narrativo, por qué funciona y cómo adaptarlo.
+  const analyzeRef = async (input: { url: string; hook?: string; notas?: string; rubro?: string }): Promise<any | null> => {
+    const { data, error } = await supabase.functions.invoke('analyze-reference', { body: input });
+    let err = '';
+    if (error) { err = error.message; try { const b = await (error as { context?: { json?: () => Promise<{ error?: string }> } }).context?.json?.(); if (b?.error) err = b.error; } catch { /* noop */ } }
+    else if (!data?.ok) err = data?.error || 'Respuesta inesperada';
+    if (err) { toast('Error al analizar: ' + err, 'error'); return null; }
+    return data.analysis;
+  };
+
+  return {
+    posts, sources, ads, metrics, refs, loading,
+    addPost, updatePost, removePost, addSource, removeSource, addAd, updateAd, removeAd,
+    addMetric, updateMetric, removeMetric, addRef, updateRef, removeRef,
+    generateScript, generateIdeas, generateViralScript, analyzeRef, refresh: load,
+  };
 }
 
 // ─── ANÁLISIS DE COMPETENCIA ───

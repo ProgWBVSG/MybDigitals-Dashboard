@@ -1,31 +1,37 @@
 import { useState, useMemo } from 'react';
-import { Sparkles, Plug, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Send, Maximize2, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Sparkles, Plug, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Send, Copy, Check } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useContent, useClients } from './hooks';
 import {
-  CONTENT_STATUSES, CONTENT_FORMATS, CONTENT_FORMAT_LABELS, CONTENT_OBJECTIVES, CONTENT_KINDS, uuid,
+  CONTENT_STATUSES, CONTENT_FORMATS, CONTENT_FORMAT_LABELS, CONTENT_OBJECTIVES, uuid,
   AD_FORMATS, AD_FORMAT_LABELS, AD_OBJECTIVES, AD_OBJECTIVE_RESULT_LABEL, AD_STATUSES, CONTENT_GAMES,
+  CONTENT_ANGLES, CONTENT_ANGLE_LABELS,
   type ContentPost, type ContentStatus, type ContentFormat, type ContentAd, type AdFormat, type AdStatus,
 } from './utils';
-import {
-  SCRIPT_PHASES, SCRIPT_PHASE_LABELS, SCRIPT_PHASE_COLORS, emptyScript, decodeScript, encodeScript, scriptPreview, totalSeconds, isStructuredScript,
-  type ScriptBlock, type ScriptPhase,
-} from './script';
+import { encodeScript, scriptPreview, splitIntoTakes, takeProgress, decodeScript, isStructuredScript, scriptForShare, type ScriptBlock } from './script';
+import { PostForm } from './ContentGuion';
+import Metricas from './ContentMetricas';
+import Ganchos from './ContentGanchos';
+import Referentes from './ContentReferentes';
 import './Content.css';
 
-type Tab = 'resumen' | 'ideas' | 'guiones' | 'tabla' | 'pipeline' | 'calendario' | 'generador' | 'anuncios' | 'fuentes' | 'conexion';
+type Tab = 'resumen' | 'ideas' | 'guiones' | 'ganchos' | 'referentes' | 'tabla' | 'pipeline' | 'calendario' | 'metricas' | 'generador' | 'anuncios' | 'fuentes' | 'conexion';
 const TABS: { k: Tab; label: string }[] = [
   { k: 'resumen', label: 'Resumen' },
   { k: 'ideas', label: 'Ideas ✨' },
   { k: 'guiones', label: 'Guiones 🎬' },
-  { k: 'tabla', label: 'Tabla ⚡' },
+  { k: 'ganchos', label: 'Ganchos 🎣' },
+  { k: 'referentes', label: 'Referentes 🔥' },
   { k: 'pipeline', label: 'Pipeline' },
+  { k: 'tabla', label: 'Tabla ⚡' },
   { k: 'calendario', label: 'Calendario' },
+  { k: 'metricas', label: 'Métricas 📈' },
   { k: 'generador', label: 'Generador' },
   { k: 'anuncios', label: 'Anuncios 📊' },
   { k: 'fuentes', label: 'Fuentes' },
   { k: 'conexion', label: 'Conexión IG' },
 ];
+const ANGLE_COLOR: Record<string, string> = Object.fromEntries(CONTENT_ANGLES.map(a => [a.key, a.color]));
 const STATUS_ORDER: ContentStatus[] = ['borrador', 'aprobado', 'listo'];
 
 export default function Content() {
@@ -49,9 +55,12 @@ export default function Content() {
         {tab === 'resumen' && <Resumen posts={c.posts} onGo={setTab} />}
         {tab === 'ideas' && <Ideas c={c} />}
         {tab === 'guiones' && <Guiones c={c} />}
+        {tab === 'ganchos' && <Ganchos />}
+        {tab === 'referentes' && <Referentes c={c} />}
         {tab === 'tabla' && <Tabla c={c} />}
         {tab === 'pipeline' && <Pipeline c={c} />}
         {tab === 'calendario' && <Calendario posts={c.posts} />}
+        {tab === 'metricas' && <Metricas c={c} />}
         {tab === 'generador' && <Generador c={c} onDone={() => setTab('pipeline')} />}
         {tab === 'anuncios' && <Anuncios c={c} />}
         {tab === 'fuentes' && <Fuentes c={c} />}
@@ -172,160 +181,88 @@ function Resumen({ posts, onGo }: { posts: ContentPost[]; onGo: (t: Tab) => void
   );
 }
 
-// Editor de un bloque del guion: fase + segundos arriba, guion/idea a la izquierda,
-// visual-edición a la derecha (lo que hay que mostrar en pantalla o cortar en ese momento).
-function ScriptBlockEditor({ block, index, total, onChange, onRemove, onMove }: {
-  block: ScriptBlock; index: number; total: number;
-  onChange: (b: ScriptBlock) => void; onRemove: () => void; onMove: (dir: 1 | -1) => void;
-}) {
-  return (
-    <div className="scr-block" style={{ borderLeftColor: SCRIPT_PHASE_COLORS[block.phase] }}>
-      <div className="scr-block-head">
-        <select className="select scr-phase" value={block.phase} onChange={e => onChange({ ...block, phase: e.target.value as ScriptPhase })}>
-          {SCRIPT_PHASES.map(p => <option key={p} value={p}>{SCRIPT_PHASE_LABELS[p]}</option>)}
-        </select>
-        <label className="scr-sec">
-          <input type="number" min={0} className="input" value={block.seconds} onChange={e => onChange({ ...block, seconds: Math.max(0, +e.target.value || 0) })} />
-          <span>seg</span>
-        </label>
-        <div className="scr-block-actions">
-          <button type="button" title="Subir" disabled={index === 0} onClick={() => onMove(-1)}><ArrowUp size={13} /></button>
-          <button type="button" title="Bajar" disabled={index === total - 1} onClick={() => onMove(1)}><ArrowDown size={13} /></button>
-          <button type="button" title="Quitar bloque" onClick={onRemove}><Trash2 size={13} /></button>
-        </div>
-      </div>
-      <div className="scr-block-cols">
-        <label>Guion<textarea className="input" rows={3} placeholder="Qué decís en este momento…" value={block.text} onChange={e => onChange({ ...block, text: e.target.value })} /></label>
-        <label>Visual / edición<textarea className="input" rows={3} placeholder="Qué se ve o qué corte hacer acá…" value={block.visual} onChange={e => onChange({ ...block, visual: e.target.value })} /></label>
-      </div>
-    </div>
-  );
-}
-
-// Modo grabación: guion completo a pantalla grande, ordenado por bloque, para
-// tenerlo a mano mientras grabás (estilo teleprompter simple).
-function Teleprompter({ title, blocks, onClose }: { title: string; blocks: ScriptBlock[]; onClose: () => void }) {
-  const [big, setBig] = useState(false);
-  return (
-    <div className="tp-overlay" onClick={onClose}>
-      <div className="tp-sheet" onClick={e => e.stopPropagation()}>
-        <div className="tp-bar">
-          <div><strong>{title || 'Sin título'}</strong><span>{totalSeconds(blocks)}s en total</span></div>
-          <div className="tp-bar-actions">
-            <button className="btn btn-secondary btn-sm" onClick={() => setBig(v => !v)}>{big ? 'Texto normal' : 'Texto más grande'}</button>
-            <button className="btn btn-secondary btn-sm" onClick={onClose}><X size={15} /> Cerrar</button>
-          </div>
-        </div>
-        <div className={`tp-content ${big ? 'big' : ''}`}>
-          {blocks.filter(b => b.text.trim() || b.visual.trim()).map(b => (
-            <div key={b.id} className="tp-block">
-              <div className="tp-block-tag" style={{ color: SCRIPT_PHASE_COLORS[b.phase] }}>{SCRIPT_PHASE_LABELS[b.phase]}{b.seconds ? ` · ${b.seconds}s` : ''}</div>
-              {b.text.trim() && <p className="tp-text">{b.text}</p>}
-              {b.visual.trim() && <p className="tp-visual">🎬 {b.visual}</p>}
-            </div>
-          ))}
-          {blocks.every(b => !b.text.trim() && !b.visual.trim()) && <div className="ig-empty-inline">Todavía no escribiste el guion.</div>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PostForm({ initial, onSave, onClose }: { initial?: Partial<ContentPost>; onSave: (p: Partial<ContentPost>) => void; onClose: () => void }) {
-  const [f, setF] = useState<Partial<ContentPost>>({ format: 'reel', objective: CONTENT_OBJECTIVES[0], title: '', edgeLevel: 3, status: 'borrador', kind: 'organico', ...initial });
-  const [blocks, setBlocks] = useState<ScriptBlock[]>(() => initial?.content ? decodeScript(initial.content) : emptyScript());
-  const [tele, setTele] = useState(false);
-
-  const setBlock = (i: number, b: ScriptBlock) => setBlocks(bs => bs.map((x, idx) => idx === i ? b : x));
-  const removeBlock = (i: number) => setBlocks(bs => bs.filter((_, idx) => idx !== i));
-  const moveBlock = (i: number, dir: 1 | -1) => setBlocks(bs => {
-    const j = i + dir; if (j < 0 || j >= bs.length) return bs;
-    const copy = [...bs]; [copy[i], copy[j]] = [copy[j], copy[i]]; return copy;
-  });
-  const addBlock = () => setBlocks(bs => [...bs, { id: uuid(), phase: 'desarrollo', text: '', seconds: 10, visual: '' }]);
-
-  const save = () => {
-    if (!(f.title || '').trim()) return;
-    onSave({ ...f, content: encodeScript(blocks) });
-    onClose();
-  };
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 720 }}>
-        <div className="scr-form-head">
-          <h2>{initial?.id ? 'Editar pieza' : 'Nueva pieza'}</h2>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setTele(true)}><Maximize2 size={14} /> Modo grabación</button>
-        </div>
-        <div className="ig-form">
-          <div className="scr-kind">
-            {CONTENT_KINDS.map(k => (
-              <button key={k.key} type="button" className={f.kind === k.key ? 'active' : ''} onClick={() => setF({ ...f, kind: k.key })}>{k.label}</button>
-            ))}
-          </div>
-          <label>Título<input className="input" value={f.title || ''} autoFocus placeholder="Ej: 3 errores al vender por IG" onChange={e => setF({ ...f, title: e.target.value })} /></label>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <label style={{ flex: 1 }}>Formato<select className="select" value={f.format} onChange={e => setF({ ...f, format: e.target.value as ContentFormat })}>{CONTENT_FORMATS.map(x => <option key={x} value={x}>{CONTENT_FORMAT_LABELS[x]}</option>)}</select></label>
-            <label style={{ flex: 1 }}>Objetivo<select className="select" value={f.objective} onChange={e => setF({ ...f, objective: e.target.value })}>{CONTENT_OBJECTIVES.map(x => <option key={x} value={x}>{x}</option>)}</select></label>
-          </div>
-          {f.kind === 'anuncio' && (
-            <div className="ig-notice">Esta pieza es la base creativa. Cargá el presupuesto, audiencia y resultados en la pestaña <b>Anuncios</b> una vez que la corras.</div>
-          )}
-          <label>Fecha de publicación (opcional)<input className="input" type="date" value={f.scheduledFor ? new Date(f.scheduledFor).toISOString().split('T')[0] : ''} onChange={e => setF({ ...f, scheduledFor: e.target.value ? new Date(e.target.value + 'T12:00').getTime() : null })} /></label>
-        </div>
-
-        <div className="scr-blocks-head">
-          <span>Guion por fases <em>({totalSeconds(blocks)}s en total)</em></span>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={addBlock}><Plus size={13} /> Agregar bloque</button>
-        </div>
-        <div className="scr-blocks">
-          {blocks.map((b, i) => (
-            <ScriptBlockEditor key={b.id} block={b} index={i} total={blocks.length}
-              onChange={nb => setBlock(i, nb)} onRemove={() => removeBlock(i)} onMove={dir => moveBlock(i, dir)} />
-          ))}
-        </div>
-
-        <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-primary" onClick={save}>{initial?.id ? 'Guardar' : 'Crear'}</button>
-        </div>
-      </div>
-      {tele && <Teleprompter title={f.title || ''} blocks={blocks} onClose={() => setTele(false)} />}
-    </div>
-  );
-}
-
 function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
   const [form, setForm] = useState<Partial<ContentPost> | null>(null);
+  const [angleFilter, setAngleFilter] = useState<string>('todos');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const move = (p: ContentPost, dir: number) => {
     const i = STATUS_ORDER.indexOf(p.status);
     const next = STATUS_ORDER[Math.max(0, Math.min(STATUS_ORDER.length - 1, i + dir))];
     if (next !== p.status) c.updatePost(p.id, { status: next });
   };
+  const visible = c.posts.filter(p => angleFilter === 'todos' || (p.angle || 'valor') === angleFilter);
+
+  // Copia la pieza lista para mandar por WhatsApp sin tener que abrirla.
+  const copyPost = (p: ContentPost) => {
+    navigator.clipboard.writeText(scriptForShare(decodeScript(p.content), {
+      title: p.title, angleLabel: CONTENT_ANGLE_LABELS[p.angle || 'valor'],
+      formatLabel: CONTENT_FORMAT_LABELS[p.format],
+      howToRecord: p.howToRecord, cta: p.cta, caption: p.caption,
+      hashtags: p.hashtagsIg, refLink: p.refLink,
+    }));
+    setCopiedId(p.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   return (
     <div className="ig-card">
       <div className="ig-card-head">
         <div><p className="ig-eyebrow">Workflow editorial</p><h3>Pipeline de producción</h3></div>
         <button className="btn btn-primary btn-sm" onClick={() => setForm({})}><Plus size={14} /> Nueva pieza</button>
       </div>
+
+      <div className="ig-angle-filter">
+        <button className={angleFilter === 'todos' ? 'active' : ''} onClick={() => setAngleFilter('todos')}>
+          Todos <em>{c.posts.length}</em>
+        </button>
+        {CONTENT_ANGLES.map(a => {
+          const n = c.posts.filter(p => (p.angle || 'valor') === a.key).length;
+          return (
+            <button key={a.key} className={angleFilter === a.key ? 'active' : ''}
+              style={angleFilter === a.key ? { borderColor: a.color, color: a.color } : undefined}
+              onClick={() => setAngleFilter(a.key)}>{a.label} <em>{n}</em></button>
+          );
+        })}
+      </div>
+
       <div className="ig-board">
         {CONTENT_STATUSES.map(st => {
-          const items = c.posts.filter(p => p.status === st.key);
+          const items = visible.filter(p => p.status === st.key);
           return (
             <div key={st.key} className="ig-lane">
               <div className="ig-lane-head">{st.label}<span>{items.length}</span></div>
-              {items.map(p => (
-                <div key={p.id} className="ig-post" onClick={() => setForm(p)}>
-                  <h4>{p.title || 'Sin título'}</h4>
-                  {scriptPreview(p.content) && <p>{scriptPreview(p.content)}</p>}
-                  <div className="ig-post-meta">{p.kind === 'anuncio' && <span className="ig-badge kind-ad">📊 Anuncio</span>}{fmtBadge(p.format)}{p.objective && <span className="ig-badge soft">{p.objective}</span>}</div>
-                  <div className="ig-post-actions" onClick={e => e.stopPropagation()}>
-                    <button title="Mover atrás" disabled={p.status === 'borrador'} onClick={() => move(p, -1)}><ChevronLeft size={14} /></button>
-                    <button title="Mover adelante" disabled={p.status === 'listo'} onClick={() => move(p, 1)}><ChevronRight size={14} /></button>
-                    <button title="Borrar" onClick={() => c.removePost(p.id)}><Trash2 size={13} /></button>
+              {items.map(p => {
+                const prog = isStructuredScript(p.content) ? takeProgress(decodeScript(p.content)) : { done: 0, total: 0 };
+                const angle = p.angle || 'valor';
+                return (
+                  <div key={p.id} className="ig-post" onClick={() => setForm(p)}
+                    style={{ borderTopColor: ANGLE_COLOR[angle] }}>
+                    <h4>{p.title || 'Sin título'}</h4>
+                    {scriptPreview(p.content) && <p>{scriptPreview(p.content)}</p>}
+                    <div className="ig-post-meta">
+                      <span className="ig-badge angle" style={{ background: ANGLE_COLOR[angle] }}>{CONTENT_ANGLE_LABELS[angle]}</span>
+                      {p.kind === 'anuncio' && <span className="ig-badge kind-ad">📊 Anuncio</span>}
+                      {fmtBadge(p.format)}
+                      {p.edited && <span className="ig-badge soft">✓ Editado</span>}
+                      {!p.edited && p.recorded && <span className="ig-badge soft">✓ Grabado</span>}
+                    </div>
+                    {prog.total > 0 && (
+                      <div className="ig-post-takes" title={`${prog.done} de ${prog.total} tomas grabadas`}>
+                        <div className="ig-post-takes-bar"><div style={{ width: `${(prog.done / prog.total) * 100}%` }} /></div>
+                        <span>{prog.done}/{prog.total}</span>
+                      </div>
+                    )}
+                    <div className="ig-post-actions" onClick={e => e.stopPropagation()}>
+                      <button title="Mover atrás" disabled={p.status === 'borrador'} onClick={() => move(p, -1)}><ChevronLeft size={14} /></button>
+                      <button title="Mover adelante" disabled={p.status === 'listo'} onClick={() => move(p, 1)}><ChevronRight size={14} /></button>
+                      <button title="Copiar para mandar por WhatsApp" onClick={() => copyPost(p)}>
+                        {copiedId === p.id ? <Check size={13} /> : <Copy size={13} />}
+                      </button>
+                      <button title="Borrar" onClick={() => c.removePost(p.id)}><Trash2 size={13} /></button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {items.length === 0 && <div className="ig-lane-empty">Vacío</div>}
             </div>
           );
@@ -732,23 +669,39 @@ function Guiones({ c }: { c: ReturnType<typeof useContent> }) {
     const nums = (t.match(/\d+/g) || []).map(Number);
     return nums.length >= 2 ? Math.max(1, nums[1] - nums[0]) : 8;
   };
+  // Ángulo inferido del objetivo elegido, para que la pieza quede clasificada al guardar.
+  const angleFor = (obj: string) => obj.toLowerCase().includes('venta') ? 'venta' as const
+    : obj.toLowerCase().includes('viral') || obj.toLowerCase().includes('alcance') ? 'tendencia' as const
+    : 'valor' as const;
+
   const guardar = () => {
     if (!out) return;
     const hook = out.hooks?.[hookSel];
     // Guarda directo como guion por bloques (mismo formato que edita el Pipeline):
-    // Hook+Re-Hook como bloque "hook", cada beat como "desarrollo", cierre como "cta".
+    // hook / re-hook propios, cada beat como "desarrollo", cierre como "cta". Los
+    // beats largos ya vienen partidos en tomas para poder grabarlos por partes.
     const blocks: ScriptBlock[] = [
       {
-        id: uuid(), phase: 'hook', text: [hook?.texto, out.reHook].filter(Boolean).join('\n\n'), seconds: 7,
+        id: uuid(), phase: 'hook', text: hook?.texto || '', seconds: 3, takes: [],
         visual: [hook?.hookVisual && `Visual: ${hook.hookVisual}`, hook?.textoPantalla && `En pantalla: ${hook.textoPantalla}`].filter(Boolean).join(' · '),
       },
-      ...(out.guion || []).map(g => ({
-        id: uuid(), phase: 'desarrollo' as const, text: g.voz, seconds: parseRange(g.tiempo),
-        visual: [g.pantalla && `En pantalla: ${g.pantalla}`, g.visual, g.gatillo && `Gatillo: ${g.gatillo}`].filter(Boolean).join(' · '),
-      })),
-      { id: uuid(), phase: 'cta', text: out.cta?.texto || '', seconds: 5, visual: out.loop ? `Loop: ${out.loop}` : '' },
+      ...(out.reHook ? [{ id: uuid(), phase: 'rehook' as const, text: out.reHook, seconds: 4, visual: '', takes: [] }] : []),
+      ...(out.guion || []).map(g => {
+        const takes = splitIntoTakes(g.voz);
+        return {
+          id: uuid(), phase: 'desarrollo' as const, text: g.voz, seconds: parseRange(g.tiempo),
+          visual: [g.pantalla && `En pantalla: ${g.pantalla}`, g.visual, g.gatillo && `Gatillo: ${g.gatillo}`].filter(Boolean).join(' · '),
+          takes: takes.length > 1 ? takes : [],
+        };
+      }),
+      { id: uuid(), phase: 'cta' as const, text: out.cta?.texto || '', seconds: 5, visual: out.loop ? `Loop: ${out.loop}` : '', takes: [] },
     ];
-    c.addPost({ format: 'reel', objective: objetivo, title: tema, content: encodeScript(blocks), status: 'borrador', kind: 'organico' });
+    c.addPost({
+      format: 'reel', objective: objetivo, title: tema, content: encodeScript(blocks),
+      status: 'borrador', kind: 'organico', angle: angleFor(objetivo), theme: tema,
+      cta: out.cta?.texto || '', caption: out.caption || '',
+      hashtagsIg: Array.isArray(out.hashtags) ? out.hashtags.join(' ') : (out.hashtags || ''),
+    });
   };
 
   return (
