@@ -200,18 +200,6 @@
 @media (max-width: 640px) { .scr-block-cols { grid-template-columns: 1fr; } }
 
 /* ─── Modo grabación (teleprompter) ─── */
-.tp-overlay { position: fixed; inset: 0; background: rgba(4,6,12,0.86); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 300; padding: 24px; }
-.tp-sheet { width: 100%; max-width: 780px; max-height: 88vh; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
-.tp-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
-.tp-bar strong { display: block; font-size: 16px; color: var(--text-primary); }
-.tp-bar span { font-size: 12px; color: var(--text-muted); }
-.tp-bar-actions { display: flex; gap: 8px; flex-shrink: 0; }
-.tp-content { overflow-y: auto; padding: 24px 28px 32px; display: flex; flex-direction: column; gap: 22px; }
-.tp-block-tag { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
-.tp-text { margin: 0; font-size: 22px; line-height: 1.5; color: var(--text-primary); font-weight: 600; }
-.tp-visual { margin: 6px 0 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
-.tp-content.big .tp-text { font-size: 30px; }
-.tp-content.big .tp-visual { font-size: 16px; }
 
 /* Toggle Orgánico / Anuncio en el formulario de pieza */
 .scr-kind { display: flex; gap: 6px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
@@ -292,26 +280,7 @@
 /* ═══════════════════════════════════════════════════════════════════
    MODO GRABACIÓN — una toma por pantalla
    ═══════════════════════════════════════════════════════════════════ */
-.tp-bar-info { display: flex; flex-direction: column; gap: 2px; }
-.tp-bar-info span { font-size: 11.5px; color: var(--text-muted); }
-.tp-mode { display: flex; gap: 2px; background: rgba(255,255,255,0.04); border-radius: 8px; padding: 3px; }
-.tp-mode button { background: none; border: none; padding: 5px 11px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); border-radius: 6px; cursor: pointer; }
-.tp-mode button.active { background: var(--primary); color: #fff; }
-.tp-progress { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; margin: 0 0 20px; }
-.tp-progress > div { height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); border-radius: 2px; transition: width 0.3s ease; }
 
-.tp-take { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 24px 8px; min-height: 200px; }
-.tp-take-head { display: flex; align-items: center; justify-content: space-between; }
-.tp-take-tag { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.7px; }
-.tp-take-pos { font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.tp-take-text { margin: 0; font-size: 22px; line-height: 1.5; color: var(--text-primary); font-weight: 500; text-wrap: balance; }
-.tp-take.big .tp-take-text { font-size: 34px; line-height: 1.42; font-weight: 600; }
-.tp-take.done .tp-take-text { color: var(--text-muted); }
-.tp-take-visual { margin: 0; font-size: 13.5px; color: var(--text-muted); line-height: 1.45; padding: 10px 13px; background: rgba(255,255,255,0.02); border-radius: 9px; border-left: 2px solid var(--primary); }
-.tp-nav { display: flex; align-items: center; justify-content: center; gap: 10px; padding-top: 16px; border-top: 1px solid var(--border); }
-.tp-nav .btn { min-width: 52px; justify-content: center; }
-.tp-mark { min-width: 190px !important; }
-.tp-hint { margin: 10px 0 0; text-align: center; font-size: 11px; color: var(--text-muted); }
 
 /* ═══════════════════════════════════════════════════════════════════
    PIPELINE — filtro por ángulo, progreso de tomas
@@ -553,7 +522,6 @@
   .met-live { position: static; }
   .gh-desire-cols { grid-template-columns: 1fr; }
   .scr-angle-row { flex-direction: column; align-items: stretch; }
-  .tp-take.big .tp-take-text { font-size: 26px; }
 }
 
 
@@ -630,3 +598,145 @@
 }
 .acc-colors button:hover { transform: scale(1.12); }
 .acc-colors button.sel { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.18); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODO GRABACIÓN (teleprompter)
+
+   Pantalla completa con tres franjas de altura fija (barra / texto / nav).
+   La franja del texto lleva `min-height: 0` — sin eso un flex item no se
+   encoge y el texto largo desborda montándose sobre los controles.
+   El tamaño de letra lo calcula useFitText midiendo contra esta franja.
+   ═══════════════════════════════════════════════════════════════════ */
+.tp-overlay { position: fixed; inset: 0; z-index: 300; background: #06080f; }
+.tp-sheet {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  padding: 14px clamp(16px, 4vw, 56px) 16px;
+  box-sizing: border-box;
+}
+
+/* ─── Barra superior ─── */
+.tp-bar {
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--border);
+}
+.tp-bar-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tp-bar-info strong {
+  font-size: 14px; font-weight: 700; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tp-bar-info span { font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.tp-bar-actions { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+
+.tp-mode { display: flex; gap: 2px; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 3px; }
+.tp-mode button {
+  background: none; border: none; padding: 5px 12px; font-size: 11.5px; font-weight: 600;
+  color: var(--text-muted); border-radius: 6px; cursor: pointer;
+}
+.tp-mode button.active { background: var(--primary); color: #fff; }
+
+.tp-zoom { display: flex; gap: 2px; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 3px; }
+.tp-zoom button {
+  background: none; border: none; width: 32px; padding: 5px 0; font-size: 12px; font-weight: 700;
+  color: var(--text-secondary); border-radius: 6px; cursor: pointer;
+}
+.tp-zoom button:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+.tp-zoom button:disabled { opacity: 0.3; cursor: default; }
+
+.tp-icon {
+  display: grid; place-items: center; width: 32px; height: 32px;
+  background: rgba(255,255,255,0.05); border: none; border-radius: 8px;
+  color: var(--text-secondary); cursor: pointer;
+}
+.tp-icon:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+.tp-close:hover { background: #ef4444; color: #fff; }
+
+.tp-progress {
+  flex-shrink: 0; height: 3px; margin-top: 10px;
+  background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden;
+}
+.tp-progress > div {
+  height: 100%; border-radius: 2px; transition: width 0.3s ease;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+
+/* ─── Metadatos de la toma ─── */
+.tp-meta {
+  flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+  padding: 14px 0 10px;
+}
+.tp-take-tag { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; }
+.tp-take-pos {
+  margin-left: auto; font-size: 12px; color: var(--text-muted);
+  font-variant-numeric: tabular-nums; letter-spacing: 0.3px;
+}
+.tp-done-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+  color: #10b981; background: rgba(16,185,129,0.13);
+  padding: 3px 9px; border-radius: 999px;
+}
+
+/* ─── Franja del texto ─── */
+.tp-stage {
+  flex: 1; min-height: 0;             /* clave: permite que se encoja */
+  display: flex; align-items: center; justify-content: center;
+  /* auto, no hidden: si se fuerza A+ por encima del tamaño calculado el texto
+     scrollea dentro de su franja en vez de taparle los controles. */
+  overflow-y: auto;
+}
+.tp-stage.scroll {
+  overflow-y: auto; align-items: flex-start; justify-content: flex-start;
+  flex-direction: column; gap: 26px; padding: 20px 0;
+}
+.tp-take-text {
+  margin: 0; width: 100%;
+  line-height: 1.32; font-weight: 600; letter-spacing: -0.01em;
+  color: #f4f6fb; text-align: center; text-wrap: balance;
+}
+.tp-take-text.done { color: var(--text-muted); font-weight: 500; }
+
+.tp-take-visual {
+  flex-shrink: 0; margin: 0 0 14px;
+  font-size: 13px; color: var(--text-muted); line-height: 1.45; text-align: center;
+  padding: 9px 14px; background: rgba(255,255,255,0.03); border-radius: 10px;
+}
+
+/* ─── Navegación inferior ─── */
+.tp-nav {
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding-top: 14px; border-top: 1px solid var(--border);
+}
+.tp-arrow {
+  display: grid; place-items: center; width: 54px; height: 50px;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 12px;
+  color: var(--text-secondary); cursor: pointer; transition: background 0.15s;
+}
+.tp-arrow:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+.tp-arrow:disabled { opacity: 0.25; cursor: default; }
+.tp-mark { min-width: 210px !important; height: 50px; justify-content: center; font-size: 14px !important; }
+.tp-hint {
+  flex-shrink: 0; margin: 9px 0 0; text-align: center;
+  font-size: 10.5px; color: var(--text-muted); letter-spacing: 0.2px;
+}
+
+/* ─── Modo guion completo ─── */
+.tp-block-tag {
+  font-size: 11px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.7px; margin-bottom: 7px;
+}
+.tp-text { margin: 0; line-height: 1.5; color: #f4f6fb; font-weight: 500; }
+.tp-visual { margin: 8px 0 0; font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+
+/* En celular: los controles al alcance del pulgar y sin metadatos de más. */
+@media (max-width: 640px) {
+  .tp-sheet { padding: 10px 14px 12px; }
+  .tp-bar-info strong { font-size: 13px; }
+  .tp-mode button { padding: 5px 9px; }
+  .tp-zoom button { width: 28px; }
+  .tp-mark { min-width: 0 !important; flex: 1; }
+  .tp-arrow { width: 48px; }
+  .tp-hint { display: none; }
+}

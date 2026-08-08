@@ -6,7 +6,7 @@
 //
 // El modo grabación muestra una toma a la vez, en grande, con avance y marcado de
 // "grabada", así se puede seguir desde el celular mientras se filma.
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { Plus, Trash2, X, ArrowUp, ArrowDown, Maximize2, Scissors, Check, ChevronLeft, ChevronRight, RotateCcw, Link2, Copy } from 'lucide-react';
 import {
   CONTENT_FORMATS, CONTENT_FORMAT_LABELS, CONTENT_OBJECTIVES, CONTENT_KINDS,
@@ -108,10 +108,49 @@ function BlockEditor({ block, index, total, onChange, onRemove, onMove }: {
 
 interface FlatTake { take: ScriptTake; blockIdx: number; takeIdx: number; phase: ScriptPhase; visual: string; isVirtual: boolean }
 
+// Ajusta el tamaño de letra al espacio disponible: busca el más grande que
+// entre sin scroll. Sin esto, una toma larga desborda y se monta sobre los
+// controles (y una corta queda ridículamente chica).
+const FIT_MIN = 16;
+const FIT_MAX = 72;
+
+function useFitText(deps: unknown[]): [React.RefObject<HTMLDivElement | null>, React.RefObject<HTMLParagraphElement | null>, number] {
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const textRef = useRef<HTMLParagraphElement | null>(null);
+  const [size, setSize] = useState(FIT_MAX);
+
+  useLayoutEffect(() => {
+    const box = boxRef.current, el = textRef.current;
+    if (!box || !el) return;
+
+    // Búsqueda binaria: ~6 iteraciones para converger en el rango 16-72px.
+    let lo = FIT_MIN, hi = FIT_MAX, best = FIT_MIN;
+    for (let n = 0; n < 7 && lo <= hi; n++) {
+      const mid = Math.floor((lo + hi) / 2);
+      el.style.fontSize = mid + 'px';
+      if (el.scrollHeight <= box.clientHeight && el.scrollWidth <= box.clientWidth) { best = mid; lo = mid + 1; }
+      else hi = mid - 1;
+    }
+    el.style.fontSize = '';
+    setSize(best);
+  }, deps);
+
+  // Recalcular al rotar el celu o cambiar el tamaño de la ventana.
+  const [, bump] = useState(0);
+  useEffect(() => {
+    const onResize = () => bump(v => v + 1);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => { window.removeEventListener('resize', onResize); window.removeEventListener('orientationchange', onResize); };
+  }, []);
+
+  return [boxRef, textRef, size];
+}
+
 export function Teleprompter({ title, blocks, onBlocks, onClose }: {
   title: string; blocks: ScriptBlock[]; onBlocks?: (b: ScriptBlock[]) => void; onClose: () => void;
 }) {
-  const [big, setBig] = useState(true);
+  const [zoom, setZoom] = useState(0); // ajuste manual sobre el tamaño calculado
   const [mode, setMode] = useState<'tomas' | 'completo'>('tomas');
   const [i, setI] = useState(0);
 
@@ -149,27 +188,34 @@ export function Teleprompter({ title, blocks, onBlocks, onClose }: {
     return () => window.removeEventListener('keydown', onKey);
   });
 
+  const [fitBox, fitText, fitSize] = useFitText([cur?.take.text, mode, zoom]);
+
   return (
-    <div className="tp-overlay" onClick={onClose}>
-      <div className="tp-sheet" onClick={e => e.stopPropagation()}>
-        <div className="tp-bar">
+    <div className="tp-overlay">
+      <div className="tp-sheet">
+        <header className="tp-bar">
           <div className="tp-bar-info">
             <strong>{title || 'Sin título'}</strong>
             <span>
-              {totalSeconds(blocks)}s en total
-              {progress.total > 0 && ` · ${progress.done}/${progress.total} tomas grabadas`}
+              {totalSeconds(blocks)}s
+              {progress.total > 0 && ` · ${progress.done} de ${progress.total} grabadas`}
             </span>
           </div>
           <div className="tp-bar-actions">
             <div className="tp-mode">
-              <button className={mode === 'tomas' ? 'active' : ''} onClick={() => setMode('tomas')}>Por tomas</button>
-              <button className={mode === 'completo' ? 'active' : ''} onClick={() => setMode('completo')}>Guion completo</button>
+              <button className={mode === 'tomas' ? 'active' : ''} onClick={() => setMode('tomas')}>Tomas</button>
+              <button className={mode === 'completo' ? 'active' : ''} onClick={() => setMode('completo')}>Completo</button>
             </div>
-            <button className="btn btn-secondary btn-sm" onClick={() => setBig(v => !v)}>{big ? 'A−' : 'A+'}</button>
-            {progress.done > 0 && <button className="btn btn-secondary btn-sm" title="Desmarcar todas" onClick={resetAll}><RotateCcw size={14} /></button>}
-            <button className="btn btn-secondary btn-sm" onClick={onClose}><X size={15} /></button>
+            <div className="tp-zoom">
+              <button title="Más chico" disabled={zoom <= -3} onClick={() => setZoom(z => z - 1)}>A−</button>
+              <button title="Más grande" disabled={zoom >= 6} onClick={() => setZoom(z => z + 1)}>A+</button>
+            </div>
+            {progress.done > 0 && (
+              <button className="tp-icon" title="Desmarcar todas" onClick={resetAll}><RotateCcw size={15} /></button>
+            )}
+            <button className="tp-icon tp-close" title="Salir (Esc)" onClick={onClose}><X size={17} /></button>
           </div>
-        </div>
+        </header>
 
         {progress.total > 0 && (
           <div className="tp-progress"><div style={{ width: `${(progress.done / progress.total) * 100}%` }} /></div>
@@ -177,37 +223,52 @@ export function Teleprompter({ title, blocks, onBlocks, onClose }: {
 
         {mode === 'tomas' ? (
           !cur ? (
-            <div className="tp-content"><div className="ig-empty-inline">Todavía no escribiste el guion.</div></div>
+            <div className="tp-stage"><div className="ig-empty-inline">Todavía no escribiste el guion.</div></div>
           ) : (
             <>
-              <div className={`tp-take ${big ? 'big' : ''} ${cur.take.done ? 'done' : ''}`}>
-                <div className="tp-take-head">
-                  <span className="tp-take-tag" style={{ color: SCRIPT_PHASE_COLORS[cur.phase] }}>{SCRIPT_PHASE_LABELS[cur.phase]}</span>
-                  <span className="tp-take-pos">Toma {i + 1} de {flat.length}</span>
-                </div>
-                <p className="tp-take-text">{cur.take.text}</p>
-                {cur.visual.trim() && <p className="tp-take-visual">🎬 {cur.visual}</p>}
+              <div className="tp-meta">
+                <span className="tp-take-tag" style={{ color: SCRIPT_PHASE_COLORS[cur.phase] }}>
+                  {SCRIPT_PHASE_LABELS[cur.phase]}
+                </span>
+                {cur.take.done && <span className="tp-done-chip"><Check size={12} /> Grabada</span>}
+                <span className="tp-take-pos">{i + 1} / {flat.length}</span>
               </div>
-              <div className="tp-nav">
-                <button className="btn btn-secondary" disabled={i === 0} onClick={() => setI(i - 1)}><ChevronLeft size={18} /></button>
+
+              {/* El texto vive en su propia caja medida: nunca puede taparle los
+                  controles porque el tamaño se calcula contra esta altura. */}
+              <div className="tp-stage" ref={fitBox}>
+                <p ref={fitText} className={`tp-take-text ${cur.take.done ? 'done' : ''}`}
+                  style={{ fontSize: Math.max(FIT_MIN, fitSize + zoom * 4) + 'px' }}>
+                  {cur.take.text}
+                </p>
+              </div>
+
+              {cur.visual.trim() && <p className="tp-take-visual">🎬 {cur.visual}</p>}
+
+              <footer className="tp-nav">
+                <button className="tp-arrow" title="Anterior (←)" disabled={i === 0} onClick={() => setI(i - 1)}>
+                  <ChevronLeft size={20} />
+                </button>
                 <button className={`btn ${cur.take.done ? 'btn-secondary' : 'btn-primary'} tp-mark`}
                   disabled={cur.isVirtual} onClick={toggleDone}
-                  title={cur.isVirtual ? 'Partí el bloque en tomas para poder marcarlas' : ''}>
+                  title={cur.isVirtual ? 'Partí el bloque en tomas para poder marcarlas' : 'Marcar (Espacio)'}>
                   <Check size={18} /> {cur.take.done ? 'Grabada' : 'Marcar grabada'}
                 </button>
-                <button className="btn btn-secondary" disabled={i >= flat.length - 1} onClick={() => setI(i + 1)}><ChevronRight size={18} /></button>
-              </div>
-              <p className="tp-hint">Flechas para moverte · Espacio para marcar · Esc para salir</p>
+                <button className="tp-arrow" title="Siguiente (→)" disabled={i >= flat.length - 1} onClick={() => setI(i + 1)}>
+                  <ChevronRight size={20} />
+                </button>
+              </footer>
+              <p className="tp-hint">← → moverse · Espacio marcar · Esc salir</p>
             </>
           )
         ) : (
-          <div className={`tp-content ${big ? 'big' : ''}`}>
+          <div className="tp-stage scroll">
             {blocks.filter(b => b.text.trim() || b.visual.trim()).map(b => (
               <div key={b.id} className="tp-block">
                 <div className="tp-block-tag" style={{ color: SCRIPT_PHASE_COLORS[b.phase] }}>
                   {SCRIPT_PHASE_LABELS[b.phase]}{b.seconds ? ` · ${b.seconds}s` : ''}
                 </div>
-                {b.text.trim() && <p className="tp-text">{b.text}</p>}
+                {b.text.trim() && <p className="tp-text" style={{ fontSize: 22 + zoom * 3 + 'px' }}>{b.text}</p>}
                 {b.visual.trim() && <p className="tp-visual">🎬 {b.visual}</p>}
               </div>
             ))}
