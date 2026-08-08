@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Sparkles, Plug, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Send, Copy, Check } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useContent, useClients } from './hooks';
@@ -13,6 +13,7 @@ import { PostForm } from './ContentGuion';
 import Metricas from './ContentMetricas';
 import Ganchos from './ContentGanchos';
 import Referentes from './ContentReferentes';
+import { AccountSwitcher, AccountsModal, ACCOUNT_STORAGE_KEY, resolveStoredAccount } from './ContentCuentas';
 import './Content.css';
 
 type Tab = 'resumen' | 'ideas' | 'guiones' | 'ganchos' | 'referentes' | 'tabla' | 'pipeline' | 'calendario' | 'metricas' | 'generador' | 'anuncios' | 'fuentes' | 'conexion';
@@ -36,16 +37,63 @@ const STATUS_ORDER: ContentStatus[] = ['borrador', 'aprobado', 'listo'];
 
 export default function Content() {
   const [tab, setTab] = useState<Tab>('resumen');
-  const c = useContent();
+  const [accountId, setAccountId] = useState<string | null>(() => localStorage.getItem(ACCOUNT_STORAGE_KEY));
+  const [managing, setManaging] = useState(false);
+  const c = useContent(accountId);
+
+  // Al cargar (o si se borró la cuenta guardada) cae en la primera disponible.
+  useEffect(() => {
+    if (!c.accounts.length) return;
+    const resolved = resolveStoredAccount(c.accounts);
+    if (resolved !== accountId) setAccountId(resolved);
+  }, [c.accounts, accountId]);
+
+  const selectAccount = (id: string) => {
+    setAccountId(id);
+    localStorage.setItem(ACCOUNT_STORAGE_KEY, id);
+  };
+
+  // Conteo de piezas por cuenta para mostrarlo en el selector.
+  const counts = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const p of c.allPosts) if (p.accountId) acc[p.accountId] = (acc[p.accountId] || 0) + 1;
+    return acc;
+  }, [c.allPosts]);
+
+  const active = c.accounts.find(a => a.id === accountId);
+  const orphans = c.allPosts.filter(p => !p.accountId).length;
+
   return (
     <div className="ig">
       <div className="ig-head">
         <div className="ig-title">
-          <span className="ig-logo">IG</span>
-          <div><h2>IG Content</h2><p>Centro de contenido para Instagram</p></div>
+          <span className="ig-logo" style={active ? { background: active.color } : undefined}>IG</span>
+          <div>
+            <h2>IG Content</h2>
+            <p>{active ? `${active.name}${active.handle ? ` · @${active.handle}` : ''}` : 'Centro de contenido para Instagram'}</p>
+          </div>
         </div>
-        <span className="ig-pill">{c.posts.length} piezas · {c.sources.length} fuentes</span>
+        <div className="ig-head-right">
+          <span className="ig-pill">{c.posts.length} piezas · {c.sources.length} fuentes</span>
+          <AccountSwitcher accounts={c.accounts} accountId={accountId} counts={counts}
+            onSelect={selectAccount} onManage={() => setManaging(true)} />
+        </div>
       </div>
+
+      {!c.loading && !c.accounts.length && (
+        <div className="ig-notice">
+          Creá tu primera cuenta para separar guiones y métricas. Si ya venías cargando contenido, al crear la cuenta te lo asigno.
+        </div>
+      )}
+      {orphans > 0 && c.accounts.length > 0 && (
+        <div className="ig-notice warn">
+          Hay {orphans} pieza{orphans === 1 ? '' : 's'} sin cuenta asignada (de antes de separar por cuenta).
+          <button className="btn btn-secondary btn-sm" style={{ marginLeft: 10 }}
+            onClick={() => accountId && c.claimOrphans(accountId)}>
+            Asignar a {active?.name || 'esta cuenta'}
+          </button>
+        </div>
+      )}
 
       <div className="ig-tabs">
         {TABS.map(t => <button key={t.k} className={tab === t.k ? 'active' : ''} onClick={() => setTab(t.k)}>{t.label}</button>)}
@@ -66,6 +114,17 @@ export default function Content() {
         {tab === 'fuentes' && <Fuentes c={c} />}
         {tab === 'conexion' && <Conexion />}
       </div>
+
+      {managing && (
+        <AccountsModal accounts={c.accounts} counts={counts} onClose={() => setManaging(false)}
+          onAdd={async a => {
+            const id = await c.addAccount(a);
+            // La primera cuenta se selecciona sola y adopta el contenido suelto.
+            if (id) { selectAccount(id); if (!c.accounts.length) c.claimOrphans(id); }
+            return id;
+          }}
+          onUpdate={c.updateAccount} onRemove={c.removeAccount} />
+      )}
     </div>
   );
 }

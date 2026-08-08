@@ -3,7 +3,8 @@ import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client
   type Onboarding, type OnboardingStep, type OnboardingPayment, type OnboardingDocument, type ServiceType, type Prospect,
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
   type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic,
-  type ContentPost, type ContentSource, type ContentAd, type ContentMetric, type ContentRef, type Competitor,
+  type ContentPost, type ContentSource, type ContentAd, type ContentMetric, type ContentRef,
+  type ContentAccount, ACCOUNT_COLORS, type Competitor,
   type Note, type Whiteboard, type BoardData, EMPTY_BOARD_DATA, REPEAT_LABELS, type NodeEvent, type BoardNode,
   type ClientPortal, type PortalConfig, type PortalUpdate, type PortalTicket,
   type StrategyDoc, type DocBlock } from './utils';
@@ -898,29 +899,36 @@ export function useGuide() {
 }
 
 // ─── IG CONTENT ───
-export function useContent() {
-  const [posts, setPosts] = useState<ContentPost[]>([]);
+// `accountId` acota todo lo que se lee y se escribe a una sola cuenta de Instagram.
+// Con null se ve todo junto (útil para el resumen global), pero al crear algo sin
+// cuenta seleccionada la fila queda sin asignar, así que la UI siempre elige una.
+export function useContent(accountId: string | null = null) {
+  const [accounts, setAccounts] = useState<ContentAccount[]>([]);
+  const [allPosts, setAllPosts] = useState<ContentPost[]>([]);
   const [sources, setSources] = useState<ContentSource[]>([]);
-  const [ads, setAds] = useState<ContentAd[]>([]);
-  const [metrics, setMetrics] = useState<ContentMetric[]>([]);
-  const [refs, setRefs] = useState<ContentRef[]>([]);
+  const [allAds, setAllAds] = useState<ContentAd[]>([]);
+  const [allMetrics, setAllMetrics] = useState<ContentMetric[]>([]);
+  const [allRefs, setAllRefs] = useState<ContentRef[]>([]);
   const [loading, setLoading] = useState(true);
   const load = useCallback(async () => {
+    const { data: acc } = await supabase.from('content_accounts').select('*').order('created_at');
     const { data: p } = await supabase.from('content_posts').select('*').order('updated_at', { ascending: false });
     const { data: s } = await supabase.from('content_sources').select('*').order('created_at', { ascending: false });
     const { data: a } = await supabase.from('content_ads').select('*').order('created_at', { ascending: false });
     const { data: m } = await supabase.from('content_metrics').select('*').order('published_at', { ascending: false, nullsFirst: false });
     const { data: r } = await supabase.from('content_refs').select('*').order('created_at', { ascending: false });
-    if (p) setPosts(p.map(mapToCamel) as ContentPost[]);
+    if (acc) setAccounts(acc.map(mapToCamel) as ContentAccount[]);
+    if (p) setAllPosts(p.map(mapToCamel) as ContentPost[]);
     if (s) setSources(s.map(mapToCamel) as ContentSource[]);
-    if (a) setAds(a.map(mapToCamel) as ContentAd[]);
-    if (m) setMetrics(m.map(mapToCamel) as ContentMetric[]);
-    if (r) setRefs(r.map(mapToCamel) as ContentRef[]);
+    if (a) setAllAds(a.map(mapToCamel) as ContentAd[]);
+    if (m) setAllMetrics(m.map(mapToCamel) as ContentMetric[]);
+    if (r) setAllRefs(r.map(mapToCamel) as ContentRef[]);
     setLoading(false);
   }, []);
   useEffect(() => {
     load();
     const ch = supabase.channel('content_' + uuid())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_accounts' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_posts' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_sources' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_ads' }, load)
@@ -930,8 +938,51 @@ export function useContent() {
     return () => { supabase.removeChannel(ch); };
   }, [load]);
 
+  // Se carga todo una vez y se filtra en memoria: cambiar de cuenta es instantáneo
+  // y permite mostrar el conteo por cuenta en el selector sin pedir nada más.
+  const scope = <T extends { accountId: string | null }>(rows: T[]) =>
+    accountId ? rows.filter(x => x.accountId === accountId) : rows;
+  const posts = useMemo(() => scope(allPosts), [allPosts, accountId]);
+  const ads = useMemo(() => scope(allAds), [allAds, accountId]);
+  const metrics = useMemo(() => scope(allMetrics), [allMetrics, accountId]);
+  const refs = useMemo(() => scope(allRefs), [allRefs, accountId]);
+
+  // ─── Cuentas ───
+  const addAccount = async (a: Partial<ContentAccount>) => {
+    const { data, error } = await supabase.from('content_accounts').insert(mapToSnake({
+      clientId: a.clientId ?? null, name: a.name || '', handle: (a.handle || '').replace(/^@/, ''),
+      niche: a.niche || '', color: a.color || ACCOUNT_COLORS[0], notes: a.notes || '', archived: false,
+    })).select('id').single();
+    if (error) { toast('No se pudo crear la cuenta', 'error'); return null; }
+    toast('Cuenta agregada'); load();
+    return (data as { id: string } | null)?.id ?? null;
+  };
+  const updateAccount = async (id: string, u: Partial<ContentAccount>) => {
+    const { error } = await supabase.from('content_accounts').update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
+    if (error) toast('Error al actualizar la cuenta', 'error'); else load();
+  };
+  // El contenido no se borra en cascada: queda sin cuenta asignada y se puede reasignar.
+  const removeAccount = async (id: string) => {
+    const { error } = await supabase.from('content_accounts').delete().eq('id', id);
+    if (error) toast('No se pudo borrar la cuenta', 'error'); else { toast('Cuenta borrada'); load(); }
+  };
+
+  // Adopta el contenido que quedó sin cuenta (lo cargado antes de separar por
+  // cuenta, o lo que quedó suelto al borrar una). Toca las 4 tablas de una.
+  const claimOrphans = async (targetId: string) => {
+    const tables = ['content_posts', 'content_metrics', 'content_refs', 'content_ads'];
+    const results = await Promise.all(
+      tables.map(t => supabase.from(t).update({ account_id: targetId }).is('account_id', null))
+    );
+    const failed = results.filter(r => r.error).length;
+    if (failed) toast('Algunas filas no se pudieron reasignar', 'error');
+    else toast('Contenido asignado a la cuenta');
+    load();
+  };
+
   const addPost = async (p: Partial<ContentPost>) => {
     const { error } = await supabase.from('content_posts').insert(mapToSnake({
+      accountId: p.accountId ?? accountId,
       format: p.format || 'reel', objective: p.objective || '', status: p.status || 'borrador', kind: p.kind || 'organico',
       title: p.title || '', content: p.content || '', edgeLevel: p.edgeLevel ?? 3, score: p.score ?? 0,
       scheduledFor: p.scheduledFor ?? null,
@@ -957,7 +1008,7 @@ export function useContent() {
   // ─── Anuncios (seguimiento de campañas de Meta Ads corridas) ───
   const addAd = async (a: Partial<ContentAd>) => {
     const { error } = await supabase.from('content_ads').insert(mapToSnake({
-      postId: a.postId ?? null, format: a.format || 'reel', objective: a.objective || '', status: a.status || 'activo',
+      accountId: a.accountId ?? accountId, postId: a.postId ?? null, format: a.format || 'reel', objective: a.objective || '', status: a.status || 'activo',
       budget: a.budget ?? 0, currency: a.currency || 'ARS', durationDays: a.durationDays ?? 0,
       audience: a.audience || '', placement: a.placement || '', cta: a.cta || '', copy: a.copy || '', notes: a.notes || '',
       startedAt: a.startedAt ?? null, endedAt: a.endedAt ?? null,
@@ -1004,7 +1055,7 @@ export function useContent() {
   // ─── Métricas de rendimiento (números crudos de Instagram Insights) ───
   const addMetric = async (m: Partial<ContentMetric>) => {
     const { error } = await supabase.from('content_metrics').insert(mapToSnake({
-      postId: m.postId ?? null, title: m.title || '', publishedAt: m.publishedAt ?? null,
+      accountId: m.accountId ?? accountId, postId: m.postId ?? null, title: m.title || '', publishedAt: m.publishedAt ?? null,
       views: m.views ?? 0, reach: m.reach ?? 0, impressions: m.impressions ?? 0, nonFollowersPct: m.nonFollowersPct ?? 0,
       likes: m.likes ?? 0, saves: m.saves ?? 0, shares: m.shares ?? 0, comments: m.comments ?? 0, newFollowers: m.newFollowers ?? 0,
       retentionPct: m.retentionPct ?? 0, avgWatchSec: m.avgWatchSec ?? 0, durationSec: m.durationSec ?? 0, notes: m.notes || '',
@@ -1020,7 +1071,7 @@ export function useContent() {
   // ─── Referentes (swipe file de videos que funcionan) ───
   const addRef = async (r: Partial<ContentRef>) => {
     const { error } = await supabase.from('content_refs').insert(mapToSnake({
-      url: r.url || '', creator: r.creator || '', platform: r.platform || 'Instagram',
+      accountId: r.accountId ?? accountId, url: r.url || '', creator: r.creator || '', platform: r.platform || 'Instagram',
       category: r.category || '', hook: r.hook || '', hookFormula: r.hookFormula || '', narrative: r.narrative || '',
       whyWorks: r.whyWorks || '', howToAdapt: r.howToAdapt || '', notes: r.notes || '',
       saved: r.saved ?? false, analyzedAt: r.analyzedAt ?? null,
@@ -1045,7 +1096,9 @@ export function useContent() {
   };
 
   return {
-    posts, sources, ads, metrics, refs, loading,
+    accounts, accountId, posts, sources, ads, metrics, refs, loading,
+    allPosts, allMetrics, allRefs, allAds,
+    addAccount, updateAccount, removeAccount, claimOrphans,
     addPost, updatePost, removePost, addSource, removeSource, addAd, updateAd, removeAd,
     addMetric, updateMetric, removeMetric, addRef, updateRef, removeRef,
     generateScript, generateIdeas, generateViralScript, analyzeRef, refresh: load,

@@ -333,6 +333,17 @@ export const HISTORY_KINDS: { key: HistoryKind; label: string; color: string }[]
 export const HISTORY_KIND_LABELS: Record<HistoryKind, string> = Object.fromEntries(HISTORY_KINDS.map(k => [k.key, k.label])) as Record<HistoryKind, string>;
 
 // ─── IG CONTENT ───
+
+// Cada cuenta de Instagram que se maneja (la propia, la personal, las de clientes).
+// Todo el contenido cuelga de una cuenta para que no se mezclen guiones ni métricas.
+export interface ContentAccount {
+  id: string; clientId: string | null; name: string; handle: string;
+  niche: string; color: string; notes: string; archived: boolean;
+  createdAt: string; updatedAt: string;
+}
+// Paleta para distinguir cuentas de un vistazo en el selector y las tarjetas.
+export const ACCOUNT_COLORS = ['#f9587a', '#6366f1', '#10b981', '#f59e0b', '#a64bf4', '#06b6d4', '#ef4444', '#84cc16'];
+
 export type ContentStatus = 'borrador' | 'aprobado' | 'listo';
 export type ContentFormat = 'reel' | 'carrusel' | 'story' | 'ad';
 export type ContentKind = 'organico' | 'anuncio';
@@ -360,7 +371,8 @@ export const AWARENESS_LEVELS: { key: Awareness; label: string; step: number; dr
 export const AWARENESS_LABELS: Record<Awareness, string> = Object.fromEntries(AWARENESS_LEVELS.map(a => [a.key, a.label])) as Record<Awareness, string>;
 
 export interface ContentPost {
-  id: string; format: ContentFormat; objective: string; status: ContentStatus; kind: ContentKind;
+  id: string; accountId: string | null;
+  format: ContentFormat; objective: string; status: ContentStatus; kind: ContentKind;
   title: string; content: string; edgeLevel: number; score: number;
   scheduledFor: number | null; createdAt: string; updatedAt: string;
   // Campos de guionismo (equivalen a las filas de la planilla de reels)
@@ -403,7 +415,7 @@ export const AD_STATUSES: { key: AdStatus; label: string }[] = [
   { key: 'activo', label: 'Activo' }, { key: 'pausado', label: 'Pausado' }, { key: 'finalizado', label: 'Finalizado' },
 ];
 export interface ContentAd {
-  id: string; postId: string | null; format: AdFormat; objective: string; status: AdStatus;
+  id: string; accountId: string | null; postId: string | null; format: AdFormat; objective: string; status: AdStatus;
   budget: number; currency: string; durationDays: number;
   audience: string; placement: string; cta: string; copy: string;
   notes: string; startedAt: number | null; endedAt: number | null;
@@ -415,7 +427,7 @@ export interface ContentAd {
 // Los números que devuelve Instagram Insights. Todo lo derivado (engagement,
 // share rate, score) se calcula en metrics.ts, no se guarda, así nunca queda desfasado.
 export interface ContentMetric {
-  id: string; postId: string | null; title: string; publishedAt: number | null;
+  id: string; accountId: string | null; postId: string | null; title: string; publishedAt: number | null;
   views: number; reach: number; impressions: number; nonFollowersPct: number;
   likes: number; saves: number; shares: number; comments: number; newFollowers: number;
   retentionPct: number; avgWatchSec: number; durationSec: number;
@@ -434,7 +446,7 @@ export const REF_CATEGORY_LABELS: Record<RefCategory, string> = Object.fromEntri
 export const REF_PLATFORMS = ['Instagram', 'TikTok', 'YouTube Shorts'];
 
 export interface ContentRef {
-  id: string; url: string; creator: string; platform: string;
+  id: string; accountId: string | null; url: string; creator: string; platform: string;
   category: RefCategory | ''; hook: string; hookFormula: string; narrative: string;
   whyWorks: string; howToAdapt: string; notes: string;
   saved: boolean; analyzedAt: number | null;
