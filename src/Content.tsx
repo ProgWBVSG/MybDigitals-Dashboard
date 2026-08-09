@@ -335,6 +335,10 @@ function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
           return (
             <div key={st.key} className="ig-lane">
               <div className="ig-lane-head">{st.label}<span>{items.length}</span></div>
+              {/* Las tarjetas van en su propio contenedor con scroll: así el
+                  encabezado de la columna queda fijo y una columna con muchas
+                  piezas no estira la página entera. */}
+              <div className="ig-lane-cards">
               {items.map(p => {
                 const prog = isStructuredScript(p.content) ? takeProgress(decodeScript(p.content)) : { done: 0, total: 0 };
                 const angle = p.angle || 'valor';
@@ -370,6 +374,7 @@ function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
                 );
               })}
               {items.length === 0 && <div className="ig-lane-empty">Vacío</div>}
+              </div>
             </div>
           );
         })}
