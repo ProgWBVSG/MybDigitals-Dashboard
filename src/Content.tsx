@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Sparkles, Plug, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Send, Copy, Check } from 'lucide-react';
+import { Sparkles, Plug, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Send, Copy, Check, Search, X } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useContent, useClients } from './hooks';
 import {
@@ -129,6 +129,21 @@ export default function Content() {
   );
 }
 
+// Criterio de búsqueda compartido por Pipeline y Tabla: mira todo lo que uno
+// puede recordar de una pieza, no solo el título — muchas veces se acuerda una
+// frase del guion o del CTA y no cómo la tituló.
+const matchPosts = (posts: ContentPost[], q: string): ContentPost[] => {
+  const needle = q.trim().toLowerCase();
+  if (!needle) return posts;
+  return posts.filter(p => {
+    const blocks = decodeScript(p.content);
+    return [
+      p.title, p.theme, p.cta, p.caption, p.hashtagsIg, p.objective,
+      ...blocks.map(b => b.text), ...blocks.map(b => b.visual),
+    ].join(' ').toLowerCase().includes(needle);
+  });
+};
+
 const fmtBadge = (f: ContentFormat) => <span className={`ig-badge ${f}`}>{CONTENT_FORMAT_LABELS[f]}</span>;
 const FORMAT_COLOR: Record<ContentFormat, string> = { reel: '#f9587a', carrusel: '#a64bf4', story: '#ffaa3a', ad: '#6366f1' };
 
@@ -245,6 +260,7 @@ function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
   const [angleFilter, setAngleFilter] = useState<string>('todos');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [askUrl, setAskUrl] = useState<ContentPost | null>(null);
+  const [q, setQ] = useState('');
   const move = (p: ContentPost, dir: number) => {
     const i = STATUS_ORDER.indexOf(p.status);
     const next = STATUS_ORDER[Math.max(0, Math.min(STATUS_ORDER.length - 1, i + dir))];
@@ -258,7 +274,11 @@ function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
     // Al publicar, pedir el link del reel para poder anclar sus métricas.
     if (next === 'publicado' && !p.postUrl) setAskUrl({ ...p, status: next, ...extra });
   };
-  const visible = c.posts.filter(p => angleFilter === 'todos' || (p.angle || 'valor') === angleFilter);
+  const visible = useMemo(() => {
+    const byAngle = angleFilter === 'todos'
+      ? c.posts : c.posts.filter(p => (p.angle || 'valor') === angleFilter);
+    return matchPosts(byAngle, q);
+  }, [c.posts, angleFilter, q]);
 
   // Copia la pieza lista para mandar por WhatsApp sin tener que abrirla.
   const copyPost = (p: ContentPost) => {
@@ -276,8 +296,24 @@ function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
     <div className="ig-card">
       <div className="ig-card-head">
         <div><p className="ig-eyebrow">Workflow editorial</p><h3>Pipeline de producción</h3></div>
-        <button className="btn btn-primary btn-sm" onClick={() => setForm({})}><Plus size={14} /> Nueva pieza</button>
+        <div className="ig-head-tools">
+          <div className="ig-search">
+            <Search size={14} />
+            <input value={q} onChange={e => setQ(e.target.value)}
+              placeholder="Buscar en título, guion, CTA…" />
+            {q && <button title="Limpiar" onClick={() => setQ('')}><X size={13} /></button>}
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={() => setForm({})}><Plus size={14} /> Nueva pieza</button>
+        </div>
       </div>
+
+      {q.trim() && (
+        <p className="ig-search-count">
+          {visible.length === 0
+            ? `Ninguna pieza coincide con "${q.trim()}".`
+            : `${visible.length} pieza${visible.length === 1 ? '' : 's'} coincide${visible.length === 1 ? '' : 'n'} con "${q.trim()}".`}
+        </p>
+      )}
 
       <div className="ig-angle-filter">
         <button className={angleFilter === 'todos' ? 'active' : ''} onClick={() => setAngleFilter('todos')}>
@@ -396,10 +432,13 @@ const parseHook = (content: string) => {
 // con IA sin salir de la tabla — pensada para cargar/revisar varias ideas de un saque, en
 // vez de una pieza a la vez como el Generador.
 function Tabla({ c }: { c: ReturnType<typeof useContent> }) {
+  const [q, setQ] = useState('');
   const [genRow, setGenRow] = useState<string | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [editing, setEditing] = useState<ContentPost | null>(null);
+
+  const filtered = useMemo(() => matchPosts(c.posts, q), [c.posts, q]);
 
   const addRow = () => c.addPost({ title: '', format: 'reel', objective: CONTENT_OBJECTIVES[0], status: 'borrador', content: '' });
 
@@ -421,7 +460,12 @@ function Tabla({ c }: { c: ReturnType<typeof useContent> }) {
     <div className="ig-card">
       <div className="ig-card-head">
         <div><p className="ig-eyebrow">Batch — estilo Sandcastle</p><h3>Tabla de contenido</h3></div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="ig-head-tools">
+          <div className="ig-search">
+            <Search size={14} />
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar…" />
+            {q && <button title="Limpiar" onClick={() => setQ('')}><X size={13} /></button>}
+          </div>
           <button className="btn btn-secondary btn-sm" onClick={() => setBulkOpen(true)}>+ Varias ideas</button>
           <button className="btn btn-primary btn-sm" onClick={addRow}><Plus size={14} /> Nueva fila</button>
         </div>
@@ -436,7 +480,7 @@ function Tabla({ c }: { c: ReturnType<typeof useContent> }) {
               <tr><th>Título / tema</th><th>Formato</th><th>Objetivo</th><th>Estado</th><th>Hook</th><th>Fecha</th><th /></tr>
             </thead>
             <tbody>
-              {c.posts.map(p => (
+              {filtered.map(p => (
                 <tr key={p.id}>
                   <td>
                     <input className="ig-cell-input" value={p.title} placeholder="Tema de la pieza…"
