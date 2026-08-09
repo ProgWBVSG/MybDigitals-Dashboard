@@ -4,10 +4,11 @@
 // devuelve un score ponderado, qué funcionó, qué falló y qué hacer al respecto —
 // ordenado por impacto, no por orden de aparición.
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, TrendingUp, TrendingDown, AlertCircle, CheckCircle2, X } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, TrendingDown, AlertCircle, CheckCircle2, X, ExternalLink, Lightbulb } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import type { useContent } from './hooks';
-import { type ContentMetric, type ContentPost } from './utils';
+import { CONTENT_ANGLE_LABELS, type ContentMetric, type ContentPost } from './utils';
+import { findPatterns, type GroupStat } from './content-metrics';
 import {
   METRIC_DEFS, diagnose, aggregate, fmtMetric, fmtNum, VERDICT_COLOR, VERDICT_LABEL,
   type Diagnosis, type MetricScore,
@@ -42,6 +43,7 @@ function MetricForm({ initial, posts, onSave, onClose }: {
   const setNum = (k: keyof ContentMetric, v: string) => setF({ ...f, [k]: Math.max(0, +v || 0) });
   const live = useMemo(() => diagnose(f as ContentMetric), [f]);
   const groups = [...new Set(NUM_FIELDS.map(x => x.group))];
+  const linkedUrl = posts.find(p => p.id === f.postId)?.postUrl || '';
 
   const save = () => {
     if (!(f.title || '').trim() && !f.postId) return;
@@ -68,6 +70,11 @@ function MetricForm({ initial, posts, onSave, onClose }: {
                 </select>
               </label>
               <label>Título / tema<input className="input" value={f.title || ''} onChange={e => setF({ ...f, title: e.target.value })} /></label>
+              {linkedUrl && (
+                <a className="met-form-link" href={linkedUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink size={13} /> Abrir el reel para copiar los números
+                </a>
+              )}
               <label>Fecha de publicación
                 <input className="input" type="date" value={f.publishedAt ? new Date(f.publishedAt).toISOString().split('T')[0] : ''}
                   onChange={e => setF({ ...f, publishedAt: e.target.value ? new Date(e.target.value + 'T12:00').getTime() : null })} />
@@ -194,6 +201,23 @@ export default function Metricas({ c }: { c: ReturnType<typeof useContent> }) {
 
   const rows = useMemo(() => c.metrics.map(m => ({ m, d: diagnose(m) })), [c.metrics]);
   const agg = useMemo(() => aggregate(c.metrics), [c.metrics]);
+
+  // Cola de trabajo: piezas que ya se publicaron pero todavía no tienen métricas.
+  // Es lo que conecta el Pipeline con esta pestaña — al mover algo a "Publicado"
+  // aparece acá esperando los números.
+  const pending = useMemo(() => {
+    const measured = new Set(c.metrics.map(m => m.postId).filter(Boolean));
+    return c.posts
+      .filter(p => p.status === 'publicado' && !measured.has(p.id))
+      .sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+  }, [c.posts, c.metrics]);
+
+  const patterns = useMemo(() => findPatterns(c.metrics, c.posts), [c.metrics, c.posts]);
+
+  // Precarga el formulario con los datos que la pieza ya tiene.
+  const loadFor = (p: ContentPost) => setForm({
+    postId: p.id, title: p.title, publishedAt: p.publishedAt ?? Date.now(),
+  });
   const chart = useMemo(() =>
     [...rows].reverse().slice(-12).map(({ m, d }) => ({
       name: (m.title || '').slice(0, 18), score: d.score,
@@ -205,6 +229,35 @@ export default function Metricas({ c }: { c: ReturnType<typeof useContent> }) {
         <div><p className="ig-eyebrow">Rendimiento</p><h3>Métricas y diagnóstico</h3></div>
         <button className="btn btn-primary btn-sm" onClick={() => setForm({})}><Plus size={14} /> Cargar métricas</button>
       </div>
+
+      {pending.length > 0 && (
+        <div className="met-pending">
+          <div className="met-pending-head">
+            <h4>Publicadas sin métricas <span>{pending.length}</span></h4>
+            <p>Ya salieron. Cargales los números de Insights para que entren al análisis.</p>
+          </div>
+          <div className="met-pending-list">
+            {pending.map(p => (
+              <div key={p.id} className="met-pending-row">
+                <div className="met-pending-txt">
+                  <strong>{p.title || 'Sin título'}</strong>
+                  <em>
+                    {p.publishedAt ? new Date(p.publishedAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }) : 'sin fecha'}
+                    {' · '}{CONTENT_ANGLE_LABELS[p.angle || 'valor']}
+                  </em>
+                </div>
+                {p.postUrl && (
+                  <a className="met-pending-link" href={p.postUrl} target="_blank" rel="noreferrer"
+                    title="Abrir el reel publicado" onClick={e => e.stopPropagation()}>
+                    <ExternalLink size={14} />
+                  </a>
+                )}
+                <button className="btn btn-primary btn-sm" onClick={() => loadFor(p)}>Cargar métricas</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {agg.count === 0 ? (
         <div className="ig-empty">
@@ -259,6 +312,35 @@ export default function Metricas({ c }: { c: ReturnType<typeof useContent> }) {
             <div className="met-advice">
               <h4>Qué corregir en el conjunto</h4>
               {agg.advice.map((a, i) => <p key={i}>{a}</p>)}
+            </div>
+          )}
+
+          {patterns.insights.length > 0 && (
+            <div className="met-patterns">
+              <h4><Lightbulb size={15} /> Qué está funcionando mejor</h4>
+              {patterns.insights.map((t, i) => <p key={i}>{t}</p>)}
+              {patterns.byAngle.length > 1 && (
+                <div className="met-pats">
+                  {[
+                    { title: 'Por ángulo', stats: patterns.byAngle },
+                    { title: 'Por escalón', stats: patterns.byAwareness },
+                    { title: 'Por formato', stats: patterns.byFormat },
+                  ].filter(g => g.stats.length > 1).map(g => (
+                    <div key={g.title} className="met-pat">
+                      <span className="met-pat-title">{g.title}</span>
+                      {g.stats.map((st: GroupStat) => (
+                        <div key={st.key} className="met-pat-row">
+                          <span>{st.label}</span>
+                          <em>{st.n}</em>
+                          <strong style={{ color: st.avgScore >= 75 ? '#10b981' : st.avgScore >= 50 ? '#f59e0b' : '#ef4444' }}>
+                            {st.avgScore}
+                          </strong>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

@@ -344,7 +344,7 @@ export interface ContentAccount {
 // Paleta para distinguir cuentas de un vistazo en el selector y las tarjetas.
 export const ACCOUNT_COLORS = ['#f9587a', '#6366f1', '#10b981', '#f59e0b', '#a64bf4', '#06b6d4', '#ef4444', '#84cc16'];
 
-export type ContentStatus = 'borrador' | 'aprobado' | 'listo';
+export type ContentStatus = 'borrador' | 'aprobado' | 'listo' | 'publicado';
 export type ContentFormat = 'reel' | 'carrusel' | 'story' | 'ad';
 export type ContentKind = 'organico' | 'anuncio';
 
@@ -379,12 +379,16 @@ export interface ContentPost {
   angle: ContentAngle; awareness: Awareness | ''; theme: string;
   howToRecord: string; refLink: string; cta: string; caption: string;
   hashtagsIg: string; hashtagsTt: string; recorded: boolean; edited: boolean;
+  // Se sellan al pasar la pieza a "Publicado": cuándo salió y dónde quedó subida.
+  // `postUrl` es el link del reel ya publicado — es lo que ancla la pieza a sus métricas.
+  publishedAt: number | null; postUrl: string;
 }
 export interface ContentSource { id: string; type: string; title: string; content: string; tags: string; createdAt: string; updatedAt: string; }
 export const CONTENT_STATUSES: { key: ContentStatus; label: string }[] = [
   { key: 'borrador', label: 'Borrador' },
   { key: 'aprobado', label: 'Aprobado' },
   { key: 'listo', label: 'Listo para publicar' },
+  { key: 'publicado', label: 'Publicado' },
 ];
 export const CONTENT_FORMATS: ContentFormat[] = ['reel', 'carrusel', 'story', 'ad'];
 export const CONTENT_FORMAT_LABELS: Record<ContentFormat, string> = { reel: 'Reel', carrusel: 'Carrusel', story: 'Story', ad: 'Ad' };

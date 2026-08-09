@@ -195,3 +195,98 @@ export const aggregate = (metrics: ContentMetric[]): {
 
   return { count: pairs.length, avgScore, trends, top: sorted[0], worst: sorted[sorted.length - 1], advice: advice.slice(0, 4) };
 };
+
+// ─── PATRONES (cruce de métricas con atributos del guion) ───
+//
+// Lo que el diagnóstico por pieza no puede ver: si un ÁNGULO, un ESCALÓN de
+// consciencia o un FORMATO rinde sistemáticamente mejor que otro. Es el análisis
+// que da la respuesta útil ("hacé más de Valor") en vez de "mejorá los compartidos".
+//
+// Requiere al menos 2 piezas medidas por grupo para no sacar conclusiones de una
+// sola muestra, que es la forma más fácil de leer ruido como si fuera señal.
+import type { ContentPost, ContentAngle, Awareness } from './utils';
+import { CONTENT_ANGLE_LABELS, AWARENESS_LABELS, CONTENT_FORMAT_LABELS } from './utils';
+
+const MIN_SAMPLE = 2;
+
+export interface GroupStat {
+  key: string; label: string; n: number;
+  avgScore: number; avgShare: number | null; avgRetention: number | null;
+}
+
+const groupBy = (
+  pairs: { m: ContentMetric; p: ContentPost }[],
+  keyOf: (p: ContentPost) => string | null,
+  labelOf: (k: string) => string,
+): GroupStat[] => {
+  const buckets = new Map<string, { m: ContentMetric; p: ContentPost }[]>();
+  for (const pair of pairs) {
+    const k = keyOf(pair.p);
+    if (!k) continue;
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k)!.push(pair);
+  }
+  const shareDef = METRIC_DEFS.find(d => d.key === 'shareRate')!;
+  const retDef = METRIC_DEFS.find(d => d.key === 'retention')!;
+  const avg = (xs: (number | null)[]) => {
+    const v = xs.filter((x): x is number => x !== null);
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  };
+  return [...buckets.entries()]
+    .filter(([, rows]) => rows.length >= MIN_SAMPLE)
+    .map(([k, rows]) => ({
+      key: k, label: labelOf(k), n: rows.length,
+      avgScore: Math.round(rows.reduce((s, r) => s + diagnose(r.m).score, 0) / rows.length),
+      avgShare: avg(rows.map(r => shareDef.compute(r.m))),
+      avgRetention: avg(rows.map(r => retDef.compute(r.m))),
+    }))
+    .sort((a, b) => b.avgScore - a.avgScore);
+};
+
+export interface Patterns {
+  byAngle: GroupStat[];
+  byAwareness: GroupStat[];
+  byFormat: GroupStat[];
+  insights: string[];
+  measured: number;   // piezas publicadas con métricas Y con guion vinculado
+}
+
+// Compara el mejor grupo contra el peor y traduce la brecha a una acción.
+// Solo habla si la diferencia es lo bastante grande para no ser ruido (20 pts).
+const compare = (stats: GroupStat[], dimension: string): string | null => {
+  if (stats.length < 2) return null;
+  const best = stats[0], worst = stats[stats.length - 1];
+  const gap = best.avgScore - worst.avgScore;
+  if (gap < 20) return `En ${dimension} no hay una diferencia clara todavía (${best.label} ${best.avgScore} vs ${worst.label} ${worst.avgScore}). Seguí midiendo.`;
+  const shareNote = best.avgShare !== null && worst.avgShare !== null
+    ? ` Compartidos: ${fmtMetric(best.avgShare, '%')} vs ${fmtMetric(worst.avgShare, '%')}.`
+    : '';
+  return `${best.label} rinde bastante mejor que ${worst.label} (score ${best.avgScore} vs ${worst.avgScore} sobre ${best.n} y ${worst.n} piezas).${shareNote} Hacé más de ${best.label.toLowerCase()}.`;
+};
+
+export const findPatterns = (metrics: ContentMetric[], posts: ContentPost[]): Patterns => {
+  const byId = new Map(posts.map(p => [p.id, p]));
+  // Solo las métricas que están vinculadas a una pieza: sin el guion no hay
+  // atributos que cruzar, y una fila suelta no aporta a ningún patrón.
+  const pairs = metrics
+    .map(m => ({ m, p: m.postId ? byId.get(m.postId) : undefined }))
+    .filter((x): x is { m: ContentMetric; p: ContentPost } => !!x.p);
+
+  const byAngle = groupBy(pairs, p => p.angle || 'valor', k => CONTENT_ANGLE_LABELS[k as ContentAngle] || k);
+  const byAwareness = groupBy(pairs, p => p.awareness || null, k => AWARENESS_LABELS[k as Awareness] || k);
+  const byFormat = groupBy(pairs, p => p.format, k => CONTENT_FORMAT_LABELS[k as keyof typeof CONTENT_FORMAT_LABELS] || k);
+
+  const insights = [
+    compare(byAngle, 'ángulo'),
+    compare(byAwareness, 'escalón de consciencia'),
+    compare(byFormat, 'formato'),
+  ].filter((x): x is string => x !== null);
+
+  if (!pairs.length) {
+    insights.push('Vinculá cada métrica con su pieza del Pipeline (campo "Pieza" al cargar) para que pueda cruzar rendimiento con ángulo, escalón y formato.');
+  } else if (!insights.length) {
+    insights.push(`Hay ${pairs.length} pieza${pairs.length === 1 ? '' : 's'} vinculada${pairs.length === 1 ? '' : 's'}. Con ${MIN_SAMPLE} o más por ángulo empiezo a comparar cuál rinde mejor.`);
+  }
+
+  return { byAngle, byAwareness, byFormat, insights, measured: pairs.length };
+};

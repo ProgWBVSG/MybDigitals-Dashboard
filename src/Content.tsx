@@ -244,10 +244,19 @@ function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
   const [form, setForm] = useState<Partial<ContentPost> | null>(null);
   const [angleFilter, setAngleFilter] = useState<string>('todos');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [askUrl, setAskUrl] = useState<ContentPost | null>(null);
   const move = (p: ContentPost, dir: number) => {
     const i = STATUS_ORDER.indexOf(p.status);
     const next = STATUS_ORDER[Math.max(0, Math.min(STATUS_ORDER.length - 1, i + dir))];
-    if (next !== p.status) c.updatePost(p.id, { status: next });
+    if (next === p.status) return;
+    // Publicar sella la fecha de salida (si no venia programada) y marca la pieza
+    // como grabada+editada: llegar hasta aca implica que ya pasó por eso.
+    const extra: Partial<ContentPost> = next === 'publicado'
+      ? { publishedAt: p.publishedAt ?? p.scheduledFor ?? Date.now(), recorded: true, edited: true }
+      : (p.status === 'publicado' ? { publishedAt: null } : {});
+    c.updatePost(p.id, { status: next, ...extra });
+    // Al publicar, pedir el link del reel para poder anclar sus métricas.
+    if (next === 'publicado' && !p.postUrl) setAskUrl({ ...p, status: next, ...extra });
   };
   const visible = c.posts.filter(p => angleFilter === 'todos' || (p.angle || 'valor') === angleFilter);
 
@@ -302,8 +311,10 @@ function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
                       <span className="ig-badge angle" style={{ background: ANGLE_COLOR[angle] }}>{CONTENT_ANGLE_LABELS[angle]}</span>
                       {p.kind === 'anuncio' && <span className="ig-badge kind-ad">📊 Anuncio</span>}
                       {fmtBadge(p.format)}
-                      {p.edited && <span className="ig-badge soft">✓ Editado</span>}
-                      {!p.edited && p.recorded && <span className="ig-badge soft">✓ Grabado</span>}
+                      {p.status === 'publicado'
+                        ? <span className="ig-badge pub">▲ Publicado{p.publishedAt ? ` ${new Date(p.publishedAt).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}` : ''}</span>
+                        : p.edited ? <span className="ig-badge soft">✓ Editado</span>
+                        : p.recorded ? <span className="ig-badge soft">✓ Grabado</span> : null}
                     </div>
                     {prog.total > 0 && (
                       <div className="ig-post-takes" title={`${prog.done} de ${prog.total} tomas grabadas`}>
@@ -313,7 +324,7 @@ function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
                     )}
                     <div className="ig-post-actions" onClick={e => e.stopPropagation()}>
                       <button title="Mover atrás" disabled={p.status === 'borrador'} onClick={() => move(p, -1)}><ChevronLeft size={14} /></button>
-                      <button title="Mover adelante" disabled={p.status === 'listo'} onClick={() => move(p, 1)}><ChevronRight size={14} /></button>
+                      <button title="Mover adelante" disabled={p.status === 'publicado'} onClick={() => move(p, 1)}><ChevronRight size={14} /></button>
                       <button title="Copiar para mandar por WhatsApp" onClick={() => copyPost(p)}>
                         {copiedId === p.id ? <Check size={13} /> : <Copy size={13} />}
                       </button>
@@ -328,6 +339,7 @@ function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
         })}
       </div>
       {form && <PostForm initial={form} onClose={() => setForm(null)} onSave={p => form.id ? c.updatePost(form.id, p) : c.addPost(p)} />}
+      {askUrl && <PublishedUrlModal post={askUrl} onSave={u => c.updatePost(askUrl.id, u)} onClose={() => setAskUrl(null)} />}
     </div>
   );
 }
@@ -1023,6 +1035,46 @@ function Conexion() {
         <label>IG Business Account ID<input className="input" disabled value="—" /></label>
         <label>Meta App ID<input className="input" disabled value="—" /></label>
         <button className="btn btn-secondary" disabled><Send size={14} /> Conectar Instagram (próximamente)</button>
+      </div>
+    </div>
+  );
+}
+
+// Al pasar una pieza a "Publicado" se pide el link del reel: es lo que ancla la
+// pieza con sus métricas y lo que permite volver al video desde la tabla.
+function PublishedUrlModal({ post, onSave, onClose }: {
+  post: ContentPost; onSave: (u: Partial<ContentPost>) => void; onClose: () => void;
+}) {
+  const [url, setUrl] = useState(post.postUrl || '');
+  const [when, setWhen] = useState(() =>
+    new Date(post.publishedAt || Date.now()).toISOString().split('T')[0]);
+
+  const save = () => {
+    onSave({ postUrl: url.trim(), publishedAt: new Date(when + 'T12:00').getTime() });
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
+        <h2 style={{ marginTop: 0 }}>Pieza publicada</h2>
+        <p className="scr-tip" style={{ marginBottom: 14 }}>
+          Pegá el link del reel ya subido. Con eso la pieza queda lista para cargarle
+          las métricas desde la pestaña <b>Métricas</b>.
+        </p>
+        <div className="ig-form">
+          <label>Link del reel publicado
+            <input className="input" autoFocus value={url} placeholder="https://www.instagram.com/reel/…"
+              onChange={e => setUrl(e.target.value)} onKeyDown={e => e.key === 'Enter' && save()} />
+          </label>
+          <label>Fecha de publicación
+            <input className="input" type="date" value={when} onChange={e => setWhen(e.target.value)} />
+          </label>
+        </div>
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onClose}>Después</button>
+          <button className="btn btn-primary" onClick={save}>Guardar</button>
+        </div>
       </div>
     </div>
   );
