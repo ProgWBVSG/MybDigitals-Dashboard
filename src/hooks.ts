@@ -4,10 +4,11 @@ import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
   type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic,
   type ContentPost, type ContentSource, type ContentAd, type ContentMetric, type ContentRef,
-  type ContentAccount, ACCOUNT_COLORS, type Competitor,
+  type ContentAccount, ACCOUNT_COLORS, shortcodeOf, type Competitor,
   type Note, type Whiteboard, type BoardData, EMPTY_BOARD_DATA, REPEAT_LABELS, type NodeEvent, type BoardNode,
   type ClientPortal, type PortalConfig, type PortalUpdate, type PortalTicket,
   type StrategyDoc, type DocBlock } from './utils';
+import { decodeScript, isStructuredScript, totalSeconds } from './script';
 import { getPlaybook } from './playbooks';
 import { GUIDE_SEED } from './guideSeed';
 import { supabase } from './supabase';
@@ -1060,6 +1061,7 @@ export function useContent(accountId: string | null = null) {
       views: m.views ?? 0, reach: m.reach ?? 0, impressions: m.impressions ?? 0, nonFollowersPct: m.nonFollowersPct ?? 0,
       likes: m.likes ?? 0, saves: m.saves ?? 0, shares: m.shares ?? 0, comments: m.comments ?? 0, newFollowers: m.newFollowers ?? 0,
       retentionPct: m.retentionPct ?? 0, avgWatchSec: m.avgWatchSec ?? 0, durationSec: m.durationSec ?? 0, notes: m.notes || '',
+      mediaId: m.mediaId ?? null, syncedAt: m.syncedAt ?? null, source: m.source || 'manual',
     }));
     if (error) toast('No se pudo guardar la métrica', 'error'); else { toast('Métrica cargada'); load(); }
   };
@@ -1096,13 +1098,96 @@ export function useContent(accountId: string | null = null) {
     return data.analysis;
   };
 
+  // ─── Instagram: conexión y sincronización de métricas ───
+  const igConnect = async (action: 'check' | 'connect' | 'disconnect', body: Record<string, unknown> = {}): Promise<any | null> => {
+    const { data, error } = await supabase.functions.invoke('ig-connect', { body: { action, ...body } });
+    let err = '';
+    if (error) { err = error.message; try { const b = await (error as { context?: { json?: () => Promise<{ error?: string }> } }).context?.json?.(); if (b?.error) err = b.error; } catch { /* noop */ } }
+    else if (!data?.ok) err = data?.error || 'Respuesta inesperada';
+    if (err) { toast(err, 'error'); return null; }
+    if (action !== 'check') load();
+    return data;
+  };
+
+  // Trae los reels de Instagram, los matchea con las piezas publicadas por el
+  // shortcode del link, y guarda las métricas sin intervención. Devuelve el
+  // resumen de lo que hizo para poder mostrarlo.
+  const syncInstagram = async (targetId?: string): Promise<{
+    created: number; updated: number; unmatched: number; total: number;
+  } | null> => {
+    const accId = targetId || accountId;
+    if (!accId) { toast('Elegí una cuenta primero', 'error'); return null; }
+
+    const { data, error } = await supabase.functions.invoke('ig-sync-insights', { body: { accountId: accId, limit: 50 } });
+    let err = '';
+    if (error) { err = error.message; try { const b = await (error as { context?: { json?: () => Promise<{ error?: string }> } }).context?.json?.(); if (b?.error) err = b.error; } catch { /* noop */ } }
+    else if (!data?.ok) err = data?.error || 'Respuesta inesperada';
+    if (err) { toast(err, 'error'); return null; }
+
+    const rows = (data.rows || []) as Record<string, any>[];
+    // Índice de piezas por shortcode del link que se pegó al publicar.
+    const postByCode = new Map<string, ContentPost>();
+    for (const p of allPosts) {
+      if (p.accountId !== accId || !p.postUrl) continue;
+      const code = shortcodeOf(p.postUrl);
+      if (code) postByCode.set(code, p);
+    }
+    // Índice de métricas ya sincronizadas, para actualizar en vez de duplicar.
+    const metricByMedia = new Map<string, ContentMetric>();
+    for (const m of allMetrics) if (m.mediaId) metricByMedia.set(m.mediaId, m);
+
+    let created = 0, updated = 0, unmatched = 0;
+    for (const r of rows) {
+      const post = r.shortcode ? postByCode.get(r.shortcode) : undefined;
+      if (!post) unmatched++;
+
+      // La duración planificada del guion sirve para calcular retención: la API
+      // da el tiempo promedio visto pero no el largo del video.
+      const durationSec = post && isStructuredScript(post.content)
+        ? totalSeconds(decodeScript(post.content)) : 0;
+      const avgWatchSec = Number(r.avgWatchSec || 0);
+      const retentionPct = durationSec > 0 && avgWatchSec > 0
+        ? Math.min(100, Math.round((avgWatchSec / durationSec) * 1000) / 10) : 0;
+
+      const payload: Partial<ContentMetric> = {
+        accountId: accId, postId: post?.id ?? null,
+        title: post?.title || String(r.caption || '').split(/\r?\n/)[0].slice(0, 80) || 'Sin título',
+        publishedAt: r.timestamp || null,
+        views: Number(r.views || 0), reach: Number(r.reach || 0),
+        likes: Number(r.likes || 0), comments: Number(r.comments || 0),
+        saves: Number(r.saves || 0), shares: Number(r.shares || 0),
+        avgWatchSec, durationSec, retentionPct,
+        mediaId: String(r.mediaId), syncedAt: Date.now(), source: 'instagram',
+      };
+
+      const existing = metricByMedia.get(String(r.mediaId));
+      if (existing) {
+        // No pisar lo que se cargó a mano y la API no da: % no seguidores,
+        // nuevos seguidores e impresiones se conservan tal cual estaban.
+        await supabase.from('content_metrics')
+          .update(mapToSnake({ ...payload, updatedAt: new Date().toISOString() }))
+          .eq('id', existing.id);
+        updated++;
+      } else {
+        await supabase.from('content_metrics').insert(mapToSnake(payload));
+        created++;
+      }
+    }
+
+    load();
+    const parts = [created && `${created} nuevas`, updated && `${updated} actualizadas`].filter(Boolean);
+    toast(parts.length ? `Métricas sincronizadas: ${parts.join(', ')}` : 'Todo estaba al día');
+    return { created, updated, unmatched, total: rows.length };
+  };
+
   return {
     accounts, accountId, posts, sources, ads, metrics, refs, loading,
     allPosts, allMetrics, allRefs, allAds,
     addAccount, updateAccount, removeAccount, claimOrphans,
     addPost, updatePost, removePost, addSource, removeSource, addAd, updateAd, removeAd,
     addMetric, updateMetric, removeMetric, addRef, updateRef, removeRef,
-    generateScript, generateIdeas, generateViralScript, analyzeRef, refresh: load,
+    generateScript, generateIdeas, generateViralScript, analyzeRef,
+    igConnect, syncInstagram, refresh: load,
   };
 }
 

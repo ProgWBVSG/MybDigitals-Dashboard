@@ -339,6 +339,9 @@ export const HISTORY_KIND_LABELS: Record<HistoryKind, string> = Object.fromEntri
 export interface ContentAccount {
   id: string; clientId: string | null; name: string; handle: string;
   niche: string; color: string; notes: string; archived: boolean;
+  // Conexión con Instagram. El token NO está acá: vive en
+  // `content_account_secrets`, tabla sin acceso desde el navegador.
+  igUserId: string | null; igConnectedAt: number | null; igSyncedAt: number | null;
   createdAt: string; updatedAt: string;
 }
 // Paleta para distinguir cuentas de un vistazo en el selector y las tarjetas.
@@ -435,8 +438,20 @@ export interface ContentMetric {
   views: number; reach: number; impressions: number; nonFollowersPct: number;
   likes: number; saves: number; shares: number; comments: number; newFollowers: number;
   retentionPct: number; avgWatchSec: number; durationSec: number;
-  notes: string; createdAt: string; updatedAt: string;
+  notes: string;
+  // Trazabilidad de la sincronización: mediaId ancla la fila al reel real para
+  // que re-sincronizar actualice en vez de duplicar.
+  mediaId: string | null; syncedAt: number | null; source: MetricSource;
+  createdAt: string; updatedAt: string;
 }
+export type MetricSource = 'manual' | 'instagram';
+
+// instagram.com/reel/ABC123/ → ABC123. Es la llave que une la pieza del
+// Pipeline (link pegado a mano) con el reel que devuelve la API.
+export const shortcodeOf = (url: string): string => {
+  const m = String(url || '').match(/\/(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/);
+  return m ? m[1] : '';
+};
 
 // ─── REFERENTES (swipe file) ───
 export type RefCategory = 'venta' | 'tendencia' | 'viral' | 'educativo';

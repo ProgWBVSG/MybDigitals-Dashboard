@@ -818,3 +818,91 @@
   background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 999px;
 }
 .met-pat-row strong { font-size: 13px; font-variant-numeric: tabular-nums; min-width: 26px; text-align: right; }
+
+/* ─── Sincronización con Instagram ─── */
+.met-head-actions { display: flex; gap: 7px; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.9s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+.met-sync {
+  display: flex; align-items: center; gap: 11px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  border-radius: 11px; padding: 11px 14px; margin-bottom: 14px;
+}
+.met-sync.on {
+  background: color-mix(in srgb, #10b981 8%, transparent);
+  border-color: color-mix(in srgb, #10b981 28%, transparent);
+}
+.met-sync > svg { flex-shrink: 0; color: var(--text-muted); }
+.met-sync.on > svg { color: #10b981; }
+.met-sync-txt { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.met-sync-txt strong { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+.met-sync-txt em { font-size: 11.5px; font-style: normal; color: var(--text-muted); line-height: 1.45; }
+.met-sync-cfg {
+  flex-shrink: 0; background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+  border-radius: 7px; padding: 5px 11px; font-size: 11.5px; font-weight: 600;
+  color: var(--text-secondary); cursor: pointer;
+}
+.met-sync-cfg:hover { background: rgba(255,255,255,0.11); color: var(--text-primary); }
+
+.met-sync-result {
+  display: flex; align-items: center; gap: 9px;
+  background: color-mix(in srgb, #10b981 10%, transparent);
+  border: 1px solid color-mix(in srgb, #10b981 30%, transparent);
+  border-radius: 9px; padding: 9px 13px; margin-bottom: 14px;
+  font-size: 12.5px; color: var(--text-secondary); line-height: 1.45;
+}
+.met-sync-result > svg { color: #10b981; flex-shrink: 0; }
+.met-sync-result span { flex: 1; }
+.met-sync-result button {
+  background: none; border: 0; color: var(--text-muted); cursor: pointer;
+  display: grid; place-items: center; flex-shrink: 0;
+}
+.met-sync-result button:hover { color: var(--text-primary); }
+
+/* ─── Modal de conexión ─── */
+.igc-ok {
+  display: flex; align-items: center; gap: 11px; margin-bottom: 14px;
+  background: color-mix(in srgb, #10b981 10%, transparent);
+  border: 1px solid color-mix(in srgb, #10b981 30%, transparent);
+  border-radius: 10px; padding: 12px 14px;
+}
+.igc-ok > svg { color: #10b981; flex-shrink: 0; }
+.igc-ok strong { display: block; font-size: 13px; color: var(--text-primary); }
+.igc-ok em { font-size: 11.5px; font-style: normal; color: var(--text-muted); }
+
+.igc-steps {
+  background: rgba(255,255,255,0.03); border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 14px;
+}
+.igc-steps p { margin: 0 0 7px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+.igc-steps p:last-child { margin-bottom: 0; }
+.igc-steps b { color: var(--primary-light); margin-right: 4px; }
+.igc-steps code {
+  font-size: 11px; background: rgba(255,255,255,0.07);
+  padding: 1px 5px; border-radius: 4px; color: var(--text-primary);
+}
+.igc-steps a { color: var(--primary-light); }
+
+.igc-note {
+  display: flex; align-items: flex-start; gap: 7px; margin: 12px 0 0;
+  font-size: 11.5px; color: var(--text-muted); line-height: 1.5;
+}
+.igc-note > svg { flex-shrink: 0; margin-top: 1px; }
+
+.igc-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 4px; }
+.igc-option {
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 13px; cursor: pointer;
+  color: inherit; font: inherit; text-align: left;
+}
+.igc-option:hover:not(:disabled) { border-color: var(--primary); background: rgba(255,255,255,0.06); }
+.igc-option:disabled { opacity: 0.5; cursor: default; }
+.igc-option img { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; object-fit: cover; }
+.igc-option-txt { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.igc-option-txt strong { font-size: 13px; color: var(--text-primary); }
+.igc-option-txt em { font-size: 11px; font-style: normal; color: var(--text-muted); }
+.igc-option > svg:last-child { color: var(--text-muted); flex-shrink: 0; }
+.igc-option:hover:not(:disabled) > svg:last-child { color: var(--primary); }

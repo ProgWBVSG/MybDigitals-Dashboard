@@ -4,11 +4,12 @@
 // devuelve un score ponderado, qué funcionó, qué falló y qué hacer al respecto —
 // ordenado por impacto, no por orden de aparición.
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, TrendingUp, TrendingDown, AlertCircle, CheckCircle2, X, ExternalLink, Lightbulb } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, TrendingDown, AlertCircle, CheckCircle2, X, ExternalLink, Lightbulb, RefreshCw, Camera, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import type { useContent } from './hooks';
 import { CONTENT_ANGLE_LABELS, type ContentMetric, type ContentPost } from './utils';
 import { findPatterns, type GroupStat } from './content-metrics';
+import IgConnect from './ContentIgConnect';
 import {
   METRIC_DEFS, diagnose, aggregate, fmtMetric, fmtNum, VERDICT_COLOR, VERDICT_LABEL,
   type Diagnosis, type MetricScore,
@@ -198,6 +199,19 @@ function DiagnosisPanel({ m, d, onClose }: { m: ContentMetric; d: Diagnosis; onC
 export default function Metricas({ c }: { c: ReturnType<typeof useContent> }) {
   const [form, setForm] = useState<Partial<ContentMetric> | null>(null);
   const [detail, setDetail] = useState<ContentMetric | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [showConnect, setShowConnect] = useState(false);
+  const [lastSync, setLastSync] = useState<{ created: number; updated: number; unmatched: number } | null>(null);
+
+  const account = c.accounts.find(a => a.id === c.accountId);
+  const connected = !!account?.igUserId;
+
+  const sync = async () => {
+    setSyncing(true);
+    const r = await c.syncInstagram();
+    setSyncing(false);
+    if (r) setLastSync(r);
+  };
 
   const rows = useMemo(() => c.metrics.map(m => ({ m, d: diagnose(m) })), [c.metrics]);
   const agg = useMemo(() => aggregate(c.metrics), [c.metrics]);
@@ -227,8 +241,59 @@ export default function Metricas({ c }: { c: ReturnType<typeof useContent> }) {
     <div className="ig-card">
       <div className="ig-card-head">
         <div><p className="ig-eyebrow">Rendimiento</p><h3>Métricas y diagnóstico</h3></div>
-        <button className="btn btn-primary btn-sm" onClick={() => setForm({})}><Plus size={14} /> Cargar métricas</button>
+        <div className="met-head-actions">
+          {connected ? (
+            <button className="btn btn-primary btn-sm" disabled={syncing} onClick={sync}>
+              {syncing ? <><Loader2 size={14} className="spin" /> Trayendo…</> : <><RefreshCw size={14} /> Sincronizar con Instagram</>}
+            </button>
+          ) : account ? (
+            <button className="btn btn-primary btn-sm" onClick={() => setShowConnect(true)}>
+              <Camera size={14} /> Conectar Instagram
+            </button>
+          ) : null}
+          <button className="btn btn-secondary btn-sm" onClick={() => setForm({})}><Plus size={14} /> A mano</button>
+        </div>
       </div>
+
+      {account && (
+        <div className={`met-sync ${connected ? 'on' : ''}`}>
+          {connected ? (
+            <>
+              <Camera size={15} />
+              <div className="met-sync-txt">
+                <strong>Sincronización automática activa</strong>
+                <em>
+                  {account.igSyncedAt
+                    ? `Última: ${new Date(account.igSyncedAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+                    : 'Todavía no sincronizaste'}
+                  {' · '}Se traen solas: vistas, alcance, likes, comentarios, guardados, compartidos y tiempo visto.
+                </em>
+              </div>
+              <button className="met-sync-cfg" onClick={() => setShowConnect(true)}>Configurar</button>
+            </>
+          ) : (
+            <>
+              <AlertCircle size={15} />
+              <div className="met-sync-txt">
+                <strong>Cargando a mano</strong>
+                <em>Conectá Instagram y las métricas se traen solas de cada reel publicado.</em>
+              </div>
+              <button className="met-sync-cfg" onClick={() => setShowConnect(true)}>Conectar</button>
+            </>
+          )}
+        </div>
+      )}
+
+      {lastSync && (
+        <div className="met-sync-result">
+          <CheckCircle2 size={14} />
+          <span>
+            {lastSync.created} nuevas · {lastSync.updated} actualizadas
+            {lastSync.unmatched > 0 && ` · ${lastSync.unmatched} reels sin pieza vinculada (pegá su link en la pieza del Pipeline para que se junten)`}
+          </span>
+          <button onClick={() => setLastSync(null)}><X size={13} /></button>
+        </div>
+      )}
 
       {pending.length > 0 && (
         <div className="met-pending">
@@ -397,6 +462,7 @@ export default function Metricas({ c }: { c: ReturnType<typeof useContent> }) {
       {form && <MetricForm initial={form} posts={c.posts} onClose={() => setForm(null)}
         onSave={m => form.id ? c.updateMetric(form.id, m) : c.addMetric(m)} />}
       {detail && <DiagnosisPanel m={detail} d={diagnose(detail)} onClose={() => setDetail(null)} />}
+      {showConnect && account && <IgConnect c={c} account={account} onClose={() => setShowConnect(false)} />}
     </div>
   );
 }
