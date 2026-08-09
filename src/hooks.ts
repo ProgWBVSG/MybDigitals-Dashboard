@@ -4,7 +4,7 @@ import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
   type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic,
   type ContentPost, type ContentSource, type ContentAd, type ContentMetric, type ContentRef,
-  type ContentAccount, ACCOUNT_COLORS, shortcodeOf, type Competitor,
+  type ContentAccount, ACCOUNT_COLORS, DEFAULT_RHYTHM, shortcodeOf, type Competitor,
   type Note, type Whiteboard, type BoardData, EMPTY_BOARD_DATA, REPEAT_LABELS, type NodeEvent, type BoardNode,
   type ClientPortal, type PortalConfig, type PortalUpdate, type PortalTicket,
   type StrategyDoc, type DocBlock } from './utils';
@@ -953,6 +953,7 @@ export function useContent(accountId: string | null = null) {
     const { data, error } = await supabase.from('content_accounts').insert(mapToSnake({
       clientId: a.clientId ?? null, name: a.name || '', handle: (a.handle || '').replace(/^@/, ''),
       niche: a.niche || '', color: a.color || ACCOUNT_COLORS[0], notes: a.notes || '', archived: false,
+      rhythm: a.rhythm || DEFAULT_RHYTHM,
     })).select('id').single();
     if (error) { toast('No se pudo crear la cuenta', 'error'); return null; }
     toast('Cuenta agregada'); load();

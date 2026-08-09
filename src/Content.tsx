@@ -13,6 +13,7 @@ import { PostForm } from './ContentGuion';
 import Metricas from './ContentMetricas';
 import Ganchos from './ContentGanchos';
 import Referentes from './ContentReferentes';
+import Calendario from './ContentCalendario';
 import { AccountSwitcher, AccountsModal, ACCOUNT_STORAGE_KEY, resolveStoredAccount } from './ContentCuentas';
 import './Content.css';
 
@@ -107,7 +108,7 @@ export default function Content() {
         {tab === 'referentes' && <Referentes c={c} />}
         {tab === 'tabla' && <Tabla c={c} />}
         {tab === 'pipeline' && <Pipeline c={c} />}
-        {tab === 'calendario' && <Calendario posts={c.posts} />}
+        {tab === 'calendario' && <Calendario c={c} />}
         {tab === 'metricas' && <Metricas c={c} />}
         {tab === 'generador' && <Generador c={c} onDone={() => setTab('pipeline')} />}
         {tab === 'anuncios' && <Anuncios c={c} />}
@@ -385,31 +386,8 @@ function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
   );
 }
 
-function Calendario({ posts }: { posts: ContentPost[] }) {
-  const week = useMemo(() => {
-    const now = new Date(); const day = (now.getDay() + 6) % 7; // lunes=0
-    const monday = new Date(now); monday.setHours(0, 0, 0, 0); monday.setDate(now.getDate() - day);
-    return Array.from({ length: 7 }, (_, i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); return d; });
-  }, []);
-  const dayName = (d: Date) => d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric' });
-  return (
-    <div className="ig-card">
-      <div className="ig-card-head"><div><p className="ig-eyebrow">Esta semana</p><h3>Calendario editorial</h3></div></div>
-      <div className="ig-cal">
-        {week.map((d, i) => {
-          const items = posts.filter(p => p.scheduledFor && new Date(p.scheduledFor).toDateString() === d.toDateString());
-          return (
-            <div key={i} className="ig-cal-day">
-              <strong>{dayName(d)}</strong>
-              {items.map(p => <div key={p.id} className="ig-cal-item"><span>{CONTENT_FORMAT_LABELS[p.format]}</span><p>{p.title || 'Sin título'}</p></div>)}
-              {items.length === 0 && <div className="ig-cal-empty">—</div>}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+// El calendario vive en ContentCalendario.tsx: dejó de ser una grilla de "qué
+// sale tal día" para cruzar el ritmo de producción con el estado del Pipeline.
 
 type GenOut = { titulo: string; hook: string; guion: string[]; caption: string; hashtags: string[]; cta: string };
 

@@ -342,8 +342,40 @@ export interface ContentAccount {
   // Conexión con Instagram. El token NO está acá: vive en
   // `content_account_secrets`, tabla sin acceso desde el navegador.
   igUserId: string | null; igConnectedAt: number | null; igSyncedAt: number | null;
+  // Ritmo de producción: qué se hace cada día de la semana.
+  rhythm: Rhythm;
   createdAt: string; updatedAt: string;
 }
+
+// ─── RITMO DE PRODUCCIÓN ───
+// Qué se hace cada día de la semana. Un día puede tener más de un rol (ej.
+// domingo: grabar en tanda y buscar referencias).
+export type DayRole = 'publicar' | 'grabar' | 'buscar';
+export const DAY_ROLES: { key: DayRole; label: string; short: string; color: string; icon: string; hint: string }[] = [
+  { key: 'publicar', label: 'Publicar', short: 'Subir', color: '#10b981', icon: '▲',
+    hint: 'Sale una pieza. Si el día no tiene ninguna asignada, te lo aviso.' },
+  { key: 'grabar', label: 'Grabar', short: 'Grabar', color: '#f9587a', icon: '●',
+    hint: 'Día de cámara. Junta todo lo que esté listo para grabar en una sola sesión.' },
+  { key: 'buscar', label: 'Buscar contenido', short: 'Buscar', color: '#6366f1', icon: '◆',
+    hint: 'Guardar referentes, anotar ideas, revisar qué está funcionando.' },
+];
+export const DAY_ROLE_MAP: Record<DayRole, typeof DAY_ROLES[number]> =
+  Object.fromEntries(DAY_ROLES.map(r => [r.key, r])) as Record<DayRole, typeof DAY_ROLES[number]>;
+
+// Índice 0 = lunes (no domingo como getDay(), para que la semana arranque el lunes).
+export type Rhythm = Record<number, DayRole[]>;
+export const WEEKDAYS_ES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+// Arranque razonable: 3 salidas por semana, una tanda de grabación el domingo y
+// un día fijo para juntar referencias. Se cambia por cuenta.
+export const DEFAULT_RHYTHM: Rhythm = {
+  0: ['publicar'], 1: ['buscar'], 2: ['publicar'], 3: [],
+  4: ['publicar'], 5: [], 6: ['grabar', 'buscar'],
+};
+
+// Lunes=0 a partir de un Date (getDay() devuelve domingo=0).
+export const mondayIndex = (d: Date): number => (d.getDay() + 6) % 7;
+
 // Paleta para distinguir cuentas de un vistazo en el selector y las tarjetas.
 export const ACCOUNT_COLORS = ['#f9587a', '#6366f1', '#10b981', '#f59e0b', '#a64bf4', '#06b6d4', '#ef4444', '#84cc16'];
 
