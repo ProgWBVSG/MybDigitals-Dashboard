@@ -46,11 +46,15 @@ export default function Calendario({ c }: { c: ReturnType<typeof useContent> }) 
     });
   }, [offset]);
 
-  // Cola de grabación: aprobadas o listas que todavía no se grabaron. Es lo que
-  // tiene sentido mostrar en un día de cámara.
-  const toRecord = useMemo(
-    () => c.posts.filter(p => !p.recorded && (p.status === 'aprobado' || p.status === 'listo')),
-    [c.posts]);
+  // Cola de grabación: aprobadas o listas que todavía no se grabaron. Si hay
+  // piezas elegidas para la sesión (estrella en Producción) se muestran esas y
+  // solo esas — es la decisión que ya se tomó, no la lista completa.
+  const toRecord = useMemo(() => {
+    const pending = c.posts.filter(p => !p.recorded && (p.status === 'aprobado' || p.status === 'listo'));
+    const session = pending.filter(p => p.inSession);
+    return session.length ? session : pending;
+  }, [c.posts]);
+  const hasSession = useMemo(() => c.posts.some(p => p.inSession && !p.recorded), [c.posts]);
 
   // Listas para publicar y sin fecha: son las candidatas para tapar un hueco.
   const unscheduled = useMemo(
@@ -161,7 +165,7 @@ export default function Calendario({ c }: { c: ReturnType<typeof useContent> }) 
                 <div className="cal-queue">
                   {toRecord.length > 0 ? (
                     <>
-                      <strong>{toRecord.length} para grabar</strong>
+                      <strong>{hasSession ? `Sesión: ${toRecord.length}` : `${toRecord.length} para grabar`}</strong>
                       {toRecord.slice(0, 3).map(p => <span key={p.id}>{p.title || 'Sin título'}</span>)}
                       {toRecord.length > 3 && <span className="cal-queue-more">+{toRecord.length - 3} más</span>}
                     </>

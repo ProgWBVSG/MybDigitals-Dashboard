@@ -1080,3 +1080,87 @@
   }
   .cal-day { flex: 0 0 160px; scroll-snap-align: start; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PRODUCCIÓN — colas de grabar y editar
+   ═══════════════════════════════════════════════════════════════════ */
+.prod-queues { display: flex; gap: 3px; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 3px; flex-shrink: 0; }
+.prod-queues button {
+  display: flex; align-items: center; gap: 6px;
+  background: none; border: 0; border-radius: 7px; padding: 7px 13px;
+  font-size: 12.5px; font-weight: 600; color: var(--text-muted); cursor: pointer;
+}
+.prod-queues button:hover { color: var(--text-secondary); }
+.prod-queues button.active { background: var(--primary); color: #fff; }
+.prod-queues em {
+  font-size: 10.5px; font-style: normal; font-weight: 800;
+  background: rgba(255,255,255,0.16); padding: 1px 6px; border-radius: 999px;
+}
+
+.prod-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 12px; margin-bottom: 12px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px;
+}
+.prod-check { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; }
+.prod-check input { width: 15px; height: 15px; accent-color: var(--primary); cursor: pointer; }
+.prod-actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.prod-filter {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 999px;
+  padding: 4px 11px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); cursor: pointer;
+}
+.prod-filter:hover { color: var(--text-secondary); }
+.prod-filter.active { background: color-mix(in srgb, #f59e0b 16%, transparent); border-color: #f59e0b; color: #f59e0b; }
+
+.prod-list { display: flex; flex-direction: column; gap: 6px; }
+.prod-row {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+  border-left: 2px solid transparent; border-radius: 10px; padding: 9px 12px;
+  transition: border-color 0.12s, background 0.12s;
+}
+.prod-row:hover { background: rgba(255,255,255,0.04); }
+.prod-row.sel { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.prod-row.session { border-left-color: #f59e0b; }
+.prod-row-check { display: flex; flex-shrink: 0; cursor: pointer; }
+.prod-row-check input { width: 15px; height: 15px; accent-color: var(--primary); cursor: pointer; }
+
+.prod-star {
+  display: grid; place-items: center; width: 26px; height: 26px; flex-shrink: 0;
+  background: none; border: 0; border-radius: 6px; color: var(--text-muted); cursor: pointer;
+}
+.prod-star:hover { background: rgba(255,255,255,0.07); color: #f59e0b; }
+.prod-star.on { color: #f59e0b; }
+.prod-star.on svg { fill: #f59e0b; }
+
+.prod-row-txt { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; cursor: pointer; }
+.prod-row-txt strong {
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.prod-row-txt em { font-size: 11px; font-style: normal; color: var(--text-muted); }
+
+.prod-prog { width: 54px; height: 4px; flex-shrink: 0; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+.prod-prog > div { height: 100%; background: var(--secondary); border-radius: 2px; transition: width 0.3s; }
+
+.prod-tele, .prod-done {
+  display: grid; place-items: center; width: 30px; height: 30px; flex-shrink: 0;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-secondary); cursor: pointer;
+}
+.prod-tele:hover { background: rgba(255,255,255,0.09); color: var(--text-primary); }
+.prod-done:hover { background: #10b981; border-color: #10b981; color: #fff; }
+
+.prod-foot {
+  display: flex; align-items: center; gap: 6px;
+  margin: 14px 0 0; font-size: 11.5px; color: var(--text-muted); line-height: 1.45;
+}
+.prod-foot > svg { flex-shrink: 0; }
+
+@media (max-width: 640px) {
+  .prod-row { flex-wrap: wrap; }
+  .prod-row-txt { flex: 1 1 100%; order: 3; }
+  .prod-prog { display: none; }
+  .prod-actions { margin-left: 0; width: 100%; }
+}
