@@ -10,7 +10,7 @@ import type { useContent } from './hooks';
 import {
   DAY_ROLES, DAY_ROLE_MAP, WEEKDAYS_ES, DEFAULT_RHYTHM, mondayIndex,
   CONTENT_FORMAT_LABELS, CONTENT_ANGLE_LABELS,
-  type DayRole, type Rhythm, type ContentAccount,
+  type DayRole, type Rhythm, type ContentAccount, type ContentPost,
 } from './utils';
 
 const ROLE_ICON: Record<DayRole, typeof Upload> = {
@@ -30,6 +30,7 @@ const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 export default function Calendario({ c }: { c: ReturnType<typeof useContent> }) {
   const [offset, setOffset] = useState(0);
   const [editing, setEditing] = useState(false);
+  const [picker, setPicker] = useState<{ day: Date; kind: 'grabar' | 'editar' } | null>(null);
 
   const account = c.accounts.find(a => a.id === c.accountId);
   // Sin cuenta elegida (o cuenta sin ritmo guardado) se usa el ritmo por defecto,
@@ -46,15 +47,13 @@ export default function Calendario({ c }: { c: ReturnType<typeof useContent> }) 
     });
   }, [offset]);
 
-  // Cola de grabación: aprobadas o listas que todavía no se grabaron. Si hay
-  // piezas elegidas para la sesión (estrella en Producción) se muestran esas y
-  // solo esas — es la decisión que ya se tomó, no la lista completa.
-  const toRecord = useMemo(() => {
-    const pending = c.posts.filter(p => !p.recorded && (p.status === 'aprobado' || p.status === 'listo'));
-    const session = pending.filter(p => p.inSession);
-    return session.length ? session : pending;
-  }, [c.posts]);
-  const hasSession = useMemo(() => c.posts.some(p => p.inSession && !p.recorded), [c.posts]);
+  // Sin grabar ni editar todavía, para el resumen de "queda por agendar".
+  const toRecord = useMemo(
+    () => c.posts.filter(p => !p.recorded && (p.status === 'aprobado' || p.status === 'listo')),
+    [c.posts]);
+  const toEdit = useMemo(
+    () => c.posts.filter(p => p.recorded && !p.edited && p.status !== 'publicado'),
+    [c.posts]);
 
   // Listas para publicar y sin fecha: son las candidatas para tapar un hueco.
   const unscheduled = useMemo(
@@ -116,7 +115,10 @@ export default function Calendario({ c }: { c: ReturnType<typeof useContent> }) 
       <div className="cal-week">
         {week.map((d, i) => {
           const roles = rhythm[i] || [];
+          // Tres agendas distintas sobre el mismo día: publicar, grabar, editar.
           const items = c.posts.filter(p => p.scheduledFor && sameDay(new Date(p.scheduledFor), d));
+          const recording = c.posts.filter(p => p.recordAt && !p.recorded && sameDay(new Date(p.recordAt), d));
+          const editing_ = c.posts.filter(p => p.editAt && !p.edited && sameDay(new Date(p.editAt), d));
           const isToday = sameDay(d, today);
           const isPast = d < today && !isToday;
           const needsPiece = roles.includes('publicar') && items.length === 0 && !isPast;
@@ -160,29 +162,63 @@ export default function Calendario({ c }: { c: ReturnType<typeof useContent> }) 
                 </div>
               )}
 
-              {/* En día de grabar: la cola de lo que espera cámara */}
-              {roles.includes('grabar') && !isPast && (
-                <div className="cal-queue">
-                  {toRecord.length > 0 ? (
-                    <>
-                      <strong>{hasSession ? `Sesión: ${toRecord.length}` : `${toRecord.length} para grabar`}</strong>
-                      {toRecord.slice(0, 3).map(p => <span key={p.id}>{p.title || 'Sin título'}</span>)}
-                      {toRecord.length > 3 && <span className="cal-queue-more">+{toRecord.length - 3} más</span>}
-                    </>
-                  ) : <span className="cal-queue-empty">Nada pendiente de grabar</span>}
+              {/* Agendadas para grabar ESE día (recordAt), no la cola entera */}
+              {recording.length > 0 && (
+                <div className="cal-task grabar">
+                  <strong>🎥 Grabar {recording.length}</strong>
+                  {recording.slice(0, 3).map(p => <span key={p.id}>{p.title || 'Sin título'}</span>)}
+                  {recording.length > 3 && <span className="cal-task-more">+{recording.length - 3} más</span>}
                 </div>
               )}
 
-              {/* En día de buscar: qué hacer concretamente */}
+              {/* Agendadas para editar ese día (editAt) */}
+              {editing_.length > 0 && (
+                <div className="cal-task editar">
+                  <strong>✂ Editar {editing_.length}</strong>
+                  {editing_.slice(0, 3).map(p => <span key={p.id}>{p.title || 'Sin título'}</span>)}
+                  {editing_.length > 3 && <span className="cal-task-more">+{editing_.length - 3} más</span>}
+                </div>
+              )}
+
+              {/* Día marcado para grabar pero sin nada agendado */}
+              {roles.includes('grabar') && recording.length === 0 && !isPast && (
+                <div className="cal-gap soft">
+                  {toRecord.length > 0
+                    ? `${toRecord.length} sin agendar`
+                    : 'Nada pendiente de grabar'}
+                </div>
+              )}
+
               {roles.includes('buscar') && !isPast && (
-                <div className="cal-hint">
-                  Guardar referentes y anotar ideas
+                <div className="cal-hint">Guardar referentes y anotar ideas</div>
+              )}
+
+              {/* Agendar desde el propio día: se elige la pieza y queda con la
+                  fecha de ese día. Es el flujo natural — estás mirando el
+                  calendario y decidís qué entra acá. */}
+              {!isPast && (
+                <div className="cal-add">
+                  <button onClick={() => setPicker({ day: d, kind: 'grabar' })}>
+                    <Plus size={11} /> Guion para grabar
+                  </button>
+                  <button onClick={() => setPicker({ day: d, kind: 'editar' })}>
+                    <Plus size={11} /> Video para editar
+                  </button>
                 </div>
               )}
             </div>
           );
         })}
       </div>
+
+      {picker && (
+        <PiecePicker day={picker.day} kind={picker.kind}
+          candidates={picker.kind === 'grabar' ? toRecord : toEdit}
+          onPick={id => c.updatePost(id, picker.kind === 'grabar'
+            ? { recordAt: picker.day.getTime() }
+            : { editAt: picker.day.getTime() })}
+          onClose={() => setPicker(null)} />
+      )}
 
       {editing && account && (
         <RhythmEditor account={account} rhythm={rhythm}
@@ -270,6 +306,76 @@ function RhythmEditor({ account, rhythm, onSave, onClose }: {
         <div className="modal-actions">
           <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>
           <button className="btn btn-primary" onClick={() => { onSave(draft); onClose(); }}>Guardar ritmo</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Selector de pieza para agendar a un día. Muestra las candidatas de la cola
+// correspondiente y avisa si alguna ya estaba agendada a otro día.
+function PiecePicker({ day, kind, candidates, onPick, onClose }: {
+  day: Date; kind: 'grabar' | 'editar'; candidates: ContentPost[];
+  onPick: (id: string) => void; onClose: () => void;
+}) {
+  const [q, setQ] = useState('');
+  const dateField = kind === 'grabar' ? 'recordAt' : 'editAt';
+  const needle = q.trim().toLowerCase();
+  const list = needle
+    ? candidates.filter(p => (p.title || '').toLowerCase().includes(needle))
+    : candidates;
+
+  const dayTxt = day.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+        <div className="ig-card-head" style={{ marginBottom: 8 }}>
+          <div>
+            <p className="ig-eyebrow">{dayTxt}</p>
+            <h3>{kind === 'grabar' ? 'Guion para grabar' : 'Video para editar'}</h3>
+          </div>
+        </div>
+
+        {candidates.length === 0 ? (
+          <div className="ig-empty-inline">
+            {kind === 'grabar'
+              ? 'No hay guiones esperando cámara. Pasá una pieza a Aprobado o Listo en el Pipeline.'
+              : 'No hay videos esperando edición. Marcá una pieza como grabada primero.'}
+          </div>
+        ) : (
+          <>
+            {candidates.length > 6 && (
+              <div className="ig-search" style={{ marginBottom: 10 }}>
+                <Search size={14} />
+                <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar…" autoFocus />
+              </div>
+            )}
+            <div className="pick-list">
+              {list.map(p => {
+                const already = p[dateField];
+                const otherDay = already && !sameDay(new Date(already), day);
+                return (
+                  <button key={p.id} className="pick-row"
+                    onClick={() => { onPick(p.id); onClose(); }}>
+                    <div className="pick-txt">
+                      <strong>{p.title || 'Sin título'}</strong>
+                      <em>
+                        {CONTENT_FORMAT_LABELS[p.format]} · {CONTENT_ANGLE_LABELS[p.angle || 'valor']}
+                        {otherDay && ` · ya agendada el ${new Date(already).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}`}
+                      </em>
+                    </div>
+                    <Plus size={15} />
+                  </button>
+                );
+              })}
+              {list.length === 0 && <div className="ig-empty-inline">Nada coincide.</div>}
+            </div>
+          </>
+        )}
+
+        <div className="modal-actions">
+          <button className="btn btn-secondary" onClick={onClose}>Cerrar</button>
         </div>
       </div>
     </div>

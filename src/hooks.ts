@@ -992,7 +992,8 @@ export function useContent(accountId: string | null = null) {
       howToRecord: p.howToRecord || '', refLink: p.refLink || '', cta: p.cta || '', caption: p.caption || '',
       hashtagsIg: p.hashtagsIg || '', hashtagsTt: p.hashtagsTt || '',
       recorded: p.recorded ?? false, edited: p.edited ?? false,
-      publishedAt: p.publishedAt ?? null, postUrl: p.postUrl || '', inSession: p.inSession ?? false,
+      publishedAt: p.publishedAt ?? null, postUrl: p.postUrl || '',
+      recordAt: p.recordAt ?? null, editAt: p.editAt ?? null,
     }));
     if (error) toast('No se pudo crear la pieza', 'error'); else { toast('Pieza creada'); load(); }
   };

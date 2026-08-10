@@ -414,9 +414,10 @@ export interface ContentPost {
   angle: ContentAngle; awareness: Awareness | ''; theme: string;
   howToRecord: string; refLink: string; cta: string; caption: string;
   hashtagsIg: string; hashtagsTt: string; recorded: boolean; edited: boolean;
-  // Elegida para la próxima sesión de grabación o edición. Sirve para curar 5
-  // piezas de entre 20 pendientes en vez de arrancar sin saber por dónde.
-  inSession: boolean;
+  // Agenda de producción: qué día se graba y qué día se edita esta pieza.
+  // `scheduledFor` es la fecha de PUBLICACIÓN — son tres fechas distintas
+  // porque el trabajo se reparte en días distintos.
+  recordAt: number | null; editAt: number | null;
   // Se sellan al pasar la pieza a "Publicado": cuándo salió y dónde quedó subida.
   // `postUrl` es el link del reel ya publicado — es lo que ancla la pieza a sus métricas.
   publishedAt: number | null; postUrl: string;
