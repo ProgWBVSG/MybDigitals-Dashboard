@@ -36,7 +36,10 @@ const TABS: { k: Tab; label: string }[] = [
   { k: 'conexion', label: 'Conexión IG' },
 ];
 const ANGLE_COLOR: Record<string, string> = Object.fromEntries(CONTENT_ANGLES.map(a => [a.key, a.color]));
-const STATUS_ORDER: ContentStatus[] = ['borrador', 'aprobado', 'listo'];
+// Se deriva de CONTENT_STATUSES en vez de listar los estados a mano: cuando se
+// sumó "publicado" esta constante quedó con tres y las flechas del Pipeline no
+// podían pasar de "listo" (el clamp topaba en el último de la lista vieja).
+const STATUS_ORDER: ContentStatus[] = CONTENT_STATUSES.map(s => s.key);
 
 export default function Content() {
   const [tab, setTab] = useState<Tab>('resumen');

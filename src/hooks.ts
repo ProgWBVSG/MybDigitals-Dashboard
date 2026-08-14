@@ -997,9 +997,17 @@ export function useContent(accountId: string | null = null) {
     }));
     if (error) toast('No se pudo crear la pieza', 'error'); else { toast('Pieza creada'); load(); }
   };
+  // Optimista: la pieza se mueve en pantalla al toque y recién después se
+  // persiste. Antes se esperaba el update Y se llamaba load(), que re-consulta
+  // las 6 tablas del módulo — y la suscripción realtime disparaba OTRO load al
+  // llegar el cambio: dos recargas completas por cada click de flecha.
+  // En el camino feliz no se recarga nada: el realtime trae la confirmación.
+  // Si el update falla se recarga para volver a la verdad de la base.
   const updatePost = async (id: string, u: Partial<ContentPost>) => {
-    const { error } = await supabase.from('content_posts').update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
-    if (error) toast('Error al actualizar', 'error'); else load();
+    setAllPosts(prev => prev.map(p => p.id === id ? { ...p, ...u } as ContentPost : p));
+    const { error } = await supabase.from('content_posts')
+      .update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
+    if (error) { toast('Error al actualizar', 'error'); load(); }
   };
   const removePost = async (id: string) => { await supabase.from('content_posts').delete().eq('id', id); load(); };
 
@@ -1021,8 +1029,10 @@ export function useContent(accountId: string | null = null) {
     if (error) toast('No se pudo crear el anuncio', 'error'); else { toast('Anuncio registrado'); load(); }
   };
   const updateAd = async (id: string, u: Partial<ContentAd>) => {
-    const { error } = await supabase.from('content_ads').update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
-    if (error) toast('Error al actualizar', 'error'); else load();
+    setAllAds(prev => prev.map(a => a.id === id ? { ...a, ...u } as ContentAd : a));
+    const { error } = await supabase.from('content_ads')
+      .update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
+    if (error) { toast('Error al actualizar', 'error'); load(); }
   };
   const removeAd = async (id: string) => { await supabase.from('content_ads').delete().eq('id', id); load(); };
 
@@ -1068,8 +1078,10 @@ export function useContent(accountId: string | null = null) {
     if (error) toast('No se pudo guardar la métrica', 'error'); else { toast('Métrica cargada'); load(); }
   };
   const updateMetric = async (id: string, u: Partial<ContentMetric>) => {
-    const { error } = await supabase.from('content_metrics').update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
-    if (error) toast('Error al actualizar', 'error'); else load();
+    setAllMetrics(prev => prev.map(m => m.id === id ? { ...m, ...u } as ContentMetric : m));
+    const { error } = await supabase.from('content_metrics')
+      .update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
+    if (error) { toast('Error al actualizar', 'error'); load(); }
   };
   const removeMetric = async (id: string) => { await supabase.from('content_metrics').delete().eq('id', id); load(); };
 
@@ -1084,8 +1096,10 @@ export function useContent(accountId: string | null = null) {
     if (error) toast('No se pudo guardar el referente', 'error'); else { toast('Referente guardado'); load(); }
   };
   const updateRef = async (id: string, u: Partial<ContentRef>) => {
-    const { error } = await supabase.from('content_refs').update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
-    if (error) toast('Error al actualizar', 'error'); else load();
+    setAllRefs(prev => prev.map(r => r.id === id ? { ...r, ...u } as ContentRef : r));
+    const { error } = await supabase.from('content_refs')
+      .update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
+    if (error) { toast('Error al actualizar', 'error'); load(); }
   };
   const removeRef = async (id: string) => { await supabase.from('content_refs').delete().eq('id', id); load(); };
 
