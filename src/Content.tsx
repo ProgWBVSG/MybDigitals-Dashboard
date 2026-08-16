@@ -5,8 +5,9 @@ import { useContent, useClients } from './hooks';
 import {
   CONTENT_STATUSES, CONTENT_FORMATS, CONTENT_FORMAT_LABELS, CONTENT_OBJECTIVES, uuid,
   AD_FORMATS, AD_FORMAT_LABELS, AD_OBJECTIVES, AD_OBJECTIVE_RESULT_LABEL, AD_STATUSES, CONTENT_GAMES,
-  CONTENT_ANGLES, CONTENT_ANGLE_LABELS,
+  CONTENT_ANGLES, CONTENT_ANGLE_LABELS, AWARENESS_LEVELS, AWARENESS_LABELS,
   type ContentPost, type ContentStatus, type ContentFormat, type ContentAd, type AdFormat, type AdStatus,
+  type ContentAngle, type Awareness,
 } from './utils';
 import { encodeScript, scriptPreview, splitIntoTakes, takeProgress, decodeScript, isStructuredScript, scriptForShare, type ScriptBlock } from './script';
 import { PostForm } from './ContentGuion';
@@ -36,6 +37,9 @@ const TABS: { k: Tab; label: string }[] = [
   { k: 'conexion', label: 'Conexión IG' },
 ];
 const ANGLE_COLOR: Record<string, string> = Object.fromEntries(CONTENT_ANGLES.map(a => [a.key, a.color]));
+// Los dos primeros escalones se mueven por dolor y los tres últimos por ganancia:
+// el color lo hace evidente sin tener que recordar el orden.
+const AWARE_COLOR: Record<'dolor' | 'ganancia', string> = { dolor: '#ef4444', ganancia: '#10b981' };
 // Se deriva de CONTENT_STATUSES en vez de listar los estados a mano: cuando se
 // sumó "publicado" esta constante quedó con tres y las flechas del Pipeline no
 // podían pasar de "listo" (el clamp topaba en el último de la lista vieja).
@@ -265,6 +269,7 @@ function Resumen({ posts, onGo }: { posts: ContentPost[]; onGo: (t: Tab) => void
 function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
   const [form, setForm] = useState<Partial<ContentPost> | null>(null);
   const [angleFilter, setAngleFilter] = useState<string>('todos');
+  const [awareFilter, setAwareFilter] = useState<string>('todos');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [askUrl, setAskUrl] = useState<ContentPost | null>(null);
   const [q, setQ] = useState('');
@@ -281,11 +286,34 @@ function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
     // Al publicar, pedir el link del reel para poder anclar sus métricas.
     if (next === 'publicado' && !p.postUrl) setAskUrl({ ...p, status: next, ...extra });
   };
-  const visible = useMemo(() => {
-    const byAngle = angleFilter === 'todos'
-      ? c.posts : c.posts.filter(p => (p.angle || 'valor') === angleFilter);
-    return matchPosts(byAngle, q);
-  }, [c.posts, angleFilter, q]);
+  // Los tres filtros se combinan: ángulo Y escalón Y texto. Sirve para preguntas
+  // como "qué hice de Valor para alguien que todavía no sabe que tiene el problema".
+  const byAngle = (list: ContentPost[], f: string) =>
+    f === 'todos' ? list : list.filter(p => (p.angle || 'valor') === f);
+  const byAware = (list: ContentPost[], f: string) =>
+    f === 'todos' ? list : f === 'sin' ? list.filter(p => !p.awareness) : list.filter(p => p.awareness === f);
+
+  const visible = useMemo(
+    () => matchPosts(byAware(byAngle(c.posts, angleFilter), awareFilter), q),
+    [c.posts, angleFilter, awareFilter, q]);
+
+  // Los contadores de cada chip cuentan sobre lo que dejan pasar los OTROS
+  // filtros: así el número dice cuántas quedarían si tocás ese chip, en vez de
+  // prometer un total que el cruce no va a devolver.
+  const angleCounts = useMemo(() => {
+    const pool = byAware(c.posts, awareFilter);
+    return { todos: pool.length, ...Object.fromEntries(CONTENT_ANGLES.map(a => [a.key, byAngle(pool, a.key).length])) } as Record<string, number>;
+  }, [c.posts, awareFilter]);
+
+  const awareCounts = useMemo(() => {
+    const pool = byAngle(c.posts, angleFilter);
+    return {
+      todos: pool.length, sin: pool.filter(p => !p.awareness).length,
+      ...Object.fromEntries(AWARENESS_LEVELS.map(a => [a.key, pool.filter(p => p.awareness === a.key).length])),
+    } as Record<string, number>;
+  }, [c.posts, angleFilter]);
+
+  const filtersOn = angleFilter !== 'todos' || awareFilter !== 'todos' || q.trim() !== '';
 
   // Copia la pieza lista para mandar por WhatsApp sin tener que abrirla.
   const copyPost = (p: ContentPost) => {
@@ -314,26 +342,56 @@ function Pipeline({ c }: { c: ReturnType<typeof useContent> }) {
         </div>
       </div>
 
-      {q.trim() && (
-        <p className="ig-search-count">
-          {visible.length === 0
-            ? `Ninguna pieza coincide con "${q.trim()}".`
-            : `${visible.length} pieza${visible.length === 1 ? '' : 's'} coincide${visible.length === 1 ? '' : 'n'} con "${q.trim()}".`}
-        </p>
-      )}
-
-      <div className="ig-angle-filter">
-        <button className={angleFilter === 'todos' ? 'active' : ''} onClick={() => setAngleFilter('todos')}>
-          Todos <em>{c.posts.length}</em>
-        </button>
-        {CONTENT_ANGLES.map(a => {
-          const n = c.posts.filter(p => (p.angle || 'valor') === a.key).length;
-          return (
+      <div className="ig-filters">
+        <div className="ig-filter-row">
+          <span className="ig-filter-lbl">Ángulo</span>
+          <button className={angleFilter === 'todos' ? 'active' : ''} onClick={() => setAngleFilter('todos')}>
+            Todos <em>{angleCounts.todos}</em>
+          </button>
+          {CONTENT_ANGLES.map(a => (
             <button key={a.key} className={angleFilter === a.key ? 'active' : ''}
               style={angleFilter === a.key ? { borderColor: a.color, color: a.color } : undefined}
-              onClick={() => setAngleFilter(a.key)}>{a.label} <em>{n}</em></button>
-          );
-        })}
+              onClick={() => setAngleFilter(angleFilter === a.key ? 'todos' : a.key)}>
+              {a.label} <em>{angleCounts[a.key] ?? 0}</em>
+            </button>
+          ))}
+        </div>
+
+        <div className="ig-filter-row">
+          <span className="ig-filter-lbl">Consciencia</span>
+          <button className={awareFilter === 'todos' ? 'active' : ''} onClick={() => setAwareFilter('todos')}>
+            Todos <em>{awareCounts.todos}</em>
+          </button>
+          {AWARENESS_LEVELS.map(a => (
+            <button key={a.key} className={awareFilter === a.key ? 'active' : ''}
+              style={awareFilter === a.key ? { borderColor: AWARE_COLOR[a.driver], color: AWARE_COLOR[a.driver] } : undefined}
+              title={a.hint}
+              onClick={() => setAwareFilter(awareFilter === a.key ? 'todos' : a.key)}>
+              <b>{a.step}</b> {a.label} <em>{awareCounts[a.key] ?? 0}</em>
+            </button>
+          ))}
+          {awareCounts.sin > 0 && (
+            <button className={awareFilter === 'sin' ? 'active' : ''}
+              title="Piezas a las que todavía no les pusiste escalón"
+              onClick={() => setAwareFilter(awareFilter === 'sin' ? 'todos' : 'sin')}>
+              Sin definir <em>{awareCounts.sin}</em>
+            </button>
+          )}
+        </div>
+
+        {filtersOn && (
+          <div className="ig-filter-result">
+            <span>
+              {visible.length === 0 ? 'Ninguna pieza' : `${visible.length} pieza${visible.length === 1 ? '' : 's'}`}
+              {angleFilter !== 'todos' && <> · <b>{CONTENT_ANGLE_LABELS[angleFilter as ContentAngle]}</b></>}
+              {awareFilter !== 'todos' && <> · <b>{awareFilter === 'sin' ? 'Sin escalón' : AWARENESS_LABELS[awareFilter as Awareness]}</b></>}
+              {q.trim() && <> · «{q.trim()}»</>}
+            </span>
+            <button onClick={() => { setAngleFilter('todos'); setAwareFilter('todos'); setQ(''); }}>
+              Limpiar
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="ig-board">
