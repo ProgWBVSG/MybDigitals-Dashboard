@@ -1007,7 +1007,10 @@ export function useContent(accountId: string | null = null) {
     setAllPosts(prev => prev.map(p => p.id === id ? { ...p, ...u } as ContentPost : p));
     const { error } = await supabase.from('content_posts')
       .update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
-    if (error) { toast('Error al actualizar', 'error'); load(); }
+    // Con la actualización optimista un fallo silencioso es peor que antes: la
+    // pieza se mueve y vuelve sola, y sin el mensaje real de Postgres no hay
+    // forma de saber si fue una columna que falta, RLS o un tipo mal.
+    if (error) { toast('No se pudo guardar: ' + error.message, 'error'); load(); }
   };
   const removePost = async (id: string) => { await supabase.from('content_posts').delete().eq('id', id); load(); };
 
@@ -1032,7 +1035,7 @@ export function useContent(accountId: string | null = null) {
     setAllAds(prev => prev.map(a => a.id === id ? { ...a, ...u } as ContentAd : a));
     const { error } = await supabase.from('content_ads')
       .update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
-    if (error) { toast('Error al actualizar', 'error'); load(); }
+    if (error) { toast('No se pudo guardar: ' + error.message, 'error'); load(); }
   };
   const removeAd = async (id: string) => { await supabase.from('content_ads').delete().eq('id', id); load(); };
 
@@ -1081,7 +1084,7 @@ export function useContent(accountId: string | null = null) {
     setAllMetrics(prev => prev.map(m => m.id === id ? { ...m, ...u } as ContentMetric : m));
     const { error } = await supabase.from('content_metrics')
       .update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
-    if (error) { toast('Error al actualizar', 'error'); load(); }
+    if (error) { toast('No se pudo guardar: ' + error.message, 'error'); load(); }
   };
   const removeMetric = async (id: string) => { await supabase.from('content_metrics').delete().eq('id', id); load(); };
 
@@ -1099,7 +1102,7 @@ export function useContent(accountId: string | null = null) {
     setAllRefs(prev => prev.map(r => r.id === id ? { ...r, ...u } as ContentRef : r));
     const { error } = await supabase.from('content_refs')
       .update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
-    if (error) { toast('Error al actualizar', 'error'); load(); }
+    if (error) { toast('No se pudo guardar: ' + error.message, 'error'); load(); }
   };
   const removeRef = async (id: string) => { await supabase.from('content_refs').delete().eq('id', id); load(); };
 
