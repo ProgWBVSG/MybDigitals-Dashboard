@@ -1275,3 +1275,51 @@
   .ig-filter-lbl { min-width: 0; width: 100%; margin-bottom: -2px; }
   .ig-filter-row button { padding: 4px 10px; font-size: 11.5px; }
 }
+
+/* ─── Historias (tabla editable) ─── */
+.sto-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 11px; }
+.sto-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.sto-table thead th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--bg-card); text-align: left; white-space: nowrap;
+  font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--text-muted); padding: 9px 8px; border-bottom: 1px solid var(--border);
+}
+.sto-table tbody tr { border-bottom: 1px solid var(--border); }
+.sto-table tbody tr:last-child { border-bottom: 0; }
+.sto-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+.sto-table tbody tr.sto-bad { background: color-mix(in srgb, #ef4444 6%, transparent); }
+.sto-table td { padding: 3px 6px; vertical-align: middle; }
+.sto-mid { text-align: center; }
+
+.sto-cell {
+  width: 100%; background: none; border: 1px solid transparent; border-radius: 6px;
+  padding: 5px 6px; font-size: 12.5px; color: var(--text-primary);
+  font-family: inherit; color-scheme: dark;
+}
+.sto-cell:hover { border-color: var(--border); }
+.sto-cell:focus { outline: 0; border-color: var(--primary); background: rgba(255,255,255,0.04); }
+.sto-code { width: 86px; font-variant-numeric: tabular-nums; font-weight: 600; }
+.sto-kind { min-width: 150px; }
+.sto-n { width: 48px; text-align: center; }
+.sto-num { width: 74px; text-align: right; font-variant-numeric: tabular-nums; }
+.sto-linkin { width: 60px; }
+.sto-table input[type="number"]::-webkit-inner-spin-button { opacity: 0.25; }
+
+.sto-flag {
+  border: 1px solid var(--border); border-radius: 999px; padding: 2px 11px;
+  font-size: 11px; font-weight: 700; cursor: pointer; background: none;
+}
+.sto-flag.yes { color: #10b981; border-color: color-mix(in srgb, #10b981 45%, transparent); background: color-mix(in srgb, #10b981 12%, transparent); }
+.sto-flag.no  { color: #ef4444; border-color: color-mix(in srgb, #ef4444 35%, transparent); background: color-mix(in srgb, #ef4444 9%, transparent); }
+
+.sto-ret { font-weight: 800; font-variant-numeric: tabular-nums; }
+.sto-drop { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.sto-dash { color: var(--text-muted); opacity: 0.4; }
+.sto-link { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 6px; color: var(--primary-light); }
+.sto-link:hover { background: rgba(255,255,255,0.06); }
+.sto-del {
+  display: grid; place-items: center; width: 26px; height: 26px;
+  background: none; border: 0; border-radius: 6px; color: var(--text-muted); cursor: pointer;
+}
+.sto-del:hover { background: rgba(239,68,68,0.15); color: #ef4444; }

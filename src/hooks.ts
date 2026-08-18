@@ -4,7 +4,7 @@ import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
   type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic,
   type ContentPost, type ContentSource, type ContentAd, type ContentMetric, type ContentRef,
-  type ContentAccount, ACCOUNT_COLORS, DEFAULT_RHYTHM, shortcodeOf, type Competitor,
+  type ContentAccount, ACCOUNT_COLORS, DEFAULT_RHYTHM, shortcodeOf, type ContentStory, type Competitor,
   type Note, type Whiteboard, type BoardData, EMPTY_BOARD_DATA, REPEAT_LABELS, type NodeEvent, type BoardNode,
   type ClientPortal, type PortalConfig, type PortalUpdate, type PortalTicket,
   type StrategyDoc, type DocBlock } from './utils';
@@ -910,6 +910,7 @@ export function useContent(accountId: string | null = null) {
   const [allAds, setAllAds] = useState<ContentAd[]>([]);
   const [allMetrics, setAllMetrics] = useState<ContentMetric[]>([]);
   const [allRefs, setAllRefs] = useState<ContentRef[]>([]);
+  const [allStories, setAllStories] = useState<ContentStory[]>([]);
   const [loading, setLoading] = useState(true);
   const load = useCallback(async () => {
     const { data: acc } = await supabase.from('content_accounts').select('*').order('created_at');
@@ -918,12 +919,14 @@ export function useContent(accountId: string | null = null) {
     const { data: a } = await supabase.from('content_ads').select('*').order('created_at', { ascending: false });
     const { data: m } = await supabase.from('content_metrics').select('*').order('published_at', { ascending: false, nullsFirst: false });
     const { data: r } = await supabase.from('content_refs').select('*').order('created_at', { ascending: false });
+    const { data: st } = await supabase.from('content_stories').select('*').order('published_at', { ascending: false, nullsFirst: false });
     if (acc) setAccounts(acc.map(mapToCamel) as ContentAccount[]);
     if (p) setAllPosts(p.map(mapToCamel) as ContentPost[]);
     if (s) setSources(s.map(mapToCamel) as ContentSource[]);
     if (a) setAllAds(a.map(mapToCamel) as ContentAd[]);
     if (m) setAllMetrics(m.map(mapToCamel) as ContentMetric[]);
     if (r) setAllRefs(r.map(mapToCamel) as ContentRef[]);
+    if (st) setAllStories(st.map(mapToCamel) as ContentStory[]);
     setLoading(false);
   }, []);
   useEffect(() => {
@@ -935,6 +938,7 @@ export function useContent(accountId: string | null = null) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_ads' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_metrics' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_refs' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_stories' }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [load]);
@@ -947,6 +951,7 @@ export function useContent(accountId: string | null = null) {
   const ads = useMemo(() => scope(allAds), [allAds, accountId]);
   const metrics = useMemo(() => scope(allMetrics), [allMetrics, accountId]);
   const refs = useMemo(() => scope(allRefs), [allRefs, accountId]);
+  const stories = useMemo(() => scope(allStories), [allStories, accountId]);
 
   // ─── Cuentas ───
   const addAccount = async (a: Partial<ContentAccount>) => {
@@ -1199,12 +1204,32 @@ export function useContent(accountId: string | null = null) {
     return { created, updated, unmatched, total: rows.length };
   };
 
+  // ─── Historias (secuencias) ───
+  const addStory = async (st: Partial<ContentStory>) => {
+    const { error } = await supabase.from('content_stories').insert(mapToSnake({
+      accountId: st.accountId ?? accountId, publishedAt: st.publishedAt ?? Date.now(),
+      code: st.code || '', kind: st.kind || '', hasCta: st.hasCta ?? false,
+      storyCount: st.storyCount ?? 0, viewsFirst: st.viewsFirst ?? 0, viewsLast: st.viewsLast ?? 0,
+      hasLeadMagnet: st.hasLeadMagnet ?? false, link: st.link || '',
+      replies: st.replies ?? 0, votes: st.votes ?? 0, notes: st.notes || '',
+    }));
+    if (error) toast('No se pudo crear la secuencia: ' + error.message, 'error'); else load();
+  };
+  const updateStory = async (id: string, u: Partial<ContentStory>) => {
+    setAllStories(prev => prev.map(x => x.id === id ? { ...x, ...u } as ContentStory : x));
+    const { error } = await supabase.from('content_stories')
+      .update(mapToSnake({ ...u, updatedAt: new Date().toISOString() })).eq('id', id);
+    if (error) { toast('No se pudo guardar: ' + error.message, 'error'); load(); }
+  };
+  const removeStory = async (id: string) => { await supabase.from('content_stories').delete().eq('id', id); load(); };
+
   return {
-    accounts, accountId, posts, sources, ads, metrics, refs, loading,
+    accounts, accountId, posts, sources, ads, metrics, refs, stories, loading,
     allPosts, allMetrics, allRefs, allAds,
     addAccount, updateAccount, removeAccount, claimOrphans,
     addPost, updatePost, removePost, addSource, removeSource, addAd, updateAd, removeAd,
     addMetric, updateMetric, removeMetric, addRef, updateRef, removeRef,
+    addStory, updateStory, removeStory,
     generateScript, generateIdeas, generateViralScript, analyzeRef,
     igConnect, syncInstagram, refresh: load,
   };

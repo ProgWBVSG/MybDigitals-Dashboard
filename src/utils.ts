@@ -508,6 +508,45 @@ export interface ContentRef {
   createdAt: string; updatedAt: string;
 }
 
+// ─── HISTORIAS (secuencias) ───
+// Una fila = una secuencia publicada, no una historia suelta. Lo que se mide es
+// cuánta gente llegó del principio al final: `viewsFirst` vs `viewsLast` es la
+// retención de la secuencia.
+export interface ContentStory {
+  id: string; accountId: string | null; publishedAt: number | null;
+  code: string; kind: string; hasCta: boolean; storyCount: number;
+  viewsFirst: number; viewsLast: number;
+  hasLeadMagnet: boolean; link: string; replies: number; votes: number;
+  notes: string; createdAt: string; updatedAt: string;
+}
+
+// Sugerencias para el campo tipo. Es texto libre (cada cuenta arma su repertorio),
+// esto solo evita tipear los más comunes.
+export const STORY_KINDS = [
+  'Personalidad', 'Recuerdo', 'Nicho', 'Nicho + LM', 'Lifestyle', 'Viaje',
+  'Viaje + LM', 'Viaje + testimonios', 'Testimonio + CTA', 'Venta directa',
+  'Historia pt 1', 'Historia pt 2', 'Dinámica / encuesta', 'Noticia',
+  'Detrás de escena', 'Educativa', 'Transparencia', 'Foto básica',
+];
+
+// Retención de la secuencia: qué porcentaje del que abrió la primera llegó a la
+// última. Es el número que decide si la secuencia funcionó.
+export const storyRetention = (s: ContentStory): number | null =>
+  s.viewsFirst > 0 ? Math.round((s.viewsLast / s.viewsFirst) * 1000) / 10 : null;
+
+// Caída promedio por historia: separa "se cayó porque era larga" de "se cayó
+// aunque era corta", que son problemas distintos.
+export const storyDropPerUnit = (s: ContentStory): number | null => {
+  const r = storyRetention(s);
+  return r === null || s.storyCount < 2 ? null
+    : Math.round(((100 - r) / (s.storyCount - 1)) * 10) / 10;
+};
+
+// Umbrales de retención de secuencia. Una caída del 20% en una secuencia de 5
+// es normal; por debajo del 60% algo la está cortando.
+export const storyVerdict = (r: number | null): 'excelente' | 'bien' | 'flojo' | 'critico' | 'sin_datos' =>
+  r === null ? 'sin_datos' : r >= 85 ? 'excelente' : r >= 70 ? 'bien' : r >= 55 ? 'flojo' : 'critico';
+
 // ─── ANÁLISIS DE COMPETENCIA ───
 export interface CompetitorAnalysis {
   posicionamiento: string;

@@ -16,10 +16,11 @@ import Ganchos from './ContentGanchos';
 import Referentes from './ContentReferentes';
 import Calendario from './ContentCalendario';
 import Produccion from './ContentProduccion';
+import Historias from './ContentHistorias';
 import { AccountSwitcher, AccountsModal, ACCOUNT_STORAGE_KEY, resolveStoredAccount } from './ContentCuentas';
 import './Content.css';
 
-type Tab = 'resumen' | 'ideas' | 'guiones' | 'ganchos' | 'referentes' | 'tabla' | 'pipeline' | 'produccion' | 'calendario' | 'metricas' | 'generador' | 'anuncios' | 'fuentes' | 'conexion';
+type Tab = 'resumen' | 'ideas' | 'guiones' | 'ganchos' | 'referentes' | 'tabla' | 'pipeline' | 'produccion' | 'historias' | 'calendario' | 'metricas' | 'generador' | 'anuncios' | 'fuentes' | 'conexion';
 const TABS: { k: Tab; label: string }[] = [
   { k: 'resumen', label: 'Resumen' },
   { k: 'ideas', label: 'Ideas ✨' },
@@ -29,6 +30,7 @@ const TABS: { k: Tab; label: string }[] = [
   { k: 'pipeline', label: 'Pipeline' },
   { k: 'produccion', label: 'Producción 🎥' },
   { k: 'tabla', label: 'Tabla ⚡' },
+  { k: 'historias', label: 'Historias 📖' },
   { k: 'calendario', label: 'Calendario' },
   { k: 'metricas', label: 'Métricas 📈' },
   { k: 'generador', label: 'Generador' },
@@ -118,6 +120,7 @@ export default function Content() {
         {tab === 'tabla' && <Tabla c={c} />}
         {tab === 'pipeline' && <Pipeline c={c} />}
         {tab === 'produccion' && <Produccion c={c} />}
+        {tab === 'historias' && <Historias c={c} />}
         {tab === 'calendario' && <Calendario c={c} />}
         {tab === 'metricas' && <Metricas c={c} />}
         {tab === 'generador' && <Generador c={c} onDone={() => setTab('pipeline')} />}
