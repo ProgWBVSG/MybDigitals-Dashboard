@@ -33,18 +33,30 @@ Devolvé ÚNICAMENTE un JSON válido con EXACTAMENTE esta forma:
 }
 Cantidades: ideasInstagram 10 a 15; anuncios 5 a 8; tendencias 5; cruzadas 3 nichos (con 3 ideas c/u); cada lista de "acciones" 2 a 3 ítems. Ítems cortos y filosos.`;
 
-const GEN_CONFIG = { temperature: 0.9, maxOutputTokens: 8192, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 2048 } };
+const GEN_CONFIG = { temperature: 0.9, maxOutputTokens: 8192, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 1024 } };
 const MODELS = [MODEL, 'gemini-2.0-flash'];
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+// fetch con timeout: un fetch a Gemini que se cuelga dejaría toda la función colgada
+// (el síntoma "toco generar y no pasa nada"). Si tarda de más, aborta y sigue.
+async function fetchTimeout(url: string, opts: RequestInit, ms: number): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(url, { ...opts, signal: ctrl.signal }); }
+  finally { clearTimeout(t); }
+}
 
 async function geminiGenerate(prompt: string): Promise<any> {
   let last: unknown = null;
   for (const model of MODELS) {
     for (let attempt = 0; attempt < 3; attempt++) {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: GEN_CONFIG }),
-      });
+      let res: Response;
+      try {
+        res = await fetchTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: GEN_CONFIG }),
+        }, 75000);
+      } catch (e) { last = { error: { message: String((e as Error)?.message || e) } }; await sleep(600); continue; }
       const data = await res.json();
       if (res.ok) return data;
       last = data;
@@ -60,10 +72,11 @@ async function geminiGenerate(prompt: string): Promise<any> {
 async function geminiGrounded(prompt: string): Promise<string> {
   for (const model of MODELS) {
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
+      // Grounding es "nice to have": si tarda >15s, se corta y se genera igual sin él.
+      const res = await fetchTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }], generationConfig: { temperature: 0.4, maxOutputTokens: 1024 } }),
-      });
+      }, 15000);
       const data = await res.json();
       if (res.ok) {
         const t = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('') || '';

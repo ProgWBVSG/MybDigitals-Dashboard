@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Sparkles, Plug, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Send, Copy, Check, Search, X } from 'lucide-react';
+import { Sparkles, Plug, Plus, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Send, Copy, Check, Search, X, Pencil, NotebookPen, ArrowRight } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { useContent, useClients } from './hooks';
+import { useContent, useClients, useContentIdeas } from './hooks';
 import {
   CONTENT_STATUSES, CONTENT_FORMATS, CONTENT_FORMAT_LABELS, CONTENT_OBJECTIVES, uuid,
   AD_FORMATS, AD_FORMAT_LABELS, AD_OBJECTIVES, AD_OBJECTIVE_RESULT_LABEL, AD_STATUSES, CONTENT_GAMES,
@@ -672,7 +672,59 @@ const adLibUrl = (q: string) => `https://www.facebook.com/ads/library/?active_st
 const OBJ_IDEAS = ['Alcance / viral', 'Conseguir consultas (DM)', 'Ventas', 'Autoridad / confianza', 'Sumar seguidores'];
 const PLAT_IDEAS = ['Cualquiera', 'Reels', 'Carruseles', 'Stories', 'Anuncios'];
 
+// Bloc de notas de ideas a mano: escribir, guardar, editar, borrar y mandar al Pipeline.
+function IdeasNotepad({ notas, onToPipeline }: { notas: ReturnType<typeof useContentIdeas>; onToPipeline: (text: string) => void }) {
+  const [draft, setDraft] = useState('');
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+
+  const guardar = async () => { if (await notas.add(draft)) setDraft(''); };
+  const guardarEdit = async () => { if (editId && await notas.update(editId, editText)) { setEditId(null); setEditText(''); } };
+
+  return (
+    <div className="ig-card">
+      <div className="ig-card-head"><div><p className="ig-eyebrow">Bloc de ideas</p><h3><NotebookPen size={17} style={{ verticalAlign: '-3px', marginRight: 6 }} />Anotá tus ideas a mano</h3></div></div>
+      <div className="idea-notepad">
+        <textarea className="input" rows={2} value={draft} placeholder="Escribí una idea suelta para usarla después… (ej: reel mostrando el antes/después de un cliente)"
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') guardar(); }} />
+        <button className="btn btn-primary btn-sm" onClick={guardar} disabled={!draft.trim()}><Plus size={14} /> Guardar idea</button>
+      </div>
+
+      {notas.ideas.length === 0 ? (
+        <p className="idea-empty">Todavía no anotaste ideas. Escribí una arriba y quedará guardada acá para cuando la quieras usar.</p>
+      ) : (
+        <div className="idea-notes">
+          {notas.ideas.map(n => (
+            <div key={n.id} className="idea-note">
+              {editId === n.id ? (
+                <div className="idea-note-edit">
+                  <textarea className="input" rows={2} value={editText} autoFocus onChange={e => setEditText(e.target.value)} />
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn btn-primary btn-sm" onClick={guardarEdit}><Check size={13} /> Guardar</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => { setEditId(null); setEditText(''); }}><X size={13} /></button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="idea-note-text">{n.text}</p>
+                  <div className="idea-note-actions">
+                    <button className="btn btn-ghost btn-sm" title="Mandar al Pipeline como borrador" onClick={() => onToPipeline(n.text)}><ArrowRight size={13} /> Pipeline</button>
+                    <button className="btn btn-ghost btn-icon btn-sm" title="Editar" onClick={() => { setEditId(n.id); setEditText(n.text); }}><Pencil size={13} /></button>
+                    <button className="btn btn-ghost btn-icon btn-sm" title="Borrar" onClick={() => notas.remove(n.id)}><Trash2 size={13} /></button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
+  const notas = useContentIdeas(c.accountId);
   const [nichos, setNichos] = useState('');
   const [publico, setPublico] = useState('');
   const [objetivo, setObjetivo] = useState(OBJ_IDEAS[1]);
@@ -682,14 +734,27 @@ function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
   const [evitar, setEvitar] = useState('');
   const [iaFocus, setIaFocus] = useState(false);
   const [gen, setGen] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [out, setOut] = useState<GenIdeas | null>(null);
 
+  // Contador de segundos mientras genera: la IA tarda 30-60s (busca en la web +
+  // redacta), así se ve que está trabajando y no parece colgado.
+  useEffect(() => {
+    if (!gen) { setElapsed(0); return; }
+    const t = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [gen]);
+
   const generar = async () => {
-    if (!nichos.trim()) return;
+    if (!nichos.trim() || gen) return;
     setGen(true);
-    const r = await c.generateIdeas({ nichos, publico, objetivo, plataforma, tono, foco, evitar, iaFocus });
-    setGen(false);
-    if (r) setOut(r as GenIdeas);
+    setOut(null);
+    try {
+      const r = await c.generateIdeas({ nichos, publico, objetivo, plataforma, tono, foco, evitar, iaFocus });
+      if (r) setOut(r as GenIdeas);
+    } finally {
+      setGen(false);
+    }
   };
   const guardar = (i: GenIdeas['ideasInstagram'][0]) => c.addPost({
     format: toFmt(i.formato), objective: objetivo, title: i.titulo, status: 'borrador',
@@ -698,6 +763,8 @@ function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
 
   return (
     <div className="ig-stack">
+      <IdeasNotepad notas={notas} onToPipeline={t => c.addPost({ format: 'reel', objective: OBJ_IDEAS[1], title: t.slice(0, 80), status: 'borrador', content: t })} />
+
       <div className="ig-card">
         <div className="ig-card-head"><div><p className="ig-eyebrow">Agente de ideas</p><h3>Investigá y generá ideas de contenido</h3></div></div>
         <div className="ig-form">
@@ -712,8 +779,9 @@ function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
           <label>Qué evitar (opcional)<input className="input" value={evitar} placeholder="Ej: nada de bailecitos, sin tecnicismos" onChange={e => setEvitar(e.target.value)} /></label>
           <label className="notif-toggle"><input type="checkbox" checked={iaFocus} onChange={e => setIaFocus(e.target.checked)} /> Enfocar en novedades de IA / Claude Code / tecnología</label>
           <button className="btn btn-primary" onClick={generar} disabled={gen || !nichos.trim()}>
-            <Sparkles size={15} /> {gen ? 'Investigando y generando…' : 'Generar ideas'}
+            <Sparkles size={15} /> {gen ? `Investigando y generando… ${elapsed}s` : 'Generar ideas'}
           </button>
+          {gen && <p className="idea-gen-hint">Busca en la web y redacta las ideas — suele tardar entre 30 segundos y ~2 minutos. Dejá esta pestaña abierta, está trabajando.</p>}
         </div>
         {nichos.trim() && (
           <div className="idea-adslib">

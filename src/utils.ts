@@ -357,6 +357,14 @@ export interface CustomHook {
   createdAt: number;
 }
 
+// Idea anotada a mano (bloc de notas de la sección Ideas). accountId null = general.
+export interface ContentIdea {
+  id: string;
+  accountId: string | null;
+  text: string;
+  createdAt: number;
+}
+
 // ─── RITMO DE PRODUCCIÓN ───
 // Qué se hace cada día de la semana. Un día puede tener más de un rol (ej.
 // domingo: grabar en tanda y buscar referencias).

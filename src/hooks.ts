@@ -4,7 +4,7 @@ import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
   type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic,
   type ContentPost, type ContentSource, type ContentAd, type ContentMetric, type ContentRef,
-  type ContentAccount, ACCOUNT_COLORS, DEFAULT_RHYTHM, shortcodeOf, type ContentStory, type Competitor, type CustomHook,
+  type ContentAccount, ACCOUNT_COLORS, DEFAULT_RHYTHM, shortcodeOf, type ContentStory, type Competitor, type CustomHook, type ContentIdea,
   type Note, type Whiteboard, type BoardData, EMPTY_BOARD_DATA, REPEAT_LABELS, type NodeEvent, type BoardNode,
   type ClientPortal, type PortalConfig, type PortalUpdate, type PortalTicket,
   type StrategyDoc, type DocBlock } from './utils';
@@ -1280,6 +1280,43 @@ export function useCustomHooks(accountId: string | null) {
   const remove = async (id: string) => { await supabase.from('content_hooks').delete().eq('id', id); };
 
   return { hooks: scoped, allHooks: hooks, loading, add, update, remove };
+}
+
+// ─── IDEAS ANOTADAS A MANO (bloc de notas de la sección Ideas, por cuenta) ───
+export function useContentIdeas(accountId: string | null) {
+  const [ideas, setIdeas] = useState<ContentIdea[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('content_ideas').select('*').order('created_at', { ascending: false });
+    if (data) setIdeas(data.map(mapToCamel) as ContentIdea[]);
+    setLoading(false);
+  }, []);
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('content_ideas_' + uuid())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_ideas' }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+
+  const scoped = useMemo(
+    () => ideas.filter(i => i.accountId === accountId || i.accountId === null),
+    [ideas, accountId],
+  );
+
+  const add = async (text: string): Promise<boolean> => {
+    if (!text.trim()) return false;
+    const { error } = await supabase.from('content_ideas').insert({ account_id: accountId, text: text.trim() });
+    if (error) { toast('No se pudo guardar la idea: ' + error.message, 'error'); return false; }
+    toast('Idea guardada'); return true;
+  };
+  const update = async (id: string, text: string): Promise<boolean> => {
+    const { error } = await supabase.from('content_ideas').update({ text: text.trim() }).eq('id', id);
+    if (error) { toast('No se pudo actualizar: ' + error.message, 'error'); return false; }
+    return true;
+  };
+  const remove = async (id: string) => { await supabase.from('content_ideas').delete().eq('id', id); };
+
+  return { ideas: scoped, loading, add, update, remove };
 }
 
 // ─── ANÁLISIS DE COMPETENCIA ───
