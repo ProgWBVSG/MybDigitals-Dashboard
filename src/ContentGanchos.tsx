@@ -4,15 +4,17 @@
 // la matriz de dolor/ganancia por escalón de consciencia, niveles de sofisticación
 // y el checklist de producción. Todo copiable con un click.
 import { useState } from 'react';
-import { Copy, Check, Search } from 'lucide-react';
+import { Copy, Check, Search, Plus, Star, Trash2, Pencil, X } from 'lucide-react';
 import { AWARENESS_LEVELS } from './utils';
+import { useCustomHooks } from './hooks';
 import {
   HOOK_LAYERS, HOOK_FORMULAS, VISUAL_HOOKS, SOPHISTICATION, DRIVER_LOGIC,
   NARRATIVES, CTAS, PRODUCTION_CHECKS,
 } from './hooks-data';
 
-type Sec = 'formulas' | 'capas' | 'matriz' | 'visual' | 'narrativa' | 'cta' | 'sofisticacion' | 'checklist';
+type Sec = 'mios' | 'formulas' | 'capas' | 'matriz' | 'visual' | 'narrativa' | 'cta' | 'sofisticacion' | 'checklist';
 const SECTIONS: { k: Sec; label: string }[] = [
+  { k: 'mios', label: 'Mis ganchos ⭐' },
   { k: 'formulas', label: 'Fórmulas de hook' },
   { k: 'capas', label: 'Las 3 capas' },
   { k: 'matriz', label: 'Dolor / Ganancia' },
@@ -37,8 +39,8 @@ function CopyBtn({ text }: { text: string }) {
   );
 }
 
-export default function Ganchos() {
-  const [sec, setSec] = useState<Sec>('formulas');
+export default function Ganchos({ accountId = null, accountName }: { accountId?: string | null; accountName?: string }) {
+  const [sec, setSec] = useState<Sec>('mios');
   const [q, setQ] = useState('');
   const [driver, setDriver] = useState<'todos' | 'dolor' | 'ganancia' | 'curiosidad'>('todos');
 
@@ -60,6 +62,8 @@ export default function Ganchos() {
           <button key={s.k} className={sec === s.k ? 'active' : ''} onClick={() => setSec(s.k)}>{s.label}</button>
         ))}
       </div>
+
+      {sec === 'mios' && <MisGanchos accountId={accountId} accountName={accountName} />}
 
       {sec === 'formulas' && (
         <>
@@ -250,5 +254,138 @@ export default function Ganchos() {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Mis ganchos: banco propio por cuenta ───
+type HookForm = { id?: string; text: string; driver: string; note: string; general: boolean };
+const emptyHook = (): HookForm => ({ text: '', driver: 'curiosidad', note: '', general: false });
+
+function MisGanchos({ accountId, accountName }: { accountId: string | null; accountName?: string }) {
+  const { hooks, add, update, remove } = useCustomHooks(accountId);
+  const [q, setQ] = useState('');
+  const [driver, setDriver] = useState<'todos' | 'dolor' | 'ganancia' | 'curiosidad'>('todos');
+  const [modal, setModal] = useState<HookForm | null>(null);
+  const [confirm, setConfirm] = useState<string | null>(null);
+
+  const list = hooks.filter(h => {
+    if (driver !== 'todos' && h.driver !== driver) return false;
+    if (!q.trim()) return true;
+    const s = q.toLowerCase();
+    return h.text.toLowerCase().includes(s) || (h.note || '').toLowerCase().includes(s);
+  });
+
+  const save = async () => {
+    if (!modal || !modal.text.trim()) return;
+    const ok = modal.id
+      ? await update(modal.id, { text: modal.text, driver: modal.driver, note: modal.note, accountId: modal.general ? null : accountId })
+      : await add({ text: modal.text, driver: modal.driver, note: modal.note, general: modal.general });
+    if (ok) setModal(null);
+  };
+
+  return (
+    <>
+      <div className="ig-notice">
+        Guardá acá los ganchos que se te ocurren para reusar más adelante. Se guardan para
+        <b> {accountName || 'esta cuenta'}</b>; marcá "para todas las cuentas" si querés que aparezca en todas.
+      </div>
+
+      <div className="gh-filters">
+        <div className="gh-search">
+          <Search size={14} />
+          <input className="input" placeholder="Buscar en mis ganchos…" value={q} onChange={e => setQ(e.target.value)} />
+        </div>
+        <div className="gh-driver-filter">
+          {(['todos', 'dolor', 'ganancia', 'curiosidad'] as const).map(d => (
+            <button key={d} className={driver === d ? 'active' : ''} onClick={() => setDriver(d)}
+              style={driver === d && d !== 'todos' ? { borderColor: DRIVER_COLOR[d], color: DRIVER_COLOR[d] } : undefined}>
+              {d === 'todos' ? 'Todos' : DRIVER_LABEL[d]}
+            </button>
+          ))}
+        </div>
+        <button className="btn btn-primary btn-sm" onClick={() => setModal(emptyHook())}><Plus size={14} /> Nuevo gancho</button>
+      </div>
+
+      {list.length === 0 ? (
+        <div className="ig-empty-inline">
+          {q || driver !== 'todos' ? 'Sin resultados.' : 'Todavía no guardaste ganchos para esta cuenta. Tocá "Nuevo gancho".'}
+        </div>
+      ) : (
+        <div className="gh-grid">
+          {list.map(h => (
+            <div key={h.id} className="gh-card">
+              <div className="gh-card-head">
+                <span className="gh-driver" style={{ background: DRIVER_COLOR[h.driver as keyof typeof DRIVER_COLOR] || '#64748b' }}>
+                  {DRIVER_LABEL[h.driver as keyof typeof DRIVER_LABEL] || h.driver}
+                </span>
+                <div style={{ display: 'flex', gap: 2, marginLeft: 'auto' }}>
+                  {h.accountId === null && <span className="gh-general-tag" title="Sirve para todas las cuentas"><Star size={11} /> Todas</span>}
+                  <button className="gh-copy" title="Editar" onClick={() => setModal({ id: h.id, text: h.text, driver: h.driver, note: h.note || '', general: h.accountId === null })}><Pencil size={13} /></button>
+                  <button className="gh-copy" title="Borrar" onClick={() => setConfirm(h.id)}><Trash2 size={13} /></button>
+                </div>
+              </div>
+              <div className="gh-template">
+                <code>{h.text}</code>
+                <CopyBtn text={h.text} />
+              </div>
+              {h.note && <p className="gh-when">{h.note}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modal && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0 }}>{modal.id ? 'Editar gancho' : 'Nuevo gancho'}</h2>
+              <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setModal(null)}><X size={16} /></button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+              <div className="input-group">
+                <label>Gancho *</label>
+                <textarea className="input" rows={3} autoFocus value={modal.text} placeholder="Ej: Si tenés un gimnasio y tus socios se van a los 2 meses, mirá esto…"
+                  onChange={e => setModal({ ...modal, text: e.target.value })} />
+              </div>
+              <div className="input-group">
+                <label>Tipo</label>
+                <div className="gh-driver-filter">
+                  {(['dolor', 'ganancia', 'curiosidad'] as const).map(d => (
+                    <button key={d} className={modal.driver === d ? 'active' : ''} onClick={() => setModal({ ...modal, driver: d })}
+                      style={modal.driver === d ? { borderColor: DRIVER_COLOR[d], color: DRIVER_COLOR[d] } : undefined}>
+                      {DRIVER_LABEL[d]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="input-group">
+                <label>Nota (opcional): cuándo usarlo, para qué tema…</label>
+                <input className="input" value={modal.note} placeholder="Ej: para el reel de retención de socios" onChange={e => setModal({ ...modal, note: e.target.value })} />
+              </div>
+              <label className="notif-toggle">
+                <input type="checkbox" checked={modal.general} onChange={e => setModal({ ...modal, general: e.target.checked })} />
+                Guardar para todas las cuentas (no solo {accountName || 'esta'})
+              </label>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setModal(null)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={save}>{modal.id ? 'Guardar' : 'Guardar gancho'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirm && (
+        <div className="modal-overlay" onClick={() => setConfirm(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 340 }}>
+            <h2>¿Borrar gancho?</h2>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setConfirm(null)}>Cancelar</button>
+              <button className="btn btn-danger" onClick={() => { remove(confirm); setConfirm(null); }}>Borrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

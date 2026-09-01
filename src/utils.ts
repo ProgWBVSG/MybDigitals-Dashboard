@@ -347,6 +347,16 @@ export interface ContentAccount {
   createdAt: string; updatedAt: string;
 }
 
+// Gancho propio guardado para reusar. accountId null = general (todas las cuentas).
+export interface CustomHook {
+  id: string;
+  accountId: string | null;
+  text: string;
+  driver: string;   // 'dolor' | 'ganancia' | 'curiosidad'
+  note: string;
+  createdAt: number;
+}
+
 // ─── RITMO DE PRODUCCIÓN ───
 // Qué se hace cada día de la semana. Un día puede tener más de un rol (ej.
 // domingo: grabar en tanda y buscar referencias).

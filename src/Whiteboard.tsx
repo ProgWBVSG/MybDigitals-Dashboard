@@ -77,6 +77,7 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
   const [drawing, setDrawing] = useState<[number, number][] | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   const [firing, setFiring] = useState(false);
   const [guides, setGuides] = useState<{ x: number | null; y: number | null }>({ x: null, y: null });
   const [templatesOpen, setTemplatesOpen] = useState(false);
@@ -174,7 +175,7 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
       eraseAt(x, y);
       tryCapture(e.pointerId);
     } else {
-      setSelected(null);
+      setSelected(null); setSelectedEdge(null);
     }
   };
   const onCanvasPointerMove = (e: React.PointerEvent) => {
@@ -209,7 +210,7 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
   // ─── nodo: drag / resize / connect ───
   const startDrag = (e: React.PointerEvent, n: BoardNode) => {
     e.stopPropagation();
-    setSelected(n.id);
+    setSelected(n.id); setSelectedEdge(null);
     if (tool === 'connect') {
       if (!connectFrom) setConnectFrom(n.id);
       else if (connectFrom !== n.id) {
@@ -253,6 +254,14 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
   };
   const pickColor = (c: string) => { setColor(c); if (selectedNode) patchNode(selectedNode.id, { color: c }); };
   const editUrl = (n: BoardNode) => { const url = window.prompt('Editar link', n.url || ''); if (url !== null) patchNode(n.id, { url: url.trim() }); };
+  // ─── flechas: etiquetar y borrar (clave para embudos: "40% agenda", etc.) ───
+  const editEdgeLabel = (id: string) => {
+    const e = board.edges.find(x => x.id === id); if (!e) return;
+    const label = window.prompt('Texto de la flecha (ej: "40% agenda", "si dice que sí")', e.label || '');
+    if (label !== null) commit({ ...board, edges: board.edges.map(x => x.id === id ? { ...x, label: label.trim() || undefined } : x) });
+  };
+  const deleteEdge = (id: string) => { commit({ ...board, edges: board.edges.filter(e => e.id !== id) }); setSelectedEdge(null); };
+  const selectEdge = (id: string) => { setSelectedEdge(id); setSelected(null); };
 
   const insertTemplate = (tpl: BoardTemplate) => {
     const { nodes, edges } = placeTemplate(tpl, board.nodes);
@@ -276,12 +285,13 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
       if ((e.key === 'Delete' || e.key === 'Backspace') && selected) { e.preventDefault(); deleteNode(selected); }
-      if (e.key === 'Escape') { setSelected(null); setConnectFrom(null); }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedEdge) { e.preventDefault(); deleteEdge(selectedEdge); }
+      if (e.key === 'Escape') { setSelected(null); setSelectedEdge(null); setConnectFrom(null); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, board]);
+  }, [selected, selectedEdge, board]);
 
   const pathOf = (pts: [number, number][]) => pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0]},${p[1]}`).join(' ');
   const nodeById = (id: string) => board.nodes.find(n => n.id === id);
@@ -337,6 +347,14 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
         <button className="wb-tool" title="Deshacer último trazo" onClick={undoStroke} disabled={!board.strokes.length}><Undo2 size={16} /></button>
         <button className="wb-tool" title="Borrar seleccionado" onClick={() => selected && deleteNode(selected)} disabled={!selected}><Trash2 size={16} /></button>
         <button className="wb-clear" onClick={clearAll}>Vaciar</button>
+        {selectedEdge && (
+          <>
+            <span className="wb-sep" />
+            <span className="wb-hint">Flecha:</span>
+            <button className="wb-tool sm" title="Poner/editar texto en la flecha" onClick={() => editEdgeLabel(selectedEdge)}><Type size={14} /> Texto</button>
+            <button className="wb-tool" title="Borrar flecha" onClick={() => deleteEdge(selectedEdge)}><Trash2 size={16} /></button>
+          </>
+        )}
         {tool === 'connect' && <span className="wb-hint">{connectFrom ? 'Tocá el siguiente para conectarlo (podés seguir encadenando)' : 'Tocá el primer elemento a conectar'}</span>}
       </div>
 
@@ -347,13 +365,32 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
             const a = nodeById(e.from), b = nodeById(e.to);
             if (!a || !b) return null;
             const ax = a.x + a.w / 2, ay = a.y + a.h / 2, bx = b.x + b.w / 2, by = b.y + b.h / 2;
-            return <line key={e.id} x1={ax} y1={ay} x2={bx} y2={by} stroke="#818cf8" strokeWidth={2} markerEnd="url(#wb-arrow)" />;
+            const mx = (ax + bx) / 2, my = (ay + by) / 2;
+            const on = selectedEdge === e.id;
+            return (
+              <g key={e.id} style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                onPointerDown={ev => { ev.stopPropagation(); selectEdge(e.id); }}
+                onDoubleClick={ev => { ev.stopPropagation(); editEdgeLabel(e.id); }}>
+                {/* área de click invisible, más ancha que la línea */}
+                <line x1={ax} y1={ay} x2={bx} y2={by} stroke="transparent" strokeWidth={16} />
+                <line x1={ax} y1={ay} x2={bx} y2={by} stroke={on ? '#f472b6' : '#818cf8'} strokeWidth={on ? 3 : 2} markerEnd={on ? 'url(#wb-arrow-sel)' : 'url(#wb-arrow)'} />
+                {e.label && (
+                  <>
+                    <rect x={mx - e.label.length * 3.4 - 6} y={my - 10} width={e.label.length * 6.8 + 12} height={20} rx={5} fill="#1e1b4b" stroke={on ? '#f472b6' : '#818cf8'} strokeWidth={1} />
+                    <text x={mx} y={my + 4} textAnchor="middle" fontSize={11} fontWeight={600} fill="#e0e7ff">{e.label}</text>
+                  </>
+                )}
+              </g>
+            );
           })}
           {board.strokes.map(s => <path key={s.id} d={pathOf(s.points)} stroke={s.color} strokeWidth={s.width} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}
           {drawing && <path d={pathOf(drawing)} stroke={color} strokeWidth={2.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />}
           {guides.x != null && <line x1={guides.x} y1={0} x2={guides.x} y2={2600} stroke="#f472b6" strokeWidth={1.5} strokeDasharray="5 4" />}
           {guides.y != null && <line x1={0} y1={guides.y} x2={4000} y2={guides.y} stroke="#f472b6" strokeWidth={1.5} strokeDasharray="5 4" />}
-          <defs><marker id="wb-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#818cf8" /></marker></defs>
+          <defs>
+            <marker id="wb-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#818cf8" /></marker>
+            <marker id="wb-arrow-sel" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#f472b6" /></marker>
+          </defs>
         </svg>
 
         {board.nodes.map(n => {

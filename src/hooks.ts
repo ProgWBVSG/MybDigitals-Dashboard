@@ -4,7 +4,7 @@ import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client
   type Reminder, type NotifItem, type NotifSettings, NOTIF_DEFAULTS, fmtRel,
   type AppSettings, APP_SETTINGS_DEFAULTS, type HistoryEntry, type GuideTopic,
   type ContentPost, type ContentSource, type ContentAd, type ContentMetric, type ContentRef,
-  type ContentAccount, ACCOUNT_COLORS, DEFAULT_RHYTHM, shortcodeOf, type ContentStory, type Competitor,
+  type ContentAccount, ACCOUNT_COLORS, DEFAULT_RHYTHM, shortcodeOf, type ContentStory, type Competitor, type CustomHook,
   type Note, type Whiteboard, type BoardData, EMPTY_BOARD_DATA, REPEAT_LABELS, type NodeEvent, type BoardNode,
   type ClientPortal, type PortalConfig, type PortalUpdate, type PortalTicket,
   type StrategyDoc, type DocBlock } from './utils';
@@ -1233,6 +1233,53 @@ export function useContent(accountId: string | null = null) {
     generateScript, generateIdeas, generateViralScript, analyzeRef,
     igConnect, syncInstagram, refresh: load,
   };
+}
+
+// ─── GANCHOS PERSONALIZADOS (por cuenta de contenido) ───
+// Ganchos propios que Benjamín guarda para reusar. account_id null = general (sirve
+// para todas las cuentas). created_at es bigint epoch → NO pasar createdAt por mapToSnake.
+export function useCustomHooks(accountId: string | null) {
+  const [hooks, setHooks] = useState<CustomHook[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('content_hooks').select('*').order('created_at', { ascending: false });
+    if (data) setHooks(data.map(mapToCamel) as CustomHook[]);
+    setLoading(false);
+  }, []);
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('content_hooks_' + uuid())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_hooks' }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+
+  // Lo que se ve en una cuenta: sus ganchos + los generales (account_id null).
+  const scoped = useMemo(
+    () => hooks.filter(h => h.accountId === accountId || h.accountId === null),
+    [hooks, accountId],
+  );
+
+  const add = async (data: { text: string; driver?: string; note?: string; general?: boolean }): Promise<boolean> => {
+    const { error } = await supabase.from('content_hooks').insert({
+      account_id: data.general ? null : accountId,
+      text: data.text.trim(), driver: data.driver || 'curiosidad', note: (data.note || '').trim(),
+    });
+    if (error) { toast('No se pudo guardar el gancho: ' + error.message, 'error'); return false; }
+    toast('Gancho guardado'); return true;
+  };
+  const update = async (id: string, u: Partial<Pick<CustomHook, 'text' | 'driver' | 'note' | 'accountId'>>): Promise<boolean> => {
+    const patch: Record<string, unknown> = {};
+    if (u.text !== undefined) patch.text = u.text.trim();
+    if (u.driver !== undefined) patch.driver = u.driver;
+    if (u.note !== undefined) patch.note = u.note.trim();
+    if (u.accountId !== undefined) patch.account_id = u.accountId;
+    const { error } = await supabase.from('content_hooks').update(patch).eq('id', id);
+    if (error) { toast('No se pudo actualizar: ' + error.message, 'error'); return false; }
+    return true;
+  };
+  const remove = async (id: string) => { await supabase.from('content_hooks').delete().eq('id', id); };
+
+  return { hooks: scoped, allHooks: hooks, loading, add, update, remove };
 }
 
 // ─── ANÁLISIS DE COMPETENCIA ───

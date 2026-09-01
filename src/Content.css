@@ -448,6 +448,7 @@
 .gh-example .gh-copy { position: absolute; top: 7px; right: 7px; }
 .gh-copy { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 5px; flex-shrink: 0; }
 .gh-copy:hover { color: var(--primary-light); background: rgba(255,255,255,0.06); }
+.gh-general-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; color: #fbbf24; background: rgba(251,191,36,0.12); padding: 3px 7px; border-radius: 999px; white-space: nowrap; }
 
 .gh-layers { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
 .gh-layer { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }

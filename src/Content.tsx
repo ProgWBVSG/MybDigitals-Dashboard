@@ -115,7 +115,7 @@ export default function Content() {
         {tab === 'resumen' && <Resumen posts={c.posts} onGo={setTab} />}
         {tab === 'ideas' && <Ideas c={c} />}
         {tab === 'guiones' && <Guiones c={c} />}
-        {tab === 'ganchos' && <Ganchos />}
+        {tab === 'ganchos' && <Ganchos accountId={accountId} accountName={active?.name} />}
         {tab === 'referentes' && <Referentes c={c} />}
         {tab === 'tabla' && <Tabla c={c} />}
         {tab === 'pipeline' && <Pipeline c={c} />}
