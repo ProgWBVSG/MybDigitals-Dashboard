@@ -8,7 +8,7 @@ import {
 
 const empty: Omit<Skill, 'id' | 'createdAt' | 'updatedAt'> = {
   name: '', category: 'Frontend', level: 3, description: '',
-  assignedTo: [], color: '#6366f1', links: '',
+  assignedTo: [], color: '#969696', links: '',
   importance: 'recomendada', serviceTypes: [],
 };
 
@@ -63,7 +63,7 @@ export default function Skills() {
         level: 1,
         description: '',
         assignedTo: [],
-        color: '#6366f1',
+        color: '#969696',
         links: '',
         importance: 'recomendada',
         serviceTypes: [],
@@ -138,11 +138,11 @@ export default function Skills() {
                 }
               }}
               style={{ padding: '8px', borderRadius: '12px', background: 'transparent', transition: 'background 0.2s' }}
-              onDragEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.02)'; }}
+              onDragEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255, 255, 255,0.02)'; }}
               onDragLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
-                <FolderPlus size={20} style={{ color: 'var(--primary)' }} />
+                <FolderPlus size={20} style={{ color: 'var(--text-primary)' }} />
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{cat}</h2>
                 <span className="badge" style={{ marginLeft: 'auto' }}>{sks.length} items</span>
                 {sks.length === 0 && (
@@ -196,7 +196,7 @@ export default function Skills() {
                           const isVideo = url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo.com');
                           return (
                             <a key={i} href={url.startsWith('http') ? url : `https://${url}`} target="_blank" rel="noreferrer"
-                              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--primary)', textDecoration: 'none', background: 'rgba(59, 130, 246, 0.1)', padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-primary)', textDecoration: 'none', background: 'rgba(255, 255, 255, 0.1)', padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255, 255, 255, 0.2)' }}>
                               {isVideo ? <Video size={12} /> : <LinkIcon size={12} />}
                               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {isVideo ? 'Ver Video Tutorial' : 'Abrir Recurso / Archivo'}

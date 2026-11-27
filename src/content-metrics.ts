@@ -12,7 +12,7 @@ import type { ContentMetric } from './utils';
 export type Verdict = 'excelente' | 'bien' | 'flojo' | 'critico' | 'sin_datos';
 
 export const VERDICT_COLOR: Record<Verdict, string> = {
-  excelente: '#10b981', bien: '#84cc16', flojo: '#f59e0b', critico: '#ef4444', sin_datos: '#64748b',
+  excelente: '#969696', bien: '#b0b0b0', flojo: '#a6a6a6', critico: '#969696', sin_datos: '#727272',
 };
 export const VERDICT_LABEL: Record<Verdict, string> = {
   excelente: 'Excelente', bien: 'Bien', flojo: 'Flojo', critico: 'Crítico', sin_datos: 'Sin datos',

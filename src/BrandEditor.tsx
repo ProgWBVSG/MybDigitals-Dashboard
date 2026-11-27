@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Upload, Trash2, Plus, Image as ImageIcon } from 'lucide-react';
-import { supabase } from './supabase';
+import { db as supabase } from './base';
 import { toast } from './hooks';
 import { PROPOSAL_THEMES, type Brand } from './utils';
 

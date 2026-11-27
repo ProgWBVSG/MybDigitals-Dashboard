@@ -5,7 +5,7 @@ import {
   Map as MapIcon, ListChecks, Lock, DollarSign, Palette, Code2, Search, Rocket, Trophy, BookOpen, Plus,
 } from 'lucide-react';
 import { toast } from './hooks';
-import { supabase } from './supabase';
+import { db as supabase } from './base';
 import { buildAcuerdo } from './playbooks';
 import { STEP_GUIDES, PHASE_GUIDES, type StepGuide, type PhaseGuide } from './guides';
 import {
@@ -177,10 +177,10 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
       </div>
 
       {/* PASO 1 — Datos del cliente → genera Brief + Acuerdo */}
-      <div className="card card-3d" style={{ padding: 22, marginBottom: 20, border: '1.5px solid var(--primary)' }}>
+      <div className="card card-3d" style={{ padding: 22, marginBottom: 20, border: '1.5px solid var(--text-primary)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }} onClick={() => setDiscoveryOpen(v => !v)}>
           <h3 style={{ fontSize: 17, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Sparkles size={20} color="var(--primary-light)" /> Datos del cliente — Brief &amp; Acuerdo
+            <Sparkles size={20} color="var(--text-primary)" /> Datos del cliente — Brief &amp; Acuerdo
           </h3>
           <ChevronDown size={18} style={{ transform: discoveryOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s', color: 'var(--text-muted)' }} />
         </div>
@@ -217,7 +217,7 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
       <div className="card card-3d" style={{ padding: 20, marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <span style={{ fontSize: 14, fontWeight: 700 }}>Progreso general</span>
-          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary-light)' }}>{pct}%</span>
+          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>{pct}%</span>
         </div>
         <div className="onb-progress-bar" style={{ height: 12 }}>
           <div className="onb-progress-fill" style={{ width: `${pct}%` }} />
@@ -225,11 +225,11 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
 
         {/* Slots */}
         <div className="onb-slots">
-          <SlotInput icon={<LinkIcon size={14} color="#3b82f6" />} label="Carpeta Drive" value={slots.driveRootLink}
+          <SlotInput icon={<LinkIcon size={14} color="#969696" />} label="Carpeta Drive" value={slots.driveRootLink}
             onChange={v => setSlots(s => ({ ...s, driveRootLink: v }))} onBlur={() => saveSlot('driveRootLink')} onOpen={openExternal} placeholder="Link de la carpeta…" />
-          <SlotInput icon={<MessageCircle size={14} color="#25D366" />} label="Grupo WhatsApp" value={slots.whatsappLink}
+          <SlotInput icon={<MessageCircle size={14} color="#a6a6a6" />} label="Grupo WhatsApp" value={slots.whatsappLink}
             onChange={v => setSlots(s => ({ ...s, whatsappLink: v }))} onBlur={() => saveSlot('whatsappLink')} onOpen={openExternal} placeholder="Link de invitación…" />
-          <SlotInput icon={<Globe size={14} color="#f59e0b" />} label="Dominio" value={slots.domain}
+          <SlotInput icon={<Globe size={14} color="#a6a6a6" />} label="Dominio" value={slots.domain}
             onChange={v => setSlots(s => ({ ...s, domain: v }))} onBlur={() => saveSlot('domain')} onOpen={openExternal} placeholder="midominio.com" />
         </div>
 
@@ -352,7 +352,7 @@ export default function OnboardingDetail({ onboarding: o, onBack, update, update
                         <span className="badge" style={{ background: `${OWNER_COLORS[s.owner]}22`, color: OWNER_COLORS[s.owner], flexShrink: 0 }}>
                           {OWNER_LABELS[s.owner]}
                         </span>
-                        {s.assignedTo && <span className="avatar" title={s.assignedTo} style={{ width: 24, height: 24, fontSize: 11 }}>{s.assignedTo.charAt(0).toUpperCase()}</span>}
+                        {s.assignedTo && <span className="avatar" title={s.assignedTo} style={{ width: 24, height: 24, fontSize: 12 }}>{s.assignedTo.charAt(0).toUpperCase()}</span>}
                         {s.link && <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openExternal(s.link)}><ExternalLink size={14} /></button>}
                         <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setExpanded(isOpen ? null : s.id)}>
                           <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
@@ -559,8 +559,8 @@ function ProjectMap({ phases, progress, selected, onPick }: {
           </div>
           <div className="onb-map-ring">
             <svg width="46" height="46" viewBox="0 0 46 46">
-              <circle cx="23" cy="23" r="16" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
-              <circle cx="23" cy="23" r="16" fill="none" stroke="#818cf8" strokeWidth="4" strokeLinecap="round"
+              <circle cx="23" cy="23" r="16" fill="none" stroke="rgba(255, 255, 255,0.1)" strokeWidth="4" />
+              <circle cx="23" cy="23" r="16" fill="none" stroke="#f4f4f4" strokeWidth="4" strokeLinecap="round"
                 strokeDasharray={C} strokeDashoffset={C * (1 - progress / 100)} transform="rotate(-90 23 23)"
                 style={{ transition: 'stroke-dashoffset 1s ease' }} />
             </svg>
@@ -571,9 +571,9 @@ function ProjectMap({ phases, progress, selected, onPick }: {
         <svg viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="xMidYMid meet" className="onb-map-svg">
           <defs>
             <linearGradient id="onbPathGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#6366f1" />
-              <stop offset="55%" stopColor="#22d3ee" />
-              <stop offset="100%" stopColor="#10b981" />
+              <stop offset="0%" stopColor="#f4f4f4" />
+              <stop offset="55%" stopColor="#afafaf" />
+              <stop offset="100%" stopColor="#969696" />
             </linearGradient>
             <filter id="onbGlow" x="-40%" y="-40%" width="180%" height="180%">
               <feGaussianBlur stdDeviation="5" result="b" />
@@ -582,13 +582,13 @@ function ProjectMap({ phases, progress, selected, onPick }: {
           </defs>
           {/* estrellas */}
           {stars.map((s, i) => (
-            <circle key={i} cx={s.cx} cy={s.cy} r={s.r} fill="#cbd5e1" opacity={s.o}>
+            <circle key={i} cx={s.cx} cy={s.cy} r={s.r} fill="#d4d4d4" opacity={s.o}>
               <animate attributeName="opacity" values={`${s.o};${s.o * 0.25};${s.o}`} dur={`${s.dur}s`} repeatCount="indefinite" />
             </circle>
           ))}
           {/* camino base (la ruta por delante) */}
-          <path d={d} fill="none" stroke="#334155" strokeWidth={9} strokeLinecap="round" opacity={0.55} />
-          <path className="onb-road-march" d={d} fill="none" stroke="#475569" strokeWidth={3} strokeLinecap="round" strokeDasharray="1 18" opacity={0.8} />
+          <path d={d} fill="none" stroke="#353535" strokeWidth={9} strokeLinecap="round" opacity={0.55} />
+          <path className="onb-road-march" d={d} fill="none" stroke="#4e4e4e" strokeWidth={3} strokeLinecap="round" strokeDasharray="1 18" opacity={0.8} />
           {/* progreso (camino recorrido, con glow) */}
           <path d={d} fill="none" stroke="url(#onbPathGrad)" strokeWidth={7} strokeLinecap="round" filter="url(#onbGlow)"
             pathLength={100}
@@ -664,7 +664,7 @@ function PhasePanel({ ph, intro, onClose, toggleStep }: {
     <div className="onb-phasepanel">
       <div className="onb-phasepanel-head">
         <div>
-          <div className="onb-map-eyebrow" style={{ color: 'var(--primary-light)' }}>Fase {ph.phase} · {pct}% completada</div>
+          <div className="onb-map-eyebrow" style={{ color: 'var(--text-primary)' }}>Fase {ph.phase} · {pct}% completada</div>
           <h3 style={{ margin: '2px 0 0', fontSize: 18, fontWeight: 800 }}>{ph.name}</h3>
         </div>
         <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Cerrar"><X size={18} /></button>

@@ -11,7 +11,8 @@ import { uuid, type Skill, type Board, type TaskCard, type CalEvent, type Client
 import { decodeScript, isStructuredScript, totalSeconds } from './script';
 import { getPlaybook } from './playbooks';
 import { GUIDE_SEED } from './guideSeed';
-import { supabase } from './supabase';
+import { db as supabase } from './base';
+import type { Service, ServiceInput } from './services';
 
 // ─── TOAST ───
 type ToastType = 'success' | 'error' | 'info';
@@ -71,7 +72,7 @@ export function useSkills() {
   const load = useCallback(async () => {
     const { data, error } = await supabase.from('skills').select('*');
     if (!error && data) {
-      setSkills(data.map(d => {
+      setSkills(data.map((d: any) => {
         const camel = mapToCamel(d);
         let desc = camel.description || '';
         let links = '';
@@ -276,12 +277,12 @@ export function useClients() {
     const { data: notesData } = await supabase.from('client_notes').select('*');
 
     if (!errC && clientsData) {
-      setClients(clientsData.map(c => {
+      setClients(clientsData.map((c: any) => {
         const camel = mapToCamel(c);
         return {
           ...camel,
           contact: c.contact || { email: '', whatsapp: '', instagram: '' },
-          projects: projectsData ? projectsData.filter(p => p.client_id === c.id).map(p => {
+          projects: projectsData ? projectsData.filter((p: any) => p.client_id === c.id).map((p: any) => {
             const mappedProj = mapToCamel(p);
             let desc = mappedProj.description || '';
             let currency = 'ARS';
@@ -300,7 +301,7 @@ export function useClients() {
             } catch (e) {}
             return { ...mappedProj, description: desc, currency, links, paidPercentage };
           }) : [],
-          notes: notesData ? notesData.filter(n => n.client_id === c.id).map(mapToCamel).sort((a: any, b: any) => b.createdAt - a.createdAt) : []
+          notes: notesData ? notesData.filter((n: any) => n.client_id === c.id).map(mapToCamel).sort((a: any, b: any) => b.createdAt - a.createdAt) : []
         };
       }));
     }
@@ -415,7 +416,7 @@ export function useFinance() {
     const { data: goalData } = await supabase.from('goals').select('*');
     // 'date' es timestamptz (string ISO) y mapToCamel solo convierte created_at/updated_at
     // a epoch — se convierte acá para que el tipo Expense.date:number sea real.
-    if (expData) setExpenses(expData.map(e => { const c = mapToCamel(e); return { ...c, date: new Date(c.date).getTime() }; }));
+    if (expData) setExpenses(expData.map((e: any) => { const c = mapToCamel(e); return { ...c, date: new Date(c.date).getTime() }; }));
     if (goalData) setGoals(goalData.map(mapToCamel));
     setLoading(false);
   }, []);
@@ -479,14 +480,14 @@ export function useOnboardings() {
 
     if (!error && obData) {
       const nameOf = (id: string | null) => clientData?.find((c: any) => c.id === id)?.name || '';
-      setOnboardings(obData.map(o => {
+      setOnboardings(obData.map((o: any) => {
         const camel = mapToCamel(o);
         return {
           ...camel,
           clientName: o.client_id ? nameOf(o.client_id) : (o.product_name || ''),
-          steps: stepData ? stepData.filter(s => s.onboarding_id === o.id).map(mapToCamel).sort((a: any, b: any) => a.order - b.order) : [],
-          payments: payData ? payData.filter(p => p.onboarding_id === o.id).map(mapToCamel) : [],
-          documents: docData ? docData.filter(d => d.onboarding_id === o.id).map(mapToCamel) : [],
+          steps: stepData ? stepData.filter((s: any) => s.onboarding_id === o.id).map(mapToCamel).sort((a: any, b: any) => a.order - b.order) : [],
+          payments: payData ? payData.filter((p: any) => p.onboarding_id === o.id).map(mapToCamel) : [],
+          documents: docData ? docData.filter((d: any) => d.onboarding_id === o.id).map(mapToCamel) : [],
         };
       }));
     }
@@ -611,7 +612,7 @@ export function useProspects() {
   const load = useCallback(async () => {
     const { data, error } = await supabase.from('prospects').select('*');
     if (!error && data) {
-      setProspects(data.map(p => {
+      setProspects(data.map((p: any) => {
         const c = mapToCamel(p);
         return { ...c, contact: p.contact || {}, mint: p.mint || {}, prep: p.prep || {}, discovery: p.discovery || {}, proposal: p.proposal ?? null, brand: p.brand || {} };
       }));
@@ -1410,7 +1411,7 @@ export function useNotes() {
       return null;
     }
     const desc = note.repeatRule !== 'none' ? `Repite: ${REPEAT_LABELS[note.repeatRule]} (recordatorio manual, no se re-crea solo).` : 'Seguimiento de idea.';
-    const payload = { title: `💡 ${title}`, description: desc, startDate: note.followUpAt, endDate: note.followUpAt + 3600000, type: 'reminder' as const, assignedTo: [], relatedTaskId: null, color: '#a78bfa', allDay: false };
+    const payload = { title: `💡 ${title}`, description: desc, startDate: note.followUpAt, endDate: note.followUpAt + 3600000, type: 'reminder' as const, assignedTo: [], relatedTaskId: null, color: '#999999', allDay: false };
     if (note.calendarEventId) {
       await supabase.from('calendar_events').update(mapToSnake(payload)).eq('id', note.calendarEventId);
       return note.calendarEventId;
@@ -1699,6 +1700,55 @@ export const portalUploadSignedUrl = async (path: string): Promise<string | null
 };
 
 // ─── EXCHANGE RATE HOOK ───
+// ─── SERVICIOS (catálogo con precios) ───
+export function useServices() {
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);   // no se pudo leer (red o base pausada)
+
+  const load = useCallback(async () => {
+    const { data, error } = await supabase.from('services').select('*').order('sort').order('created_at');
+    setFailed(!!error);
+    if (data) setServices(data.map(mapToCamel) as Service[]);
+    setLoading(false);
+  }, []);
+  useEffect(() => {
+    load();
+    const ch = supabase.channel('services_' + uuid()).on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, load).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [load]);
+
+  const add = async (list: ServiceInput[]): Promise<boolean> => {
+    const { error } = await supabase.from('services').insert(list.map(mapToSnake));
+    if (error) { toast('No se pudo guardar: ' + error.message, 'error'); return false; }
+    await load();
+    return true;
+  };
+
+  // Si cambian los precios, el valor anterior queda en el historial del servicio.
+  const update = async (id: string, patch: Partial<ServiceInput>): Promise<boolean> => {
+    const cur = services.find(s => s.id === id);
+    if (!cur) return false;
+    const full: Partial<Service> = { ...patch };
+    if (patch.prices && JSON.stringify(patch.prices) !== JSON.stringify(cur.prices) && cur.prices.length) {
+      full.priceHistory = [{ at: Date.now(), prices: cur.prices }, ...(cur.priceHistory || [])].slice(0, 30);
+    }
+    setServices(l => l.map(s => s.id === id ? { ...s, ...full, updatedAt: Date.now() } as Service : s));
+    const { error } = await supabase.from('services').update({ ...mapToSnake(full), updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) { toast('No se pudo guardar: ' + error.message, 'error'); await load(); return false; }
+    return true;
+  };
+
+  const remove = async (id: string): Promise<boolean> => {
+    const { error } = await supabase.from('services').delete().eq('id', id);
+    if (error) { toast('No se pudo borrar: ' + error.message, 'error'); return false; }
+    setServices(l => l.filter(s => s.id !== id));
+    return true;
+  };
+
+  return { services, loading, failed, add, update, remove, refresh: load };
+}
+
 export function useExchangeRate() {
   const [rate, setRate] = useState<number>(1400); // Fallback
   useEffect(() => {

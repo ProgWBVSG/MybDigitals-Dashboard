@@ -115,12 +115,12 @@ export default function Competitors() {
                 )}
                 {(c.ads || []).map(ad => (
                   <div key={ad.id} className="cmp-ad">
-                    <div className="cmp-ad-head"><span className="ig-badge soft" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', fontSize: 11, padding: '2px 8px', borderRadius: 999 }}>{ad.formato}</span>
+                    <div className="cmp-ad-head"><span className="ig-badge soft" style={{ background: 'rgba(255, 255, 255,0.08)', color: 'var(--text-secondary)', fontSize: 12, padding: '2px 8px', borderRadius: 999 }}>{ad.formato}</span>
                       <button className="btn btn-ghost btn-icon btn-sm" onClick={() => removeAd(c, ad.id)}><Trash2 size={12} /></button></div>
                     <p><b>Gancho:</b> {ad.gancho}</p>
                     <p><b>Oferta:</b> {ad.oferta}</p>
                     <p><b>Por qué funciona:</b> {ad.porQue}</p>
-                    <p style={{ color: 'var(--primary-light)' }}><b>Adaptar:</b> {ad.adaptar}</p>
+                    <p style={{ color: 'var(--text-primary)' }}><b>Adaptar:</b> {ad.adaptar}</p>
                   </div>
                 ))}
               </div>

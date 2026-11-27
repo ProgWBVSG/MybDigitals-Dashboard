@@ -269,8 +269,8 @@ function GuideMap({ topics, isSeen, progress, onPick }: {
           </div>
           <div className="onb-map-ring">
             <svg width="46" height="46" viewBox="0 0 46 46">
-              <circle cx="23" cy="23" r="16" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
-              <circle cx="23" cy="23" r="16" fill="none" stroke="#818cf8" strokeWidth="4" strokeLinecap="round"
+              <circle cx="23" cy="23" r="16" fill="none" stroke="rgba(255, 255, 255,0.1)" strokeWidth="4" />
+              <circle cx="23" cy="23" r="16" fill="none" stroke="#f4f4f4" strokeWidth="4" strokeLinecap="round"
                 strokeDasharray={C} strokeDashoffset={C * (1 - progress / 100)} transform="rotate(-90 23 23)" style={{ transition: 'stroke-dashoffset .5s' }} />
             </svg>
             <span>{progress}%</span>
@@ -278,11 +278,11 @@ function GuideMap({ topics, isSeen, progress, onPick }: {
         </div>
         <svg className="onb-map-svg" viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="xMidYMid meet">
           {stars.map((s, i) => <circle key={i} cx={s.cx} cy={s.cy} r={s.r} fill="#fff" opacity={s.o} />)}
-          <path d={d} fill="none" stroke="rgba(129,140,248,0.18)" strokeWidth="10" strokeLinecap="round" />
+          <path d={d} fill="none" stroke="rgba(255, 255, 255,0.18)" strokeWidth="10" strokeLinecap="round" />
           <path d={d} fill="none" stroke="url(#guideGrad)" strokeWidth="3" strokeLinecap="round" strokeDasharray="2 10" />
           <defs>
             <linearGradient id="guideGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stopColor="#6366f1" /><stop offset="1" stopColor="#10b981" />
+              <stop offset="0" stopColor="#f4f4f4" /><stop offset="1" stopColor="#969696" />
             </linearGradient>
           </defs>
           {topics.map((t, i) => {
@@ -291,10 +291,10 @@ function GuideMap({ topics, isSeen, progress, onPick }: {
             const current = i === currentIdx;
             return (
               <g key={t.id} className="onb-node" onClick={() => onPick(t)} style={{ cursor: 'pointer' }}>
-                {current && <circle cx={p.x} cy={p.y} r="30" fill="none" stroke="#818cf8" strokeWidth="2" opacity="0.5" />}
-                <circle cx={p.x} cy={p.y} r="22" fill={done ? '#10b981' : current ? '#6366f1' : '#1e293b'} stroke={done ? '#10b981' : current ? '#818cf8' : 'rgba(255,255,255,0.15)'} strokeWidth="2" />
+                {current && <circle cx={p.x} cy={p.y} r="30" fill="none" stroke="#f4f4f4" strokeWidth="2" opacity="0.5" />}
+                <circle cx={p.x} cy={p.y} r="22" fill={done ? '#969696' : current ? '#f4f4f4' : '#1b1b1b'} stroke={done ? '#969696' : current ? '#f4f4f4' : 'rgba(255, 255, 255,0.15)'} strokeWidth="2" />
                 <text x={p.x} y={p.y} textAnchor="middle" dominantBaseline="central" fontSize="18">{t.emoji}</text>
-                <text x={p.x} y={p.y + 40} textAnchor="middle" fontSize="13" fill="#cbd5e1" fontWeight="600">{t.title.length > 18 ? t.title.slice(0, 17) + '…' : t.title}</text>
+                <text x={p.x} y={p.y + 40} textAnchor="middle" fontSize="13" fill="#d4d4d4" fontWeight="600">{t.title.length > 18 ? t.title.slice(0, 17) + '…' : t.title}</text>
               </g>
             );
           })}

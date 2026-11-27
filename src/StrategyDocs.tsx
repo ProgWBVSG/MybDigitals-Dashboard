@@ -8,7 +8,7 @@ import { useStrategyDocs, useClients, useSkills } from './hooks';
 import { DOC_TEMPLATES, type DocTemplate } from './docTemplates';
 import { DOC_CONNECTION_TABS, uuid, fmtRel, type DocBlock, type DocBlockType, type ConnTargetType, type StrategyDoc } from './utils';
 
-const CALLOUT_COLORS = ['#fef3c7', '#dbeafe', '#fce7f3', '#dcfce7', '#ede9fe'];
+const CALLOUT_COLORS = ['#f2f2f2', '#e8e8e8', '#ececec', '#f4f4f4', '#ebebeb'];
 const BLOCK_LABELS: Record<DocBlockType, { label: string; icon: React.ReactNode }> = {
   heading: { label: 'Título', icon: <Heading2 size={13} /> },
   paragraph: { label: 'Párrafo', icon: <Pilcrow size={13} /> },
@@ -19,7 +19,7 @@ const BLOCK_LABELS: Record<DocBlockType, { label: string; icon: React.ReactNode 
   divider: { label: 'Separador', icon: <Minus size={13} /> },
 };
 
-const DOC_TYPE_COLOR: Record<string, string> = { fuente: '#a78bfa', estrategia: '#60a5fa', contenido: '#f472b6', general: '#64748b' };
+const DOC_TYPE_COLOR: Record<string, string> = { fuente: '#999999', estrategia: '#9c9c9c', contenido: '#969696', general: '#7f7f7f' };
 
 // Editor de Documentos Estratégicos: a diferencia de la pizarra (canvas libre), esto es
 // una secuencia ORDENADA de bloques — para texto largo, citar una fuente externa (ej. una
@@ -72,7 +72,7 @@ export default function StrategyDocs({ onNavigate }: { onNavigate?: (tab: string
                 <strong>{d.title}</strong>
                 <button className="btn btn-ghost btn-icon btn-sm" onClick={e => { e.stopPropagation(); setConfirmDel(d.id); }}><Trash2 size={13} /></button>
               </div>
-              <span className="ig-badge soft" style={{ background: `${DOC_TYPE_COLOR[d.docType] || '#64748b'}22`, color: DOC_TYPE_COLOR[d.docType] || '#64748b' }}>{d.docType}</span>
+              <span className="ig-badge soft" style={{ background: `${DOC_TYPE_COLOR[d.docType] || '#7f7f7f'}22`, color: DOC_TYPE_COLOR[d.docType] || '#7f7f7f' }}>{d.docType}</span>
               <div className="strat-card-meta">{d.blocks.length} bloques · actualizado {fmtRel(d.updatedAt)}</div>
             </div>
           ))}
@@ -166,7 +166,7 @@ function DocEditor({ doc, clients, skills, onNavigate, onBack, onSaveBlocks, onR
         <button className="btn btn-ghost btn-icon btn-sm" onClick={onBack}><ArrowLeft size={16} /></button>
         <input className="sd-title-input" value={title} onChange={e => setTitle(e.target.value)} onBlur={titleBlur}
           onKeyDown={e => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()} placeholder="Título del documento" />
-        <span className="sd-tag" style={{ background: `${DOC_TYPE_COLOR[doc.docType] || '#64748b'}22`, color: DOC_TYPE_COLOR[doc.docType] || '#64748b' }}>{doc.docType}</span>
+        <span className="sd-tag" style={{ background: `${DOC_TYPE_COLOR[doc.docType] || '#7f7f7f'}22`, color: DOC_TYPE_COLOR[doc.docType] || '#7f7f7f' }}>{doc.docType}</span>
       </div>
 
       <div className="sd-page-wrap">

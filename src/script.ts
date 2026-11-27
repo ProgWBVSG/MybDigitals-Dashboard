@@ -20,7 +20,7 @@ export const SCRIPT_PHASE_LABELS: Record<ScriptPhase, string> = {
   hook: 'Hook', rehook: 'Re-hook', desarrollo: 'Desarrollo', cta: 'CTA', otro: 'Otro',
 };
 export const SCRIPT_PHASE_COLORS: Record<ScriptPhase, string> = {
-  hook: '#f9587a', rehook: '#f59e0b', desarrollo: '#6366f1', cta: '#10b981', otro: '#64748b',
+  hook: '#969696', rehook: '#a6a6a6', desarrollo: '#969696', cta: '#969696', otro: '#727272',
 };
 // Segundos sugeridos por fase (Kallaway: hook 0-3s, re-hook 3-7s, valor <12s).
 export const SCRIPT_PHASE_HINT: Record<ScriptPhase, string> = {

@@ -1,0 +1,61 @@
+/* Sistemas: el verde sólo marca lo que hay que cobrar o cortar ahora */
+.cl.sy { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.6fr) minmax(120px, .8fr) 172px; }
+.cl.sy.hot { box-shadow: inset 3px 0 0 var(--lima); }
+.sy-a { display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
+.sy-a .dis { opacity: .35; pointer-events: none; }
+.sy-none { font-size: 13px; color: var(--text-muted); }
+
+.sy-dots { display: flex; gap: 4px; }
+.sy-dots i { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--border-light); }
+.sy-dots i.pagado { background: var(--text-primary); border-color: var(--text-primary); }
+.sy-dots i.bonificado { background: var(--bg-hover); }
+.sy-dots i.vencido { background: var(--lima); border-color: var(--lima); }
+.sy-dots i.por_vencer { border-style: dashed; }
+
+.sy-state { justify-content: space-between; align-items: center; }
+.sy-state > div:first-child { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sy-state small { font-size: 13px; color: var(--text-muted); overflow-wrap: anywhere; }
+.cd-state.sy-state.hot small { color: inherit; opacity: .75; }
+.sy-state.hot .btn-primary, .sy-state.hot .btn-secondary { background: #0b0b0b; color: #fff; }
+.sy-state.hot .btn-ghost { color: #0b0b0b; } .sy-state.hot .btn-ghost:hover { background: rgba(0,0,0,.1); }
+
+.sy-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-bottom: 14px; }
+.sy-m { border: 1px solid var(--border); border-radius: 10px; padding: 8px 9px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sy-m b { font-size: 14px; font-weight: 650; text-transform: capitalize; }
+.sy-m span { font-size: 12.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sy-m.pagado { background: var(--bg-hover); }
+.sy-m.vencido { background: var(--lima); border-color: var(--lima); color: #0b0b0b; } .sy-m.vencido span { color: #0b0b0b; opacity: .75; }
+.sy-m.por_vencer { border-style: dashed; }
+
+.sy-link { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; color: inherit; text-decoration: none; margin-bottom: 8px; }
+.sy-link:hover { background: var(--bg-hover); }
+.sy-link div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sy-link b { font-weight: 600; } .sy-link span { font-size: 13.5px; color: var(--text-muted); overflow-wrap: anywhere; }
+
+.sy-f span { display: block; font-size: 13px; }
+.sy-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 8px; margin-top: 10px; align-items: center; }
+.sy-more { align-self: flex-start; margin-top: 6px; }
+.input.bad { border-color: #e5484d; }
+
+.sy-n { padding-right: 70px; } .sy-n .sy-nb { position: absolute; right: -6px; top: 6px; display: flex; } .sy-n .sy-nb .btn { position: static; }
+.sy-n.on p { font-weight: 600; } .sy-n.on .sy-nb .btn:first-child { color: var(--text-primary); }
+
+.sy-code { background: var(--bg-main); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-size: 12px; line-height: 1.5; overflow-x: auto; white-space: pre; margin: 10px 0; max-height: 240px; }
+
+.sy-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.sy-pick button { border: 1px solid var(--border); background: none; color: var(--text-secondary); font: inherit; font-size: 14px; padding: 8px 12px; border-radius: 10px; cursor: pointer; display: inline-flex; gap: 6px; align-items: baseline; min-height: 40px; }
+.sy-pick button em { font-style: normal; font-size: 12px; opacity: .7; }
+.sy-pick button.on { background: var(--text-primary); color: var(--bg-main); border-color: var(--text-primary); font-weight: 600; }
+.sy-pick button.late:not(.on) { border-color: var(--lima); }
+.sy-check { display: flex; gap: 10px; align-items: center; font-size: 15px; cursor: pointer; } .sy-check input { width: 18px; height: 18px; accent-color: var(--lima); }
+
+@media (max-width: 860px) { .sy-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 560px) {
+  .cl.sy { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; }
+  .cl.sy .cl-m { grid-column: 1; grid-row: 1; } .cl.sy .cl-s { grid-column: 1 / -1; grid-row: 2; }
+  .cl.sy .cl-b { grid-column: 1 / -1; grid-row: 3; flex-direction: row; justify-content: space-between; align-items: center; }
+  .cl.sy .sy-a { grid-column: 2; grid-row: 1; } .cl.sy .sy-a .btn-icon { grid-row: auto; grid-column: auto; }
+  .sy-state { flex-direction: column; align-items: stretch; } .sy-state .row .btn { flex: 1 1 auto; }
+  .sy-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sy-add { grid-template-columns: minmax(0, 1fr) auto; } .sy-add input:first-child { grid-column: 1 / -1; }
+}

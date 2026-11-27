@@ -2,7 +2,10 @@ import { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, X, Trash2, Target, CalendarPlus, MessageCircle, Sparkles, Presentation, Share2, Eye, UserCheck, Navigation, MapPin, Loader } from 'lucide-react';
 import { optimizeRoute, gmapsUrl, getMyLocation, type RoutePoint } from './route';
 import { useProspects, useClients, toast } from './hooks';
-import { supabase } from './supabase';
+import { db as supabase } from './base';
+import { newAgreement } from './AcuerdoEditor';
+import type { Agreement, ClientRow } from './negocio';
+import { goTo } from './rutas';
 import ProposalDeck from './ProposalDeck';
 import BrandEditor from './BrandEditor';
 import {
@@ -66,7 +69,7 @@ export default function PreVenta() {
     if (!detail?.shareToken) { setViews(null); return; }
     supabase.from('proposal_views').select('viewed_at', { count: 'exact' })
       .eq('token', detail.shareToken).order('viewed_at', { ascending: false }).limit(1)
-      .then(({ data, count }) => setViews({ count: count || 0, last: data?.[0]?.viewed_at || null }));
+      .then(({ data, count }: any) => setViews({ count: count || 0, last: data?.[0]?.viewed_at || null }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail?.shareToken]);
 
@@ -123,7 +126,7 @@ export default function PreVenta() {
       description: `Prospecto: ${p.business || p.name}. Pre-venta.`,
       start_date: p.meetingAt, end_date: p.meetingAt + 3600000,
       type: 'meeting', assigned_to: [], related_task_id: null,
-      color: '#8b5cf6', all_day: false,
+      color: '#969696', all_day: false,
     }]);
     if (error) toast('Error al crear el evento', 'error');
     else { update(p.id, { stage: p.stage === 'prospeccion' || p.stage === 'contacto' ? 'agendado' : p.stage }); toast('Evento creado en el calendario 📅'); }
@@ -149,24 +152,22 @@ export default function PreVenta() {
       if (p.notes?.trim()) lines.push('', 'Notas de pre-venta: ' + p.notes.trim());
       if (p.shareToken) lines.push('', 'Propuesta: ' + shareLink(p.shareToken));
 
-      const projects = d.servicio?.trim() ? [{
-        id: crypto.randomUUID(), name: d.servicio.trim(), description: 'Servicio acordado en la propuesta de pre-venta.',
-        status: 'pending' as const, value: 0, currency: 'ARS' as const, paidPercentage: 0,
-        startDate: Date.now(), endDate: null, links: '',
-      }] : [];
-
       const clientId = await createClient({
         name: p.business?.trim() || p.name,
         contact: { email: c.email || '', whatsapp: c.whatsapp || '', instagram: c.instagram || '' },
         status: 'active',
         totalRevenue: 0,
-        projects,
-      } as Parameters<typeof createClient>[0]);
+        projects: [],
+      } as unknown as Parameters<typeof createClient>[0]);
       if (!clientId) return; // createClient ya mostró el error
 
       await supabase.from('client_notes').insert({ id: crypto.randomUUID(), client_id: clientId, content: lines.join('\n'), created_at: Date.now() });
+      const { data: ags } = await supabase.from('agreements').select('*');
+      const cl = { id: clientId, name: p.business?.trim() || p.name, contact: c, status: 'active' } as ClientRow;
+      await supabase.from('agreements').insert({ ...newAgreement(cl, (ags || []) as Agreement[]), title: d.servicio?.trim() || '', client_data: { business: p.business || p.name, name: p.name, email: c.email || '', whatsapp: c.whatsapp || '' } });
       await update(p.id, { clientId, stage: 'ganado' });
-      toast('¡Cliente creado! Lo encontrás en la pestaña Clientes 🎉');
+      toast('Cliente creado, con su acuerdo en borrador');
+      goTo('clients/' + clientId);
     } catch (e) {
       toast('No se pudo convertir: ' + ((e as Error)?.message || e), 'error');
     } finally {
@@ -256,7 +257,7 @@ export default function PreVenta() {
                     </div>
                     <div className="col-cards">
                       {cards.map(p => (
-                        <div key={p.id} className="task-card" style={{ cursor: 'pointer', borderColor: detail?.id === p.id ? 'var(--primary)' : undefined }} onClick={() => setDetail(p)}>
+                        <div key={p.id} className="task-card" style={{ cursor: 'pointer', borderColor: detail?.id === p.id ? 'var(--text-primary)' : undefined }} onClick={() => setDetail(p)}>
                           <div className="card-title"><span>{p.name}</span></div>
                           {p.business && <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 6px' }}>{p.business}</p>}
                           {p.meetingAt && (
@@ -271,8 +272,8 @@ export default function PreVenta() {
             </div>
             {(won.length > 0 || lost.length > 0) && (
               <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-                {won.map(p => <button key={p.id} className="filter-chip" style={{ borderColor: '#10b981', color: '#10b981' }} onClick={() => setDetail(p)}>✓ {p.name}</button>)}
-                {lost.map(p => <button key={p.id} className="filter-chip" style={{ borderColor: '#ef4444', color: '#ef4444', opacity: 0.7 }} onClick={() => setDetail(p)}>✕ {p.name}</button>)}
+                {won.map(p => <button key={p.id} className="filter-chip" style={{ borderColor: '#969696', color: '#969696' }} onClick={() => setDetail(p)}>✓ {p.name}</button>)}
+                {lost.map(p => <button key={p.id} className="filter-chip" style={{ borderColor: '#969696', color: '#969696', opacity: 0.7 }} onClick={() => setDetail(p)}>✕ {p.name}</button>)}
               </div>
             )}
           </>
@@ -323,7 +324,7 @@ export default function PreVenta() {
               </div>
               {contactL.whatsapp && (
                 <a className="btn btn-secondary btn-sm" href={waLink()} target="_blank" rel="noreferrer" style={{ width: '100%', justifyContent: 'center' }}>
-                  <MessageCircle size={14} color="#25D366" /> Escribir por WhatsApp
+                  <MessageCircle size={14} color="#a6a6a6" /> Escribir por WhatsApp
                 </a>
               )}
             </Section>
@@ -349,7 +350,7 @@ export default function PreVenta() {
                   <div key={f.key} className="input-group" style={{ marginBottom: 10 }}>
                     <label style={{ textTransform: 'none', letterSpacing: 0 }}>
                       {f.label}{f.req && <span style={{ color: 'var(--danger)' }}> *</span>}
-                      {faltante && <span style={{ color: 'var(--danger)', fontSize: 10, fontWeight: 600, marginLeft: 6 }}>(falta)</span>}
+                      {faltante && <span style={{ color: 'var(--danger)', fontSize: 12, fontWeight: 600, marginLeft: 6 }}>(falta)</span>}
                     </label>
                     {f.big ? (
                       <textarea className="textarea" placeholder={f.ph} value={disc[f.key] || ''}
@@ -384,11 +385,11 @@ export default function PreVenta() {
                   </button>
                   {detail.shareToken && (
                     <input className="input" readOnly value={shareLink(detail.shareToken)} onClick={e => { (e.target as HTMLInputElement).select(); compartirPropuesta(detail); }}
-                      style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer' }} title="Click para copiar" />
+                      style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }} title="Click para copiar" />
                   )}
-                  {detail.shareExpires && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>🔗 Aislado del dashboard · vence el {fmt(detail.shareExpires)}</div>}
+                  {detail.shareExpires && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>🔗 Aislado del dashboard · vence el {fmt(detail.shareExpires)}</div>}
                   {views && (
-                    <div style={{ fontSize: 11, marginTop: 6, display: 'flex', alignItems: 'center', gap: 5, color: views.count ? 'var(--secondary)' : 'var(--text-muted)' }}>
+                    <div style={{ fontSize: 12, marginTop: 6, display: 'flex', alignItems: 'center', gap: 5, color: views.count ? 'var(--secondary)' : 'var(--text-muted)' }}>
                       <Eye size={12} /> {views.count
                         ? `La abrió ${views.count} ${views.count === 1 ? 'vez' : 'veces'}${views.last ? ' · última: ' + fmt(new Date(views.last).getTime()) : ''}`
                         : 'Todavía no la abrió'}
@@ -401,7 +402,7 @@ export default function PreVenta() {
                     <Sparkles size={15} /> {generatingProp ? 'Armando la presentación…' : 'Generar propuesta con IA'}
                   </button>
                   {missing.length > 0 && (
-                    <div style={{ fontSize: 11, color: 'var(--warning)', marginTop: 7, lineHeight: 1.4 }}>
+                    <div style={{ fontSize: 12, color: 'var(--warning)', marginTop: 7, lineHeight: 1.4 }}>
                       Completá para habilitar: {missing.map(m => m.label).join(', ')}
                     </div>
                   )}
@@ -423,7 +424,7 @@ export default function PreVenta() {
             <Section title="Preparación previa">
               {PREP_ITEMS.map(item => (
                 <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', cursor: 'pointer', fontSize: 13 }}>
-                  <input type="checkbox" style={{ accentColor: 'var(--primary)', width: 16, height: 16 }}
+                  <input type="checkbox" style={{ accentColor: 'var(--text-primary)', width: 16, height: 16 }}
                     checked={!!prepL[item.key]}
                     onChange={e => { const np = { ...prepL, [item.key]: e.target.checked }; setPrepL(np); update(detail.id, { prep: np }); }} />
                   <span style={{ color: prepL[item.key] ? 'var(--text-muted)' : 'var(--text-secondary)', textDecoration: prepL[item.key] ? 'line-through' : 'none' }}>{item.label}</span>
@@ -541,7 +542,7 @@ export default function PreVenta() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 22 }}>
-      <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 10px' }}>{title}</h4>
+      <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 1, margin: '0 0 10px' }}>{title}</h4>
       {children}
     </div>
   );

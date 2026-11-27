@@ -154,7 +154,7 @@ export default function Tasks() {
                       {(card.clientId || card.tags.length > 0) && (
                         <div className="tags">
                           {card.clientId && (
-                            <span className="tag" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: card.portalVisible ? 'var(--primary)' : undefined, color: card.portalVisible ? '#fff' : undefined }}
+                            <span className="tag" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: card.portalVisible ? 'var(--text-primary)' : undefined, color: card.portalVisible ? 'var(--bg-main)' : undefined }}
                               title={card.portalVisible ? 'Visible en su portal' : 'Asignada al cliente, no visible en el portal'}>
                               {card.portalVisible && <DoorOpen size={10} />}{clientName(card.clientId)}
                             </span>

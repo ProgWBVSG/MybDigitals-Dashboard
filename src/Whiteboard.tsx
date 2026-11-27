@@ -373,11 +373,11 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
                 onDoubleClick={ev => { ev.stopPropagation(); editEdgeLabel(e.id); }}>
                 {/* área de click invisible, más ancha que la línea */}
                 <line x1={ax} y1={ay} x2={bx} y2={by} stroke="transparent" strokeWidth={16} />
-                <line x1={ax} y1={ay} x2={bx} y2={by} stroke={on ? '#f472b6' : '#818cf8'} strokeWidth={on ? 3 : 2} markerEnd={on ? 'url(#wb-arrow-sel)' : 'url(#wb-arrow)'} />
+                <line x1={ax} y1={ay} x2={bx} y2={by} stroke={on ? '#969696' : '#969696'} strokeWidth={on ? 3 : 2} markerEnd={on ? 'url(#wb-arrow-sel)' : 'url(#wb-arrow)'} />
                 {e.label && (
                   <>
-                    <rect x={mx - e.label.length * 3.4 - 6} y={my - 10} width={e.label.length * 6.8 + 12} height={20} rx={5} fill="#1e1b4b" stroke={on ? '#f472b6' : '#818cf8'} strokeWidth={1} />
-                    <text x={mx} y={my + 4} textAnchor="middle" fontSize={11} fontWeight={600} fill="#e0e7ff">{e.label}</text>
+                    <rect x={mx - e.label.length * 3.4 - 6} y={my - 10} width={e.label.length * 6.8 + 12} height={20} rx={5} fill="#1f1f1f" stroke={on ? '#969696' : '#969696'} strokeWidth={1} />
+                    <text x={mx} y={my + 4} textAnchor="middle" fontSize={11} fontWeight={600} fill="#e7e7e7">{e.label}</text>
                   </>
                 )}
               </g>
@@ -385,11 +385,11 @@ export default function Whiteboard({ data, onSave, automation, boardId, clients 
           })}
           {board.strokes.map(s => <path key={s.id} d={pathOf(s.points)} stroke={s.color} strokeWidth={s.width} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}
           {drawing && <path d={pathOf(drawing)} stroke={color} strokeWidth={2.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />}
-          {guides.x != null && <line x1={guides.x} y1={0} x2={guides.x} y2={2600} stroke="#f472b6" strokeWidth={1.5} strokeDasharray="5 4" />}
-          {guides.y != null && <line x1={0} y1={guides.y} x2={4000} y2={guides.y} stroke="#f472b6" strokeWidth={1.5} strokeDasharray="5 4" />}
+          {guides.x != null && <line x1={guides.x} y1={0} x2={guides.x} y2={2600} stroke="#969696" strokeWidth={1.5} strokeDasharray="5 4" />}
+          {guides.y != null && <line x1={0} y1={guides.y} x2={4000} y2={guides.y} stroke="#969696" strokeWidth={1.5} strokeDasharray="5 4" />}
           <defs>
-            <marker id="wb-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#818cf8" /></marker>
-            <marker id="wb-arrow-sel" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#f472b6" /></marker>
+            <marker id="wb-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#969696" /></marker>
+            <marker id="wb-arrow-sel" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#969696" /></marker>
           </defs>
         </svg>
 

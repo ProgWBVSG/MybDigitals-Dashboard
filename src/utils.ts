@@ -66,10 +66,10 @@ export const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 export const PRIORITY_LABELS: Record<string, string> = { low: 'Baja', medium: 'Media', high: 'Alta', urgent: 'Urgente' };
 export const EVENT_TYPES = ['meeting', 'deadline', 'reminder', 'task'] as const;
 export const EVENT_LABELS: Record<string, string> = { meeting: 'Reunión', deadline: 'Fecha límite', reminder: 'Recordatorio', task: 'Tarea' };
-export const COLORS = ['#6366f1', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
+export const COLORS = ['#969696', '#969696', '#969696', '#a6a6a6', '#969696', '#969696', '#969696', '#969696'];
 export const CLIENT_STATUSES = ['prospect', 'active', 'completed', 'paused'] as const;
 export const CLIENT_STATUS_LABELS: Record<string, string> = { prospect: 'Prospecto', active: 'Activo', completed: 'Completado', paused: 'Pausado' };
-export const CLIENT_STATUS_COLORS: Record<string, string> = { prospect: '#f59e0b', active: '#10b981', completed: '#6366f1', paused: '#64748b' };
+export const CLIENT_STATUS_COLORS: Record<string, string> = { prospect: '#a6a6a6', active: '#969696', completed: '#969696', paused: '#727272' };
 export const PROJECT_STATUSES = ['pending', 'in_progress', 'delivered', 'cancelled'] as const;
 export const PROJECT_STATUS_LABELS: Record<string, string> = { pending: 'Pendiente', in_progress: 'En curso', delivered: 'Entregado', cancelled: 'Cancelado' };
 
@@ -90,16 +90,16 @@ export const SERVICE_AVAILABLE: Record<ServiceType, boolean> = {
 
 export const ONBOARDING_STATUSES = ['active', 'paused', 'launched', 'archived'] as const;
 export const ONBOARDING_STATUS_LABELS: Record<string, string> = { active: 'En curso', paused: 'Pausado', launched: 'Lanzado', archived: 'Archivado' };
-export const ONBOARDING_STATUS_COLORS: Record<string, string> = { active: '#10b981', paused: '#64748b', launched: '#6366f1', archived: '#475569' };
+export const ONBOARDING_STATUS_COLORS: Record<string, string> = { active: '#969696', paused: '#727272', launched: '#969696', archived: '#535353' };
 
 export const STEP_STATUSES = ['pending', 'in_progress', 'done', 'blocked', 'skipped'] as const;
 export type StepStatus = typeof STEP_STATUSES[number];
 export const STEP_STATUS_LABELS: Record<StepStatus, string> = { pending: 'Pendiente', in_progress: 'En proceso', done: 'Hecho', blocked: 'Bloqueado', skipped: 'Omitido' };
-export const STEP_STATUS_COLORS: Record<StepStatus, string> = { pending: '#64748b', in_progress: '#3b82f6', done: '#10b981', blocked: '#ef4444', skipped: '#475569' };
+export const STEP_STATUS_COLORS: Record<StepStatus, string> = { pending: '#727272', in_progress: '#969696', done: '#969696', blocked: '#969696', skipped: '#535353' };
 
 export type StepOwner = 'myb' | 'client' | 'both';
 export const OWNER_LABELS: Record<StepOwner, string> = { myb: 'MYB', client: 'Cliente', both: 'Ambos' };
-export const OWNER_COLORS: Record<StepOwner, string> = { myb: '#6366f1', client: '#f59e0b', both: '#14b8a6' };
+export const OWNER_COLORS: Record<StepOwner, string> = { myb: '#969696', client: '#a6a6a6', both: '#969696' };
 
 export const DOC_TYPES = ['acuerdo', 'brief', 'kb_ia', 'guia_admin', 'feedback', 'testimonios', 'credenciales'] as const;
 export type DocType = typeof DOC_TYPES[number];
@@ -114,14 +114,14 @@ export const DOC_LABELS: Record<DocType, string> = {
 };
 
 // ─── CURRENCY ───
-export const fmtMoney = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
-export const fmtUSD = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+export const fmtMoney = (n: number) => (n < 0 ? '-$' : '$') + new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Math.abs(n));
+export const fmtUSD = (n: number) => 'US$' + new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n);
 
 // ─── TYPES ───
 export const SKILL_IMPORTANCE = ['critica', 'recomendada', 'opcional'] as const;
 export type SkillImportance = typeof SKILL_IMPORTANCE[number];
 export const SKILL_IMPORTANCE_LABELS: Record<SkillImportance, string> = { critica: 'Usar sí o sí', recomendada: 'Recomendada', opcional: 'No prioritaria' };
-export const SKILL_IMPORTANCE_COLORS: Record<SkillImportance, string> = { critica: '#ef4444', recomendada: '#f59e0b', opcional: '#64748b' };
+export const SKILL_IMPORTANCE_COLORS: Record<SkillImportance, string> = { critica: '#969696', recomendada: '#a6a6a6', opcional: '#727272' };
 // Para qué tipo de proyecto aplica cada skill (además de los servicios de Onboarding, "general" = todos)
 export const SKILL_PROJECT_TYPES = ['general', ...SERVICE_TYPES] as const;
 export const SKILL_PROJECT_LABELS: Record<string, string> = { general: 'Todo proyecto', ...SERVICE_LABELS };
@@ -324,11 +324,11 @@ export interface HistoryEntry {
   createdAt: number;
 }
 export const HISTORY_KINDS: { key: HistoryKind; label: string; color: string }[] = [
-  { key: 'pago', label: 'Cobro recibido', color: '#10b981' },
-  { key: 'entrega', label: 'Entrega / lo que hicimos', color: '#6366f1' },
-  { key: 'recibido', label: 'Recibido del cliente', color: '#0ea5e9' },
-  { key: 'gasto', label: 'Gasto de la agencia', color: '#ef4444' },
-  { key: 'nota', label: 'Nota', color: '#64748b' },
+  { key: 'pago', label: 'Cobro recibido', color: '#969696' },
+  { key: 'entrega', label: 'Entrega / lo que hicimos', color: '#969696' },
+  { key: 'recibido', label: 'Recibido del cliente', color: '#969696' },
+  { key: 'gasto', label: 'Gasto de la agencia', color: '#969696' },
+  { key: 'nota', label: 'Nota', color: '#727272' },
 ];
 export const HISTORY_KIND_LABELS: Record<HistoryKind, string> = Object.fromEntries(HISTORY_KINDS.map(k => [k.key, k.label])) as Record<HistoryKind, string>;
 
@@ -370,11 +370,11 @@ export interface ContentIdea {
 // domingo: grabar en tanda y buscar referencias).
 export type DayRole = 'publicar' | 'grabar' | 'buscar';
 export const DAY_ROLES: { key: DayRole; label: string; short: string; color: string; icon: string; hint: string }[] = [
-  { key: 'publicar', label: 'Publicar', short: 'Subir', color: '#10b981', icon: '▲',
+  { key: 'publicar', label: 'Publicar', short: 'Subir', color: '#969696', icon: '▲',
     hint: 'Sale una pieza. Si el día no tiene ninguna asignada, te lo aviso.' },
-  { key: 'grabar', label: 'Grabar', short: 'Grabar', color: '#f9587a', icon: '●',
+  { key: 'grabar', label: 'Grabar', short: 'Grabar', color: '#969696', icon: '●',
     hint: 'Día de cámara. Junta todo lo que esté listo para grabar en una sola sesión.' },
-  { key: 'buscar', label: 'Buscar contenido', short: 'Buscar', color: '#6366f1', icon: '◆',
+  { key: 'buscar', label: 'Buscar contenido', short: 'Buscar', color: '#969696', icon: '◆',
     hint: 'Guardar referentes, anotar ideas, revisar qué está funcionando.' },
 ];
 export const DAY_ROLE_MAP: Record<DayRole, typeof DAY_ROLES[number]> =
@@ -395,7 +395,7 @@ export const DEFAULT_RHYTHM: Rhythm = {
 export const mondayIndex = (d: Date): number => (d.getDay() + 6) % 7;
 
 // Paleta para distinguir cuentas de un vistazo en el selector y las tarjetas.
-export const ACCOUNT_COLORS = ['#f9587a', '#6366f1', '#10b981', '#f59e0b', '#a64bf4', '#06b6d4', '#ef4444', '#84cc16'];
+export const ACCOUNT_COLORS = ['#969696', '#969696', '#969696', '#a6a6a6', '#969696', '#969696', '#969696', '#b0b0b0'];
 
 export type ContentStatus = 'borrador' | 'aprobado' | 'listo' | 'publicado';
 export type ContentFormat = 'reel' | 'carrusel' | 'story' | 'ad';
@@ -405,9 +405,9 @@ export type ContentKind = 'organico' | 'anuncio';
 // (reel/carrusel) sino la intención — el "Formato" de la planilla de guiones.
 export type ContentAngle = 'valor' | 'tendencia' | 'venta';
 export const CONTENT_ANGLES: { key: ContentAngle; label: string; color: string; hint: string }[] = [
-  { key: 'valor', label: 'Valor', color: '#6366f1', hint: 'Enseña algo concreto y accionable. Construye autoridad y guardados.' },
-  { key: 'tendencia', label: 'Tendencia', color: '#f59e0b', hint: 'Monta una ola existente (audio, formato, tema). Busca alcance nuevo.' },
-  { key: 'venta', label: 'Venta', color: '#10b981', hint: 'Empuja hacia la oferta. Menor alcance, mayor intención.' },
+  { key: 'valor', label: 'Valor', color: '#969696', hint: 'Enseña algo concreto y accionable. Construye autoridad y guardados.' },
+  { key: 'tendencia', label: 'Tendencia', color: '#a6a6a6', hint: 'Monta una ola existente (audio, formato, tema). Busca alcance nuevo.' },
+  { key: 'venta', label: 'Venta', color: '#969696', hint: 'Empuja hacia la oferta. Menor alcance, mayor intención.' },
 ];
 export const CONTENT_ANGLE_LABELS: Record<ContentAngle, string> = Object.fromEntries(CONTENT_ANGLES.map(a => [a.key, a.label])) as Record<ContentAngle, string>;
 
@@ -510,10 +510,10 @@ export const shortcodeOf = (url: string): string => {
 // ─── REFERENTES (swipe file) ───
 export type RefCategory = 'venta' | 'tendencia' | 'viral' | 'educativo';
 export const REF_CATEGORIES: { key: RefCategory; label: string; color: string }[] = [
-  { key: 'venta', label: 'Venta', color: '#10b981' },
-  { key: 'tendencia', label: 'Tendencia', color: '#f59e0b' },
-  { key: 'viral', label: 'Viral', color: '#f9587a' },
-  { key: 'educativo', label: 'Educativo', color: '#6366f1' },
+  { key: 'venta', label: 'Venta', color: '#969696' },
+  { key: 'tendencia', label: 'Tendencia', color: '#a6a6a6' },
+  { key: 'viral', label: 'Viral', color: '#969696' },
+  { key: 'educativo', label: 'Educativo', color: '#969696' },
 ];
 export const REF_CATEGORY_LABELS: Record<RefCategory, string> = Object.fromEntries(REF_CATEGORIES.map(r => [r.key, r.label])) as Record<RefCategory, string>;
 export const REF_PLATFORMS = ['Instagram', 'TikTok', 'YouTube Shorts'];
@@ -607,12 +607,12 @@ export interface GuideTopic {
   updatedAt: number;
 }
 export const GUIDE_CATEGORIES: { key: GuideCategory; label: string; emoji: string; color: string }[] = [
-  { key: 'marca', label: 'Marca & Posicionamiento', emoji: '🎯', color: '#6366f1' },
-  { key: 'comercial', label: 'Comercial & Ventas', emoji: '💼', color: '#10b981' },
-  { key: 'entrega', label: 'Entrega & Operaciones', emoji: '🚀', color: '#0ea5e9' },
-  { key: 'tecnico', label: 'Técnico & Herramientas', emoji: '🛠️', color: '#f59e0b' },
-  { key: 'crecimiento', label: 'Crecimiento & Marketing', emoji: '📈', color: '#d946ef' },
-  { key: 'finanzas', label: 'Finanzas & Gestión', emoji: '💰', color: '#64748b' },
+  { key: 'marca', label: 'Marca & Posicionamiento', emoji: '🎯', color: '#969696' },
+  { key: 'comercial', label: 'Comercial & Ventas', emoji: '💼', color: '#969696' },
+  { key: 'entrega', label: 'Entrega & Operaciones', emoji: '🚀', color: '#969696' },
+  { key: 'tecnico', label: 'Técnico & Herramientas', emoji: '🛠️', color: '#a6a6a6' },
+  { key: 'crecimiento', label: 'Crecimiento & Marketing', emoji: '📈', color: '#969696' },
+  { key: 'finanzas', label: 'Finanzas & Gestión', emoji: '💰', color: '#727272' },
 ];
 export const GUIDE_CAT_MAP = Object.fromEntries(GUIDE_CATEGORIES.map(c => [c.key, c])) as Record<GuideCategory, typeof GUIDE_CATEGORIES[number]>;
 
@@ -664,8 +664,8 @@ export const PRESALE_STAGE_LABELS: Record<PresaleStage, string> = {
   calificacion: 'Calificación', propuesta: 'Propuesta', ganado: 'Ganado', perdido: 'Perdido',
 };
 export const PRESALE_STAGE_COLORS: Record<PresaleStage, string> = {
-  prospeccion: '#64748b', contacto: '#3b82f6', agendado: '#f59e0b', reunion: '#8b5cf6',
-  calificacion: '#6366f1', propuesta: '#14b8a6', ganado: '#10b981', perdido: '#ef4444',
+  prospeccion: '#727272', contacto: '#969696', agendado: '#a6a6a6', reunion: '#969696',
+  calificacion: '#969696', propuesta: '#969696', ganado: '#969696', perdido: '#969696',
 };
 // Columnas del pipeline (las etapas activas; ganado/perdido se manejan aparte)
 export const PRESALE_PIPELINE: PresaleStage[] = ['prospeccion', 'contacto', 'agendado', 'reunion', 'calificacion', 'propuesta'];
@@ -803,10 +803,10 @@ export type BoardKind = 'idea' | 'embudo';
 export type BoardShape = 'sticky' | 'box' | 'ellipse' | 'diamond' | 'link' | 'video' | 'image' | 'videoFile';
 export type NodeStageStatus = 'pending' | 'active' | 'done' | 'blocked';
 export const NODE_STAGE_STATUSES: { key: NodeStageStatus; label: string; color: string }[] = [
-  { key: 'pending', label: 'Sin empezar', color: '#64748b' },
-  { key: 'active', label: 'En curso', color: '#3b82f6' },
-  { key: 'done', label: 'Completado', color: '#10b981' },
-  { key: 'blocked', label: 'Trabado', color: '#ef4444' },
+  { key: 'pending', label: 'Sin empezar', color: '#727272' },
+  { key: 'active', label: 'En curso', color: '#969696' },
+  { key: 'done', label: 'Completado', color: '#969696' },
+  { key: 'blocked', label: 'Trabado', color: '#969696' },
 ];
 export interface BoardNode {
   id: string; x: number; y: number; w: number; h: number; text: string; color: string; shape: BoardShape;
@@ -827,7 +827,7 @@ export interface Whiteboard {
   data: BoardData; createdAt: number; updatedAt: number;
 }
 export const EMPTY_BOARD_DATA: BoardData = { nodes: [], edges: [], strokes: [] };
-export const BOARD_STICKY_COLORS = ['#facc15', '#fb923c', '#f472b6', '#a78bfa', '#60a5fa', '#4ade80', '#f8fafc'];
+export const BOARD_STICKY_COLORS = ['#c9c9c9', '#a2a2a2', '#969696', '#999999', '#9c9c9c', '#b8b8b8', '#fafafa'];
 
 // Log de disparos manuales de automatización (botón "Disparar" en el panel del nodo)
 export interface NodeEvent {

@@ -1,6 +1,7 @@
 import { SlidersHorizontal, Clock } from 'lucide-react';
 import { useAppSettings } from './hooks';
 import type { AppSettings } from './utils';
+import Datos from './Datos';
 
 // Centro de configuración: normativas de plazos compartidas por el equipo.
 export default function Settings() {
@@ -13,7 +14,7 @@ export default function Settings() {
   ];
 
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto' }}>
+    <div style={{ maxWidth: 720 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
         <SlidersHorizontal size={22} />
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Configuración</h2>
@@ -40,8 +41,9 @@ export default function Settings() {
       </div>
 
       <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 16, lineHeight: 1.5 }}>
-        💡 Estos plazos se calculan desde que la tarea se vuelve la actual (al completar el paso anterior) o desde el arranque del onboarding. Igual podés ponerle una fecha límite manual a un paso o pago puntual desde su ficha.
+        Estos plazos se calculan desde que la tarea se vuelve la actual (al completar el paso anterior) o desde el arranque del onboarding. Igual podés ponerle una fecha límite manual a un paso o pago puntual desde su ficha.
       </p>
+      <Datos />
     </div>
   );
 }

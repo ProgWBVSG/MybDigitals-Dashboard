@@ -1,64 +1,52 @@
 import { useState } from 'react';
-import { Lock, LogIn } from 'lucide-react';
-import { supabase } from './supabase';
+import { PEOPLE, post, whoAmI, type Me, type Person } from './base';
+import { Logo } from './Shell';
 
-// Pantalla de login (Supabase Auth). La base sólo responde a la cuenta autorizada
-// (RLS por email), así que sin sesión válida no se puede leer ni escribir nada.
-export default function Login() {
-  const [email, setEmail] = useState('');
+// Entrada en la nube: cada uno con su contraseña. La primera vez se crean las dos.
+export default function Login({ me, onDone }: { me: Me; onDone: (m: Me) => void }) {
+  const [user, setUser] = useState<Person>('benja');
   const [pass, setPass] = useState('');
-  const [mode, setMode] = useState<'in' | 'up'>('in');
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
+  const [first, setFirst] = useState(!!me.first);
+  const [code, setCode] = useState(''); const [a, setA] = useState(''); const [b, setB] = useState('');
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
 
-  const submit = async () => {
-    setErr('');
-    if (!email.trim() || !pass) { setErr('Completá email y contraseña.'); return; }
-    setBusy(true);
-    try {
-      const fn = mode === 'in'
-        ? supabase.auth.signInWithPassword({ email: email.trim(), password: pass })
-        : supabase.auth.signUp({ email: email.trim(), password: pass });
-      const { error } = await fn;
-      if (error) { setErr(traducir(error.message)); return; }
-      // onAuthStateChange en App reacciona y muestra el dashboard.
-    } finally { setBusy(false); }
+  const enter = async (e: React.FormEvent) => {
+    e.preventDefault(); setBusy(true); setErr('');
+    const { error } = await post('entrar', { user, pass });
+    const m = error ? null : await whoAmI();
+    setBusy(false);
+    if (error) setErr(error.message); else if (m?.user) onDone(m); else setErr('No se pudo entrar. Probá de nuevo.');
+  };
+  const create = async (e: React.FormEvent) => {
+    e.preventDefault(); setBusy(true); setErr('');
+    const { error } = await post('crear-claves', { code, benja: a, mati: b });
+    setBusy(false);
+    if (error) setErr(error.message); else setFirst(false);
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(70% 60% at 14% 6%,rgba(99,102,241,.18),transparent 55%),radial-gradient(70% 60% at 86% 96%,rgba(16,185,129,.12),transparent 55%),#0a0f1e', color: '#cbd5e1', fontFamily: 'Inter, system-ui, sans-serif', padding: 24 }}>
-      <div style={{ width: '100%', maxWidth: 360, textAlign: 'center' }}>
-        <div style={{ width: 56, height: 56, borderRadius: 14, background: 'linear-gradient(145deg,#6366f1,#4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', boxShadow: '0 0 40px rgba(99,102,241,.45)' }}>
-          <Lock size={26} color="#fff" />
-        </div>
-        <h1 style={{ color: '#f8fafc', fontSize: 22, margin: '0 0 6px' }}>MYB Digitals</h1>
-        <p style={{ fontSize: 14, opacity: 0.7, margin: '0 0 22px' }}>Panel interno · acceso privado</p>
-
-        <form style={{ display: 'flex', flexDirection: 'column', gap: 10 }} onSubmit={e => { e.preventDefault(); submit(); }}>
-          <input className="input" type="email" name="email" placeholder="Email" value={email} autoFocus autoComplete="username"
-            onChange={e => setEmail(e.target.value)} />
-          <input className="input" type="password" name="password" placeholder="Contraseña" value={pass}
-            autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
-            onChange={e => setPass(e.target.value)} />
-          {err && <div style={{ color: '#f87171', fontSize: 13, textAlign: 'left' }}>{err}</div>}
-          <button className="btn btn-primary" type="submit" style={{ width: '100%', justifyContent: 'center' }} disabled={busy}>
-            <LogIn size={16} /> {busy ? 'Entrando…' : (mode === 'in' ? 'Entrar' : 'Crear cuenta')}
-          </button>
+    <div className="lg"><div className="lg-box">
+      <Logo />
+      {first ? <>
+        <h1>Creen sus contraseñas</h1>
+        <form onSubmit={create}>
+          <input className="input" placeholder="Código de instalación" aria-label="Código de instalación" value={code} onChange={e => setCode(e.target.value)} required autoComplete="off" />
+          <input className="input" type="password" placeholder="Contraseña de Benjamín" aria-label="Contraseña de Benjamín" value={a} onChange={e => setA(e.target.value)} minLength={10} required autoComplete="new-password" />
+          <input className="input" type="password" placeholder="Contraseña de Matías" aria-label="Contraseña de Matías" value={b} onChange={e => setB(e.target.value)} minLength={10} required autoComplete="new-password" />
+          <p className="lg-help">Diez caracteres o más cada una.</p>
+          {err && <div className="lg-err" role="alert">{err}</div>}
+          <button className="btn btn-primary" disabled={busy}>{busy ? 'Guardando…' : 'Crear'}</button>
         </form>
-
-        <button onClick={() => { setMode(m => m === 'in' ? 'up' : 'in'); setErr(''); }}
-          style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: 13, marginTop: 16, cursor: 'pointer' }}>
-          {mode === 'in' ? '¿Primera vez? Crear mi cuenta' : 'Ya tengo cuenta · Entrar'}
-        </button>
-      </div>
-    </div>
+      </> : <>
+        <h1>¿Quién sos?</h1>
+        <form onSubmit={enter}>
+          <div className="seg lg-seg">{(Object.keys(PEOPLE) as Person[]).map(p => <button type="button" key={p} className={user === p ? 'on' : ''} onClick={() => setUser(p)}>{PEOPLE[p]}</button>)}</div>
+          <input type="text" name="username" value={user} readOnly hidden autoComplete="username" />
+          <input className="input" type="password" placeholder="Contraseña" aria-label="Contraseña" value={pass} onChange={e => setPass(e.target.value)} autoFocus required autoComplete="current-password" />
+          {err && <div className="lg-err" role="alert">{err}</div>}
+          <button className="btn btn-primary" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
+        </form>
+      </>}
+    </div></div>
   );
-}
-
-function traducir(msg: string): string {
-  if (/invalid login credentials/i.test(msg)) return 'Email o contraseña incorrectos.';
-  if (/already registered/i.test(msg)) return 'Ese email ya tiene cuenta. Entrá con tu contraseña.';
-  if (/password should be at least/i.test(msg)) return 'La contraseña debe tener al menos 6 caracteres.';
-  if (/email.*invalid|invalid.*email/i.test(msg)) return 'Email inválido.';
-  return msg;
 }

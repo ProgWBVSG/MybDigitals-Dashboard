@@ -7,7 +7,7 @@ type View = 'month' | 'agenda';
 
 const emptyEv: Omit<CalEvent, 'id' | 'createdAt'> = {
   title: '', description: '', startDate: Date.now(), endDate: Date.now() + 3600000,
-  type: 'meeting', assignedTo: [], relatedTaskId: null, color: '#3b82f6', allDay: false,
+  type: 'meeting', assignedTo: [], relatedTaskId: null, color: '#969696', allDay: false,
 };
 
 export default function CalendarView() {
@@ -152,7 +152,7 @@ export default function CalendarView() {
                       <h4>{ev.title}</h4>
                       {ev.description && <p>{ev.description}</p>}
                       {ev.assignedTo.length > 0 && (
-                        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Con: {ev.assignedTo.join(', ')}</p>
+                        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Con: {ev.assignedTo.join(', ')}</p>
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: 4 }}>

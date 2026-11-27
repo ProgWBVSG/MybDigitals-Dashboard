@@ -25,7 +25,7 @@ const SECTIONS: { k: Sec; label: string }[] = [
   { k: 'checklist', label: 'Checklist' },
 ];
 
-const DRIVER_COLOR = { dolor: '#ef4444', ganancia: '#10b981', curiosidad: '#a855f7' } as const;
+const DRIVER_COLOR = { dolor: '#969696', ganancia: '#969696', curiosidad: '#969696' } as const;
 const DRIVER_LABEL = { dolor: 'Dolor', ganancia: 'Ganancia', curiosidad: 'Curiosidad' } as const;
 
 function CopyBtn({ text }: { text: string }) {
@@ -139,7 +139,7 @@ export default function Ganchos({ accountId = null, accountName }: { accountId?:
           </div>
           <div className="gh-ladder">
             {AWARENESS_LEVELS.map(a => (
-              <div key={a.key} className="gh-step" style={{ borderLeftColor: a.driver === 'dolor' ? '#ef4444' : '#10b981' }}>
+              <div key={a.key} className="gh-step" style={{ borderLeftColor: a.driver === 'dolor' ? '#969696' : '#969696' }}>
                 <div className="gh-step-head">
                   <span className="gh-step-n">{a.step}</span>
                   <h4>{a.label}</h4>
@@ -188,7 +188,7 @@ export default function Ganchos({ accountId = null, accountName }: { accountId?:
             <div key={n.key} className="gh-card">
               <div className="gh-card-head">
                 <h4>{n.label}</h4>
-                <span className="gh-driver" style={{ background: n.kind === 'educativo' ? '#6366f1' : '#f59e0b' }}>
+                <span className="gh-driver" style={{ background: n.kind === 'educativo' ? '#969696' : '#a6a6a6' }}>
                   {n.kind === 'educativo' ? 'Educativo' : 'Storytelling'}
                 </span>
               </div>
@@ -315,7 +315,7 @@ function MisGanchos({ accountId, accountName }: { accountId: string | null; acco
           {list.map(h => (
             <div key={h.id} className="gh-card">
               <div className="gh-card-head">
-                <span className="gh-driver" style={{ background: DRIVER_COLOR[h.driver as keyof typeof DRIVER_COLOR] || '#64748b' }}>
+                <span className="gh-driver" style={{ background: DRIVER_COLOR[h.driver as keyof typeof DRIVER_COLOR] || '#7f7f7f' }}>
                   {DRIVER_LABEL[h.driver as keyof typeof DRIVER_LABEL] || h.driver}
                 </span>
                 <div style={{ display: 'flex', gap: 2, marginLeft: 'auto' }}>

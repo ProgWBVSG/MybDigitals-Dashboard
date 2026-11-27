@@ -102,7 +102,7 @@ function MetricForm({ initial, posts, onSave, onClose }: {
           </div>
 
           <div className="met-live">
-            <div className="met-score-big" style={{ borderColor: live.score >= 75 ? '#10b981' : live.score >= 50 ? '#f59e0b' : '#ef4444' }}>
+            <div className="met-score-big" style={{ borderColor: live.score >= 75 ? '#969696' : live.score >= 50 ? '#a6a6a6' : '#969696' }}>
               <strong>{live.score}</strong><span>/ 100</span>
             </div>
             <p className="met-live-summary">{live.summary}</p>
@@ -160,7 +160,7 @@ function DiagnosisPanel({ m, d, onClose }: { m: ContentMetric; d: Diagnosis; onC
         </div>
 
         <div className="met-diag-top">
-          <div className="met-score-big" style={{ borderColor: d.score >= 75 ? '#10b981' : d.score >= 50 ? '#f59e0b' : '#ef4444' }}>
+          <div className="met-score-big" style={{ borderColor: d.score >= 75 ? '#969696' : d.score >= 50 ? '#a6a6a6' : '#969696' }}>
             <strong>{d.score}</strong><span>/ 100</span>
           </div>
           <div className="met-diag-raw">
@@ -334,7 +334,7 @@ export default function Metricas({ c }: { c: ReturnType<typeof useContent> }) {
           <div className="met-summary">
             <div className="met-kpi">
               <span>Score promedio</span>
-              <strong style={{ color: agg.avgScore >= 75 ? '#10b981' : agg.avgScore >= 50 ? '#f59e0b' : '#ef4444' }}>{agg.avgScore}</strong>
+              <strong style={{ color: agg.avgScore >= 75 ? '#969696' : agg.avgScore >= 50 ? '#a6a6a6' : '#969696' }}>{agg.avgScore}</strong>
               <em>{agg.count} piezas medidas</em>
             </div>
             {agg.top && (
@@ -397,7 +397,7 @@ export default function Metricas({ c }: { c: ReturnType<typeof useContent> }) {
                         <div key={st.key} className="met-pat-row">
                           <span>{st.label}</span>
                           <em>{st.n}</em>
-                          <strong style={{ color: st.avgScore >= 75 ? '#10b981' : st.avgScore >= 50 ? '#f59e0b' : '#ef4444' }}>
+                          <strong style={{ color: st.avgScore >= 75 ? '#969696' : st.avgScore >= 50 ? '#a6a6a6' : '#969696' }}>
                             {st.avgScore}
                           </strong>
                         </div>
@@ -414,12 +414,12 @@ export default function Metricas({ c }: { c: ReturnType<typeof useContent> }) {
               <p className="ig-eyebrow">Score por pieza</p>
               <ResponsiveContainer width="100%" height={160}>
                 <BarChart data={chart}>
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} interval={0} angle={-20} textAnchor="end" height={50} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} width={28} />
-                  <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#ababab' }} interval={0} angle={-20} textAnchor="end" height={50} />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 12, fill: '#ababab' }} width={28} />
+                  <Tooltip contentStyle={{ background: '#1b1b1b', border: '1px solid #1b1b1b', borderRadius: 8, fontSize: 12 }} />
                   <Bar dataKey="score" radius={[4, 4, 0, 0]}>
                     {chart.map((d, i) => (
-                      <Cell key={i} fill={d.score >= 75 ? '#10b981' : d.score >= 50 ? '#f59e0b' : '#ef4444'} />
+                      <Cell key={i} fill={d.score >= 75 ? '#969696' : d.score >= 50 ? '#a6a6a6' : '#969696'} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -445,7 +445,7 @@ export default function Metricas({ c }: { c: ReturnType<typeof useContent> }) {
                     {d.scored.map(s => (
                       <td key={s.def.key} style={{ color: VERDICT_COLOR[s.verdict] }}>{fmtMetric(s.value, s.def.unit)}</td>
                     ))}
-                    <td><span className="met-score-pill" style={{ background: d.score >= 75 ? '#10b981' : d.score >= 50 ? '#f59e0b' : '#ef4444' }}>{d.score}</span></td>
+                    <td><span className="met-score-pill" style={{ background: d.score >= 75 ? '#969696' : d.score >= 50 ? '#a6a6a6' : '#969696' }}>{d.score}</span></td>
                     <td onClick={e => e.stopPropagation()} className="met-td-actions">
                       <button title="Editar" onClick={() => setForm(m)}>✎</button>
                       <button title="Borrar" onClick={() => c.removeMetric(m.id)}><Trash2 size={12} /></button>

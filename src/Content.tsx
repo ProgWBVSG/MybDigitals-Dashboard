@@ -41,7 +41,7 @@ const TABS: { k: Tab; label: string }[] = [
 const ANGLE_COLOR: Record<string, string> = Object.fromEntries(CONTENT_ANGLES.map(a => [a.key, a.color]));
 // Los dos primeros escalones se mueven por dolor y los tres últimos por ganancia:
 // el color lo hace evidente sin tener que recordar el orden.
-const AWARE_COLOR: Record<'dolor' | 'ganancia', string> = { dolor: '#ef4444', ganancia: '#10b981' };
+const AWARE_COLOR: Record<'dolor' | 'ganancia', string> = { dolor: '#969696', ganancia: '#969696' };
 // Se deriva de CONTENT_STATUSES en vez de listar los estados a mano: cuando se
 // sumó "publicado" esta constante quedó con tres y las flechas del Pipeline no
 // podían pasar de "listo" (el clamp topaba en el último de la lista vieja).
@@ -159,7 +159,7 @@ const matchPosts = (posts: ContentPost[], q: string): ContentPost[] => {
 };
 
 const fmtBadge = (f: ContentFormat) => <span className={`ig-badge ${f}`}>{CONTENT_FORMAT_LABELS[f]}</span>;
-const FORMAT_COLOR: Record<ContentFormat, string> = { reel: '#f9587a', carrusel: '#a64bf4', story: '#ffaa3a', ad: '#6366f1' };
+const FORMAT_COLOR: Record<ContentFormat, string> = { reel: '#969696', carrusel: '#969696', story: '#b4b4b4', ad: '#969696' };
 
 function Resumen({ posts, onGo }: { posts: ContentPost[]; onGo: (t: Tab) => void }) {
   const by = (s: ContentStatus) => posts.filter(p => p.status === s).length;
@@ -188,9 +188,9 @@ function Resumen({ posts, onGo }: { posts: ContentPost[]; onGo: (t: Tab) => void
   }, [posts]);
 
   const funnel = [
-    { label: 'Borrador', value: by('borrador'), color: '#64748b' },
-    { label: 'Aprobado', value: by('aprobado'), color: '#6366f1' },
-    { label: 'Listo', value: by('listo'), color: '#10b981' },
+    { label: 'Borrador', value: by('borrador'), color: '#7f7f7f' },
+    { label: 'Aprobado', value: by('aprobado'), color: '#969696' },
+    { label: 'Listo', value: by('listo'), color: '#969696' },
   ];
   const maxF = Math.max(1, ...funnel.map(f => f.value));
 
@@ -210,10 +210,10 @@ function Resumen({ posts, onGo }: { posts: ContentPost[]; onGo: (t: Tab) => void
           <div className="ig-card-head"><div><p className="ig-eyebrow">Producción</p><h3>Piezas por semana</h3></div></div>
           <ResponsiveContainer width="100%" height={210}>
             <BarChart data={weekData} barCategoryGap="28%">
-              <XAxis dataKey="label" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} width={24} />
-              <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, fontSize: 13 }} />
-              <Bar dataKey="piezas" fill="#a64bf4" radius={[6, 6, 0, 0]} />
+              <XAxis dataKey="label" stroke="#7f7f7f" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="#7f7f7f" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} width={24} />
+              <Tooltip cursor={{ fill: 'rgba(255, 255, 255,0.04)' }} contentStyle={{ background: '#1b1b1b', border: '1px solid rgba(255, 255, 255,0.1)', borderRadius: 10, fontSize: 13 }} />
+              <Bar dataKey="piezas" fill="#969696" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -228,7 +228,7 @@ function Resumen({ posts, onGo }: { posts: ContentPost[]; onGo: (t: Tab) => void
                 <Pie data={formatData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={85} paddingAngle={3}>
                   {formatData.map((d, i) => <Cell key={i} fill={d.color} stroke="none" />)}
                 </Pie>
-                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, fontSize: 13 }} />
+                <Tooltip contentStyle={{ background: '#1b1b1b', border: '1px solid rgba(255, 255, 255,0.1)', borderRadius: 10, fontSize: 13 }} />
               </PieChart>
             </ResponsiveContainer>
           )}
@@ -822,7 +822,7 @@ function Ideas({ c }: { c: ReturnType<typeof useContent> }) {
                   <p><b>Gancho:</b> {a.gancho}</p>
                   <p><b>Oferta:</b> {a.oferta}</p>
                   <p><b>Por qué funciona:</b> {a.porQue}</p>
-                  <p style={{ color: 'var(--primary-light)' }}><b>Adaptar:</b> {a.adaptar}</p>
+                  <p style={{ color: 'var(--text-primary)' }}><b>Adaptar:</b> {a.adaptar}</p>
                 </div>
               ))}
             </div>
@@ -1084,7 +1084,7 @@ function AdForm({ initial, posts, onSave, onClose }: {
   );
 }
 
-const AD_STATUS_COLOR: Record<AdStatus, string> = { activo: '#10b981', pausado: '#ffaa3a', finalizado: '#64748b' };
+const AD_STATUS_COLOR: Record<AdStatus, string> = { activo: '#969696', pausado: '#b4b4b4', finalizado: '#7f7f7f' };
 
 function Anuncios({ c }: { c: ReturnType<typeof useContent> }) {
   const [form, setForm] = useState<Partial<ContentAd> | null>(null);

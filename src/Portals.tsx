@@ -4,13 +4,13 @@ import {
   MessageSquareWarning, Image as ImageIcon, ListPlus, CheckCircle2, Eye, EyeOff, Lock, Shuffle,
 } from 'lucide-react';
 import { usePortals, useClients, useOnboardings, useTasks, usePortalUpdates, usePortalTickets, usePortalViews, portalUploadSignedUrl, uploadPortalImage, toast } from './hooks';
-import { supabase } from './supabase';
+import { db as supabase } from './base';
 import { DOMAIN_STATUS_LABELS, fmt, fmtRel, type ClientPortal, type PortalConfig, type DomainStatus, type Brand, type PortalTicket, type Onboarding } from './utils';
 
 const TICKET_STATUS: { key: PortalTicket['status']; label: string; color: string }[] = [
-  { key: 'open', label: 'Sin ver', color: '#ef4444' },
-  { key: 'in_progress', label: 'En curso', color: '#3b82f6' },
-  { key: 'resolved', label: 'Resuelto', color: '#10b981' },
+  { key: 'open', label: 'Sin ver', color: '#969696' },
+  { key: 'in_progress', label: 'En curso', color: '#969696' },
+  { key: 'resolved', label: 'Resuelto', color: '#969696' },
 ];
 
 const portalLink = (token: string) => `${window.location.origin}/?portal=${token}`;
@@ -61,7 +61,7 @@ export default function Portals() {
             <div key={p.id} className="strat-card" style={{ cursor: 'default' }}>
               <div className="strat-card-top">
                 <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{clientName(p.clientId)}{p.pin && <span title="Con PIN" style={{ display: 'inline-flex', color: 'var(--text-muted)' }}><Lock size={11} /></span>}</strong>
-                <span className="ig-badge soft" style={{ background: p.enabled ? '#10b98122' : '#64748b22', color: p.enabled ? '#10b981' : '#64748b' }}>
+                <span className="ig-badge soft" style={{ background: p.enabled ? '#96969622' : '#7f7f7f22', color: p.enabled ? '#969696' : '#7f7f7f' }}>
                   {p.enabled ? 'Activo' : 'Pausado'}
                 </span>
               </div>
@@ -223,7 +223,7 @@ function UpdatesModal({ portal, clientName, onClose }: { portal: ClientPortal; c
             {updates.map(u => (
               <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>{fmt(u.createdAt)} · {fmtRel(u.createdAt)}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 3 }}>{fmt(u.createdAt)} · {fmtRel(u.createdAt)}</div>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{u.title}</div>
                   {u.body && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3, whiteSpace: 'pre-wrap' }}>{u.body}</div>}
                   {u.imagePath && <UpdateImageThumb path={u.imagePath} />}
@@ -385,7 +385,7 @@ function EditModal({ portal, clientName, onboarding, onClose, onSave, onRegen, o
           <div className="input-group">
             <label>Color de marca (acento del portal)</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <input type="color" value={c.brand?.primary || '#6366f1'} onChange={e => set({ brand: { ...c.brand, primary: e.target.value } })} style={{ width: 44, height: 34, border: 'none', background: 'none', cursor: 'pointer' }} />
+              <input type="color" value={c.brand?.primary || '#969696'} onChange={e => set({ brand: { ...c.brand, primary: e.target.value } })} style={{ width: 44, height: 34, border: 'none', background: 'none', cursor: 'pointer' }} />
               <input className="input" style={{ flex: 1 }} placeholder="URL del logo del cliente" value={c.brand?.logoUrl || ''} onChange={e => set({ brand: { ...c.brand, logoUrl: e.target.value } })} />
             </div>
           </div>
@@ -396,7 +396,7 @@ function EditModal({ portal, clientName, onboarding, onClose, onSave, onRegen, o
               {SECTIONS.map(s => {
                 const on = sections[s.key] !== false;
                 return (
-                  <button key={s.key} className="ig-badge" style={{ cursor: 'pointer', border: 'none', background: on ? 'var(--primary)' : 'var(--bg-hover)', color: on ? '#fff' : 'var(--text-muted)' }}
+                  <button key={s.key} className="ig-badge" style={{ cursor: 'pointer', border: 'none', background: on ? 'var(--text-primary)' : 'var(--bg-hover)', color: on ? 'var(--bg-main)' : 'var(--text-muted)' }}
                     onClick={() => set({ sections: { ...sections, [s.key]: !on } })}>
                     {on && <Check size={11} style={{ marginRight: 4, verticalAlign: '-1px' }} />}{s.label}
                   </button>
@@ -423,7 +423,7 @@ function EditModal({ portal, clientName, onboarding, onClose, onSave, onRegen, o
                   );
                 })}
               </div>
-              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '6px 0 0' }}>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0' }}>
                 El texto gris de cada campo es el nombre real en tu onboarding. Dejalo vacío para mostrarlo tal cual, o escribí uno nuevo para el cliente.
               </p>
             </div>
@@ -442,7 +442,7 @@ function EditModal({ portal, clientName, onboarding, onClose, onSave, onRegen, o
                 <button className="btn btn-secondary btn-sm" onClick={() => onSetPin(String(Math.floor(100000 + Math.random() * 900000)))}><Lock size={13} /> Activar PIN</button>
               )}
             </div>
-            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: '6px 0 0' }}>Se lo pasás al cliente aparte del link (ej. por WhatsApp).</p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0' }}>Se lo pasás al cliente aparte del link (ej. por WhatsApp).</p>
           </div>
 
           <button className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-start', color: 'var(--warning)' }} onClick={onRegen}>
@@ -521,7 +521,7 @@ function TicketRow({ ticket, onUpdate, onCreateTask }: { ticket: PortalTicket; o
           ? <a href={shotUrl} target="_blank" rel="noreferrer"><img src={shotUrl} alt="captura" style={{ maxHeight: 130, borderRadius: 8, border: '1px solid var(--border)', marginBottom: 10 }} /></a>
           : <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}><ImageIcon size={14} /> Cargando captura…</div>
       )}
-      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>{fmt(ticket.createdAt)} · {fmtRel(ticket.createdAt)}</div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>{fmt(ticket.createdAt)} · {fmtRel(ticket.createdAt)}</div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         {TICKET_STATUS.map(s => (

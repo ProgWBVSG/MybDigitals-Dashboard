@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Plus, Rocket, ArrowRight, Search, Users, Sparkles, AlertTriangle } from 'lucide-react';
 import { useOnboardings, useClients, useSkills, toast } from './hooks';
-import { supabase } from './supabase';
+import { db as supabase } from './base';
 import { getPlaybook } from './playbooks';
 import OnboardingDetail from './OnboardingDetail';
 import {
@@ -97,7 +97,7 @@ export default function Onboarding() {
         // Crear las carpetas + documentos de Drive automáticamente (en segundo plano)
         const playbookDocs = getPlaybook(service)?.documents.map(d => ({ title: d.title, content: d.content })) || [];
         supabase.functions.invoke('create-drive-folders', { body: { clientName: cname, documents: playbookDocs } })
-          .then(({ data, error }) => {
+          .then(({ data, error }: any) => {
             if (!error && data?.ok) {
               ob.update(newId, { driveRootLink: data.link });
               toast('Carpetas de Drive creadas ✨');
@@ -262,13 +262,13 @@ export default function Onboarding() {
             {/* Skills recomendadas para este proyecto */}
             {recoSkills.length > 0 && (
               <div className="skill-reco-panel" style={{ marginTop: 18 }}>
-                <div className="skill-reco-title"><Sparkles size={15} color="var(--primary)" /> Skills recomendadas para este proyecto</div>
+                <div className="skill-reco-title"><Sparkles size={15} color="var(--text-primary)" /> Skills recomendadas para este proyecto</div>
                 <div className="skill-reco-list">
                   {recoSkills.slice(0, 6).map(s => (
                     <div key={s.id} className="skill-reco-item">
                       {s.importance === 'critica' && <AlertTriangle size={13} color={SKILL_IMPORTANCE_COLORS.critica} />}
                       <b>{s.name}</b>
-                      <span style={{ color: SKILL_IMPORTANCE_COLORS[s.importance || 'recomendada'], fontSize: 11, fontWeight: 700 }}>
+                      <span style={{ color: SKILL_IMPORTANCE_COLORS[s.importance || 'recomendada'], fontSize: 12, fontWeight: 700 }}>
                         · {SKILL_IMPORTANCE_LABELS[s.importance || 'recomendada']}
                       </span>
                     </div>

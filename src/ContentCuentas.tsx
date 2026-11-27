@@ -38,7 +38,7 @@ export function AccountSwitcher({ accounts, accountId, onSelect, onManage, count
   return (
     <div className="acc-switch">
       <button className="acc-current" onClick={() => setOpen(v => !v)}>
-        <span className="acc-dot" style={{ background: active?.color || '#64748b' }} />
+        <span className="acc-dot" style={{ background: active?.color || '#7f7f7f' }} />
         <span className="acc-current-txt">
           <strong>{active?.name || 'Elegir cuenta'}</strong>
           {active?.handle && <em>@{active.handle}</em>}

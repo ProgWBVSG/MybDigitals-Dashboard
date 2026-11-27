@@ -20,10 +20,10 @@ export const BOARD_TEMPLATES: BoardTemplate[] = [
     description: 'Atracción → Interés → Decisión → Acción, el clásico.',
     build: () => ({
       nodes: [
-        { key: 'a', x: 0, y: 0, w: 200, h: 120, text: 'Atracción\n\nContenido, ads, SEO — que te encuentren', color: '#60a5fa', shape: 'box' },
-        { key: 'i', x: 230, y: 0, w: 200, h: 120, text: 'Interés\n\nContenido de valor, casos reales', color: '#a78bfa', shape: 'box' },
-        { key: 'd', x: 460, y: 0, w: 200, h: 120, text: 'Decisión\n\nPropuesta a medida, objeciones', color: '#fb923c', shape: 'box' },
-        { key: 'c', x: 690, y: 0, w: 200, h: 120, text: 'Acción\n\nCierre, onboarding, primer pago', color: '#4ade80', shape: 'box' },
+        { key: 'a', x: 0, y: 0, w: 200, h: 120, text: 'Atracción\n\nContenido, ads, SEO — que te encuentren', color: '#9c9c9c', shape: 'box' },
+        { key: 'i', x: 230, y: 0, w: 200, h: 120, text: 'Interés\n\nContenido de valor, casos reales', color: '#999999', shape: 'box' },
+        { key: 'd', x: 460, y: 0, w: 200, h: 120, text: 'Decisión\n\nPropuesta a medida, objeciones', color: '#a2a2a2', shape: 'box' },
+        { key: 'c', x: 690, y: 0, w: 200, h: 120, text: 'Acción\n\nCierre, onboarding, primer pago', color: '#b8b8b8', shape: 'box' },
       ],
       edges: CHAIN(['a', 'i', 'd', 'c']),
     }),
@@ -33,11 +33,11 @@ export const BOARD_TEMPLATES: BoardTemplate[] = [
     description: 'Atracción → Contacto → Reunión → Propuesta → Cierre & Seguimiento.',
     build: () => ({
       nodes: [
-        { key: 'a', x: 0, y: 0, w: 190, h: 120, text: 'Atracción\n\nMaps/OSM, contenido, referidos', color: '#60a5fa', shape: 'box' },
-        { key: 'c', x: 215, y: 0, w: 190, h: 120, text: 'Contacto\n\nPrimer mensaje, corto y personal', color: '#a78bfa', shape: 'box' },
-        { key: 'r', x: 430, y: 0, w: 190, h: 120, text: 'Reunión\n\nDiscovery, calificación MINT', color: '#f472b6', shape: 'box' },
-        { key: 'p', x: 645, y: 0, w: 190, h: 120, text: 'Propuesta\n\nA medida, con lo que dijo', color: '#fb923c', shape: 'box' },
-        { key: 's', x: 860, y: 0, w: 190, h: 120, text: 'Cierre & Seguimiento\n\nNo dejar que se enfríe', color: '#4ade80', shape: 'box' },
+        { key: 'a', x: 0, y: 0, w: 190, h: 120, text: 'Atracción\n\nMaps/OSM, contenido, referidos', color: '#9c9c9c', shape: 'box' },
+        { key: 'c', x: 215, y: 0, w: 190, h: 120, text: 'Contacto\n\nPrimer mensaje, corto y personal', color: '#999999', shape: 'box' },
+        { key: 'r', x: 430, y: 0, w: 190, h: 120, text: 'Reunión\n\nDiscovery, calificación MINT', color: '#969696', shape: 'box' },
+        { key: 'p', x: 645, y: 0, w: 190, h: 120, text: 'Propuesta\n\nA medida, con lo que dijo', color: '#a2a2a2', shape: 'box' },
+        { key: 's', x: 860, y: 0, w: 190, h: 120, text: 'Cierre & Seguimiento\n\nNo dejar que se enfríe', color: '#b8b8b8', shape: 'box' },
       ],
       edges: CHAIN(['a', 'c', 'r', 'p', 's']),
     }),
@@ -47,11 +47,11 @@ export const BOARD_TEMPLATES: BoardTemplate[] = [
     description: 'Gancho → Problema → Solución → Demo → Cierre/CTA. Para explicar una idea en cámara.',
     build: () => ({
       nodes: [
-        { key: 'h', x: 0, y: 0, w: 280, h: 140, text: 'Gancho (0-5 seg)\n\n¿Por qué debería seguir viendo esto?', color: '#facc15', shape: 'sticky' },
-        { key: 'p', x: 0, y: 170, w: 280, h: 140, text: 'Problema\n\n¿Qué le duele a mi audiencia con esto?', color: '#fb923c', shape: 'sticky' },
-        { key: 's', x: 0, y: 340, w: 280, h: 140, text: 'Solución\n\nCómo lo resuelvo — mi ángulo/opinión', color: '#f472b6', shape: 'sticky' },
-        { key: 'd', x: 0, y: 510, w: 280, h: 140, text: 'Demo / Ejemplo\n\nMostrar, no solo contar', color: '#a78bfa', shape: 'sticky' },
-        { key: 'c', x: 0, y: 680, w: 280, h: 140, text: 'Cierre + CTA\n\n¿Qué quiero que hagan después?', color: '#60a5fa', shape: 'sticky' },
+        { key: 'h', x: 0, y: 0, w: 280, h: 140, text: 'Gancho (0-5 seg)\n\n¿Por qué debería seguir viendo esto?', color: '#c9c9c9', shape: 'sticky' },
+        { key: 'p', x: 0, y: 170, w: 280, h: 140, text: 'Problema\n\n¿Qué le duele a mi audiencia con esto?', color: '#a2a2a2', shape: 'sticky' },
+        { key: 's', x: 0, y: 340, w: 280, h: 140, text: 'Solución\n\nCómo lo resuelvo — mi ángulo/opinión', color: '#969696', shape: 'sticky' },
+        { key: 'd', x: 0, y: 510, w: 280, h: 140, text: 'Demo / Ejemplo\n\nMostrar, no solo contar', color: '#999999', shape: 'sticky' },
+        { key: 'c', x: 0, y: 680, w: 280, h: 140, text: 'Cierre + CTA\n\n¿Qué quiero que hagan después?', color: '#9c9c9c', shape: 'sticky' },
       ],
       edges: CHAIN(['h', 'p', 's', 'd', 'c']),
     }),
@@ -61,7 +61,7 @@ export const BOARD_TEMPLATES: BoardTemplate[] = [
     description: 'Una nota por día para planificar qué publicás.',
     build: () => {
       const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-      const colors = ['#facc15', '#fb923c', '#f472b6', '#a78bfa', '#60a5fa', '#4ade80', '#f8fafc'];
+      const colors = ['#c9c9c9', '#a2a2a2', '#969696', '#999999', '#9c9c9c', '#b8b8b8', '#fafafa'];
       return {
         nodes: days.map((d, i) => ({ key: `d${i}`, x: i * 190, y: 0, w: 170, h: 150, text: `${d}\n\n—`, color: colors[i], shape: 'sticky' as BoardShape })),
         edges: [],
@@ -73,15 +73,15 @@ export const BOARD_TEMPLATES: BoardTemplate[] = [
     description: 'Pre-lanzamiento → Lanzamiento → Post-lanzamiento, con sub-tareas.',
     build: () => ({
       nodes: [
-        { key: 'p1', x: 0, y: 0, w: 280, h: 70, text: 'Pre-lanzamiento', color: '#a78bfa', shape: 'box', fontSize: 19 },
-        { key: 'p1a', x: 0, y: 110, w: 130, h: 100, text: 'Teaser en redes', color: '#facc15', shape: 'sticky' },
-        { key: 'p1b', x: 150, y: 110, w: 130, h: 100, text: 'Lista de espera / early access', color: '#facc15', shape: 'sticky' },
-        { key: 'p2', x: 320, y: 0, w: 280, h: 70, text: 'Lanzamiento', color: '#a78bfa', shape: 'box', fontSize: 19 },
-        { key: 'p2a', x: 320, y: 110, w: 130, h: 100, text: 'Publicación oficial', color: '#fb923c', shape: 'sticky' },
-        { key: 'p2b', x: 470, y: 110, w: 130, h: 100, text: 'Contenido del día D', color: '#fb923c', shape: 'sticky' },
-        { key: 'p3', x: 640, y: 0, w: 280, h: 70, text: 'Post-lanzamiento', color: '#a78bfa', shape: 'box', fontSize: 19 },
-        { key: 'p3a', x: 640, y: 110, w: 130, h: 100, text: 'Testimonios / casos de uso', color: '#4ade80', shape: 'sticky' },
-        { key: 'p3b', x: 790, y: 110, w: 130, h: 100, text: 'Optimizar según feedback', color: '#4ade80', shape: 'sticky' },
+        { key: 'p1', x: 0, y: 0, w: 280, h: 70, text: 'Pre-lanzamiento', color: '#999999', shape: 'box', fontSize: 19 },
+        { key: 'p1a', x: 0, y: 110, w: 130, h: 100, text: 'Teaser en redes', color: '#c9c9c9', shape: 'sticky' },
+        { key: 'p1b', x: 150, y: 110, w: 130, h: 100, text: 'Lista de espera / early access', color: '#c9c9c9', shape: 'sticky' },
+        { key: 'p2', x: 320, y: 0, w: 280, h: 70, text: 'Lanzamiento', color: '#999999', shape: 'box', fontSize: 19 },
+        { key: 'p2a', x: 320, y: 110, w: 130, h: 100, text: 'Publicación oficial', color: '#a2a2a2', shape: 'sticky' },
+        { key: 'p2b', x: 470, y: 110, w: 130, h: 100, text: 'Contenido del día D', color: '#a2a2a2', shape: 'sticky' },
+        { key: 'p3', x: 640, y: 0, w: 280, h: 70, text: 'Post-lanzamiento', color: '#999999', shape: 'box', fontSize: 19 },
+        { key: 'p3a', x: 640, y: 110, w: 130, h: 100, text: 'Testimonios / casos de uso', color: '#b8b8b8', shape: 'sticky' },
+        { key: 'p3b', x: 790, y: 110, w: 130, h: 100, text: 'Optimizar según feedback', color: '#b8b8b8', shape: 'sticky' },
       ],
       edges: CHAIN(['p1', 'p2', 'p3']),
     }),
