@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Bell, CheckCheck, Plus, CreditCard, Rocket, CalendarDays, Users, FileText, Clock, Settings, Check, BellRing } from 'lucide-react';
 import type { useNotifications } from './hooks';
+import AvisosCelular from './AvisosCelular';
 import { NOTIF_KIND_LABELS, type NotifKind, type NotifItem } from './utils';
 
 type NotifApi = ReturnType<typeof useNotifications>;
@@ -37,6 +38,7 @@ export default function Notifications({ notif, onGoto }: { notif: NotifApi; onGo
 
   return (
     <div style={{ maxWidth: 760, margin: '0 auto' }}>
+      <AvisosCelular />
       <div className="notif-head">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Bell size={22} />

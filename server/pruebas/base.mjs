@@ -6,6 +6,7 @@ import http from 'node:http';
 import { PGlite } from '@electric-sql/pglite';
 import { createCore } from '../core.mjs';
 import { createApp } from '../app.mjs';
+import { digest, runDaily } from '../avisos.mjs';
 import { pgStore, sqliteStore } from '../stores.mjs';
 
 let n = 0, bad = 0;
@@ -113,6 +114,23 @@ ok((await bySlug('otra')).s === 404 && (await bySlug('../x')).s === 404, 'link d
 await go('/api/sistema-estado', { id: iv.id, table: 'invitaciones', status: 'activa' }, e.cookie);
 ok((await bySlug('SOFI-Y-JUAN')).d.activo === true, 'vuelve online');
 ok(ri.includes('Alta') && ri.includes('Pago de US$30') && ri.includes('Activa a de baja'), 'registro de la invitación');
+// Avisos al celular
+ok((await db1({ table: 'push_subs' })).s === 403 && (await db1({ table: 'push_config' })).s === 403, 'la pantalla no ve las claves de avisos');
+ok((await db1({ op: 'batch', list: [{ table: 'push_subs', op: 'insert', body: { endpoint: 'x' } }] })).s === 403, 'ni las escribe');
+ok((await go('/api/push/alta', { subscription: { endpoint: 'https://evil.example.com/x', keys: { p256dh: 'a', auth: 'b' } } }, e.cookie)).s === 400, 'sólo servicios de avisos conocidos');
+ok((await go('/api/push/alta', { subscription: { endpoint: 'http://fcm.googleapis.com/x', keys: { p256dh: 'a', auth: 'b' } } }, e.cookie)).s === 400, 'sólo https');
+ok((await go('/api/push/alta', { subscription: { endpoint: 'https://fcm.googleapis.com/fcm/send/abc', keys: { p256dh: 'a', auth: 'b' } } })).s === 401, 'sin entrar no se suscribe');
+ok((await go('/api/push/alta', { subscription: { endpoint: 'https://fcm.googleapis.com/fcm/send/abc', keys: { p256dh: 'a', auth: 'b' } } }, e.cookie)).s === 200, 'se suscribe');
+const pk = await go('/api/push/clave', {}, e.cookie); ok(pk.s === 200 && pk.d.publicKey.length > 60, 'clave pública de avisos');
+const deudor = (await db1({ table: 'sistemas', op: 'insert', body: { name: 'Barbería Morosa', price: 100, bill_from: '2026-01', bill_day: 1, grace_days: 5 } })).d.rows[0];
+await db1({ table: 'plan_items', op: 'insert', body: { title: 'Llamar', owner: 'mati', date: new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10) } });
+const dg = await digest(app.core);
+ok(dg.benja.some(x => x.text.startsWith('Barbería Morosa debe') && x.hot) && !dg.benja.some(x => x.tab === 'hoy') && dg.mati.some(x => x.text.includes('una tarea')), 'avisos del día por persona');
+const noche = Date.UTC(2026, 10, 27, 5); // 2 de la mañana en Argentina
+ok((await runDaily(app.core, noche)).salteado === true, 'el cron no corre de noche');
+const r1 = await runDaily(app.core, Date.UTC(2026, 10, 27, 12), false), r2 = await runDaily(app.core, Date.UTC(2026, 10, 27, 13), false);
+ok(!r1.salteado && r2.salteado === true, 'el cron corre una vez por día');
+ok((await go('/api/avisos')).s === 200, 'el cron entra sin sesión');
 await go('/api/salir', {}, e.cookie); ok((await go('/api/yo', undefined, e.cookie)).d.user === null, 'sale');
 let last; for (let i = 0; i < 12; i++) last = await go('/api/entrar', { user: 'mati', pass: 'x' }); ok(last.s === 429, 'frena intentos');
 srv.close();

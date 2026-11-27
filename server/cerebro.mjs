@@ -60,7 +60,7 @@ async function conClaude(ctx) {
   let r;
   try {
     r = await client.beta.messages.create({
-      model: process.env.MYB_MODELO || 'claude-opus-5-5', max_tokens: 16000,
+      model: process.env.MYB_MODELO || 'claude-sonnet-5-5', max_tokens: 16000,
       betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
       system: [{ type: 'text', text: REGLAS, cache_control: { type: 'ephemeral' } }],
       output_config: { effort: 'low', format: { type: 'json_schema', schema: ESQUEMA } },

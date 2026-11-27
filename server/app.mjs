@@ -2,6 +2,7 @@
 import { createHash, randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { checkDump, createCore } from './core.mjs';
+import { pushRoute, runDaily, touchesPrivate } from './avisos.mjs';
 import { changeState, LOG, prepare, publicInvitation, publicState } from './sistemas.mjs';
 
 const scrypt = promisify(scryptCb);
@@ -69,6 +70,8 @@ export function createApp({ store, files, cloud = false, setupCode = '', maxFile
     await init();
     // Lo único público: la app de cada negocio pregunta si su servicio sigue activo
     if (path.startsWith('/api/servicio/')) return publicState(core, req, res, path.slice(14));
+    // El cron diario de avisos (corre como mucho una vez por día, a la mañana)
+    if (path === '/api/avisos' && req.method === 'GET') return json(res, 200, await runDaily(core));
     if (path === '/api/invitacion-estado') return publicInvitation(core, req, res, new URL(req.url, 'http://x').searchParams.get('slug'));
     const isFile = path.startsWith('/api/archivos/');
     // Una página ajena no puede mandar este encabezado: evita que otra web use la base con tu sesión
@@ -136,7 +139,9 @@ export function createApp({ store, files, cloud = false, setupCode = '', maxFile
     let body;
     try { body = JSON.parse((await readBody(req, 64 * 1024 * 1024)).toString('utf8') || '{}'); }
     catch (e) { throw e.status ? e : fail(400, 'Pedido inválido'); }
+    if (path.startsWith('/api/push/')) return json(res, 200, await pushRoute(core, path, body, by));
     if (path === '/api/db') {
+      if (touchesPrivate(body)) throw fail(403, 'No permitido');
       const audit = await prepare(core, body, by);
       let r;
       if (!audit.length) r = await core.run(body);
