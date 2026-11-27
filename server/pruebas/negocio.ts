@@ -1,6 +1,7 @@
 // Pruebas de las reglas. Correr: npm run test:reglas
 import { addDays, addMonths, cash, daysTo, duesOf, inArs, monday, newPhase, pace, scoreOf, splitIncome, viewClient, viewFunds, waNumber, worksOf, ymd } from '../../src/negocio.ts';
 import { buildQueue } from '../../src/cola.ts';
+import { adivinarVia, armarGrafo, nivelDeEtapa, ubicar } from '../../src/redReglas.ts';
 let n = 0, bad = 0; const eq = (a: unknown, b: unknown, m: string) => { n++; if (JSON.stringify(a) !== JSON.stringify(b)) { bad++; console.log('FALLA', m, JSON.stringify(a), '≠', JSON.stringify(b)); } };
 const now = new Date(2026, 10, 23, 10).getTime(); const d = (k: number) => addDays(now, k);
 eq(waNumber('351 555-1234'), '5493515551234', 'wa 10'); eq(waNumber('0351 15 555 1234'), '5493515551234', 'wa 0/15'); eq(waNumber('+54 9 351 555 1234'), '5493515551234', 'wa +549'); eq(waNumber('54 351 5551234'), '5493515551234', 'wa 54'); eq(waNumber('351 15 5551234'), '5493515551234', 'wa 15'); eq(waNumber('+34 612 345 678'), '34612345678', 'wa España'); eq(waNumber('123'), '', 'wa corto'); eq(waNumber('3543 15 412345'), '5493543412345', 'wa pueblo'); eq(waNumber(''), '', 'wa vacio');
@@ -28,4 +29,13 @@ eq(Q().map(q => q.rule), ['vencido'], 'cola'); eq(Q()[0].text.includes('$150') &
 eq(Q({ touches: [{ key: Q()[0].key, at: d(-1), client_id: 'c', result: 'enviado' }] }).length, 0, 'no repite al día siguiente'); eq(Q({ touches: [{ key: Q()[0].key, at: d(-3), client_id: 'c', result: 'enviado' }] }).length, 1, 'repite a los tres días');
 eq(Q({ agreements: [{ ...A, status: 'cancelado' }] }).length, 0, 'cancelado'); eq(Q({ agreements: [{ ...A, status: 'borrador' }] }).map(q => q.rule), ['sin_firmar'], 'sin firmar');
 eq(Q({ agreements: [], prospects: [{ id: 'p', name: 'Ana Paz', business: 'Bar', stage: 'contacto', contact: { whatsapp: '3515550000' }, updated_at: d(-5) }] }).map(q => [q.rule, q.text.startsWith('Hola Ana,')]), [['prospecto', true]], 'prospecto');
+// Red de contactos
+{ const pr: any[] = [{ id: 'a', name: 'Ana', business: 'Bar', source: 'Instagram', stage: 'contacto', updated_at: d(-9) }, { id: 'b', name: 'Beto', business: '', source: '', stage: 'reunion', red: { via: 'referido', por: 'c:c', empresa: 'e1' } }, { id: 'x', name: 'Ex', business: '', source: '', stage: 'ganado', client_id: 'c' }, { id: 'l1', name: 'L1', business: '', source: '', stage: 'perdido', red: { via: 'referido', por: 'p:l2' } }, { id: 'l2', name: 'L2', business: '', source: '', stage: 'perdido', red: { via: 'referido', por: 'p:l1' } }];
+  const g = armarGrafo(pr, [C], new Map([['c', v]]), [{ id: 'e1', name: 'Bar Uno' }, { id: 'e2', name: 'Sola' }] as any, now);
+  eq(g.nodos.map(n => n.id), ['yo', 'c:c', 'p:a', 'p:b', 'p:l1', 'p:l2', 'e:e1', 'e:e2'], 'red: prospecto convertido va como cliente');
+  eq([g.byId.get('c:c')!.nivel, g.byId.get('p:a')!.nivel, g.byId.get('p:a')!.via, !!g.byId.get('p:a')!.hot, g.byId.get('p:b')!.por], ['activo', 'hablado', 'instagram', true, 'c:c'], 'red: niveles, origen y seguimiento');
+  eq(g.lineas.filter(l => l.b === 'p:b').map(l => l.kind + l.a), ['refc:c', 'empe:e1'], 'red: recomendado cuelga de quien lo trajo');
+  eq([g.byId.get('p:l1')!.por === '' || g.byId.get('p:l2')!.por === '', g.lineas.some(l => l.a === 'yo' && l.b === 'e:e2')], [true, true], 'red: ciclo cortado y empresa sola al centro');
+  const pos = ubicar(g); eq([pos.get('yo'), [...pos.values()].every(p => Number.isFinite(p.x) && Number.isFinite(p.y)), Math.hypot(pos.get('c:c')!.x, pos.get('c:c')!.y) < Math.hypot(pos.get('p:l1')!.x, pos.get('p:l1')!.y)], [{ x: 0, y: 0 }, true, true], 'red: ubicación');
+  eq([adivinarVia('me lo recomendó Juan'), adivinarVia('IG'), adivinarVia(''), nivelDeEtapa('propuesta')], ['referido', 'instagram', '', 'seguimiento'], 'red: textos'); }
 console.log(`${n - bad}/${n} bien`); process.exit(bad ? 1 : 0);

@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Search, X, Trash2, Target, CalendarPlus, MessageCircle, Sparkles, Presentation, Share2, Eye, UserCheck, Navigation, MapPin, Loader } from 'lucide-react';
+import { Plus, Search, X, Trash2, Target, Waypoints, CalendarPlus, MessageCircle, Sparkles, Presentation, Share2, Eye, UserCheck, Navigation, MapPin, Loader } from 'lucide-react';
 import { optimizeRoute, gmapsUrl, getMyLocation, type RoutePoint } from './route';
 import { useProspects, useClients, toast } from './hooks';
 import { db as supabase } from './base';
 import { newAgreement } from './AcuerdoEditor';
 import type { Agreement, ClientRow } from './negocio';
-import { goTo } from './rutas';
+import { goTo, useSub } from './rutas';
 import ProposalDeck from './ProposalDeck';
 import BrandEditor from './BrandEditor';
 import {
@@ -53,6 +53,10 @@ export default function PreVenta() {
       if (fresh) setDetail(fresh);
     }
   }, [prospects]);
+
+  // Abrir un prospecto por link (desde la Red de contactos): #preventa/<id>
+  const [sub, goSub] = useSub();
+  useEffect(() => { if (!sub) return; const p = prospects.find(x => x.id === sub); if (p) { setDetail(p); goSub(''); } }, [sub, prospects]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sincronizar el estado local SOLO cuando cambia el prospecto seleccionado
   useEffect(() => {
@@ -231,6 +235,7 @@ export default function PreVenta() {
             {geoProspects.length >= 2 && (
               <button className="btn btn-secondary" onClick={() => { setRouteResult(null); setRouteOpen(true); }}><Navigation size={16} /> Recorrido</button>
             )}
+            <button className="btn btn-secondary" onClick={() => goTo('red')}><Waypoints size={16} /> Ver en red</button>
             <button className="btn btn-primary" onClick={openNew}><Plus size={16} /> Nuevo Prospecto</button>
           </div>
         </div>

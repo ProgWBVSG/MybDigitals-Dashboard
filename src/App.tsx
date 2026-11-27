@@ -25,6 +25,7 @@ const VIEWS = {
   plata: lazy(() => import('./Plata')),
   servicios: lazy(() => import('./Servicios')),
   preventa: lazy(() => import('./PreVenta')),
+  red: lazy(() => import('./Red')),
   buscar: lazy(() => import('./LeadFinder')),
   competencia: lazy(() => import('./Competitors')),
   onboarding: lazy(() => import('./Onboarding')),

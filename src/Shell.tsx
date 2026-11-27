@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import {
-  Layers, LayoutGrid, CalendarDays, Users, Rocket, Target, LogOut, Bell, SlidersHorizontal, History as HistoryIcon, BookOpen, Sun, CalendarRange, MessageCircle, Wallet,
+  Layers, LayoutGrid, CalendarDays, Users, Rocket, Target, Waypoints, LogOut, Bell, SlidersHorizontal, History as HistoryIcon, BookOpen, Sun, CalendarRange, MessageCircle, Wallet,
   Smartphone, Server, MailOpen, Compass, MapPin, Swords, Lightbulb, GitBranch, DoorOpen, Tag, Search, Menu, X, CornerDownLeft, ChevronDown, Mic,
 } from 'lucide-react';
 import { db, isCloud, PEOPLE, post, setPerson, usePerson, useTable, type Person } from './base';
@@ -13,7 +13,7 @@ import { HEALTH as SYS_HEALTH, viewSys, type Sistema, type SysPago } from './sis
 
 const Voz = lazy(() => import('./Voz'));
 const Guia = lazy(() => import('./Guia'));
-export type Tab = 'hoy' | 'semana' | 'sistemas' | 'invitaciones' | 'mensajes' | 'plata' | 'servicios' | 'preventa' | 'buscar' | 'competencia' | 'onboarding' | 'notas' | 'estrategia' | 'tasks' | 'calendar' | 'clients' | 'portales' | 'history' | 'guide' | 'skills' | 'notifications' | 'settings' | 'content';
+export type Tab = 'hoy' | 'semana' | 'sistemas' | 'invitaciones' | 'mensajes' | 'plata' | 'servicios' | 'preventa' | 'buscar' | 'competencia' | 'onboarding' | 'notas' | 'estrategia' | 'tasks' | 'calendar' | 'clients' | 'portales' | 'history' | 'guide' | 'skills' | 'notifications' | 'settings' | 'content' | 'red';
 type Item = { key: Tab; label: string; icon: ComponentType<{ size?: number }>; words?: string };
 
 // Arriba lo de todos los días. El resto se abre cuando hace falta.
@@ -30,6 +30,7 @@ export const MAIN: Item[] = [
 export const NAV: { title: string; items: Item[] }[] = [
   { title: 'Conseguir clientes', items: [
     { key: 'preventa', label: 'Pre-venta', icon: Target, words: 'prospectos propuesta' },
+    { key: 'red', label: 'Red de contactos', icon: Waypoints, words: 'mapa relaciones referidos recomendados empresas grafo leads conexiones' },
     { key: 'buscar', label: 'Buscar clientes', icon: MapPin, words: 'leads mapa' },
     { key: 'competencia', label: 'Competencia', icon: Swords },
     { key: 'content', label: 'Contenido', icon: Smartphone, words: 'instagram reels guiones ganchos' },

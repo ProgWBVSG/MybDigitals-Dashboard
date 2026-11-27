@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Check, FileText, MessageCircle, Pencil, Plus, Search, Trash2, Undo2 } from 'lucide-react';
+import { ArrowLeft, Check, FileText, MessageCircle, Pencil, Plus, Search, Trash2, Undo2, Waypoints } from 'lucide-react';
 import { deleteOp, PEOPLE, saveAll, updateOp, useTable, type Row } from './base';
 import { toast, useExchangeRate } from './hooks';
 import { norm } from './sheetImport';
@@ -12,7 +12,7 @@ import {
   type Agreement, type ClientRow, type ClientView, type Due, type Health, type Phase, type Score, type Touch,
 } from './negocio';
 import { Bar, DateIn, Empty, Field, Modal } from './ui';
-import { useSub } from './rutas';
+import { goTo, useSub } from './rutas';
 
 interface Note extends Row { client_id: string; content: string }
 type Filter = 'todos' | 'atencion' | 'al_dia' | 'borrador' | 'terminado';
@@ -51,7 +51,7 @@ export default function Clientes() {
   if (!clients.rows.length) return <><Empty title="Cargá el primer cliente" text="Con su acuerdo vas a ver las fases, los pagos, cómo cumple cada parte y qué mensaje le toca."><button className="btn btn-primary" onClick={() => setEdit({})}><Plus size={17} /> Nuevo cliente</button></Empty>{modal}</>;
   return (
     <div>
-      <div className="page-head"><div><h1>Clientes</h1><p>{plural(views.filter(v => HEALTH[v.health].rank <= 3).length, 'necesita algo', 'necesitan algo')} de {clients.rows.length}</p></div><button className="btn btn-primary" onClick={() => setEdit({})}><Plus size={17} /> Nuevo cliente</button></div>
+      <div className="page-head"><div><h1>Clientes</h1><p>{plural(views.filter(v => HEALTH[v.health].rank <= 3).length, 'necesita algo', 'necesitan algo')} de {clients.rows.length}</p></div><div className="row"><button className="btn btn-secondary" onClick={() => goTo('red')}><Waypoints size={17} /> Ver en red</button><button className="btn btn-primary" onClick={() => setEdit({})}><Plus size={17} /> Nuevo cliente</button></div></div>
       <div className="cl-top">
         <div><span>Para cobrar ahora</span><b>{both(owed)}</b></div><div><span>Abono por mes</span><b>{both(mon)}</b></div>
         <div><span>Entregamos a tiempo</span><b>{pct(score.us)}</b></div><div><span>Nos pagan a tiempo</span><b>{pct(score.them)}</b></div>
