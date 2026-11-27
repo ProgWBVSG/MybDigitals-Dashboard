@@ -45,3 +45,21 @@
 @media (max-width: 520px) { .vz-g { grid-template-columns: minmax(0, 1fr); } .vz-ult .li { flex-wrap: wrap; } }
 @media (prefers-reduced-motion: reduce) { .vz, .vz-bg, .vz-k, .vz-preg, .vz-c .lleno .input, .vz-c .lleno .select { animation: none; } }
 .vz-resp + .vz-l { margin-top: 22px; }
+
+/* Guía: arriba de Hablar */
+.fab-guia { position: fixed; z-index: 90; right: 26px; bottom: 92px; display: inline-flex; align-items: center; gap: 10px; height: 46px; padding: 0 18px 0 15px; border-radius: 99px; border: 1px solid var(--border-light); background: var(--bg-card); color: var(--text-primary); font: inherit; font-weight: 600; font-size: 15px; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.fab-guia:hover { background: var(--bg-hover); } .fab-guia:active { transform: scale(.97); }
+.gu-load { display: grid; place-items: center; gap: 14px; padding: 40px 0; color: var(--text-muted); }
+.gu-foco { font-size: 17px; line-height: 1.5; font-weight: 550; margin-bottom: 14px; }
+.gu-pasos { list-style: none; counter-reset: p; display: flex; flex-direction: column; gap: 8px; padding: 0; margin: 0; }
+.gu-pasos li { counter-increment: p; display: flex; gap: 12px; align-items: center; padding: 12px 12px 12px 44px; border: 1px solid var(--border); border-radius: 12px; position: relative; }
+.gu-pasos li::before { content: counter(p); position: absolute; left: 14px; top: 13px; width: 20px; height: 20px; border-radius: 50%; background: var(--bg-hover); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+.gu-pasos li:first-child::before { background: var(--lima); color: #0b0b0b; }
+.gu-pasos li > div:first-child { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.gu-pasos b { font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; } .gu-pasos span { font-size: 14px; color: var(--text-secondary); line-height: 1.4; } .gu-pasos small { font-size: 12.5px; color: var(--text-muted); }
+.gu-a { display: flex; gap: 6px; align-items: center; flex: 0 0 auto; }
+.gu-ojo { margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border-light); border-radius: 12px; font-size: 14.5px; line-height: 1.45; }
+@media (max-width: 900px) {
+  .fab-guia { right: 16px; bottom: calc(80px + 56px + 12px + env(safe-area-inset-bottom)); width: 56px; height: 56px; padding: 0; justify-content: center; } .fab-guia span { display: none; }
+  .gu-pasos li { flex-direction: column; align-items: stretch; } .gu-a { justify-content: flex-end; }
+}

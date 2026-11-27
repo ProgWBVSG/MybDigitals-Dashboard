@@ -8,7 +8,7 @@ import { homedir, tmpdir } from 'node:os';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createApp, TYPES } from './app.mjs';
-import { motores, rutaVoz } from './cerebro.mjs';
+import { motores, rutaGuia, rutaVoz } from './cerebro.mjs';
 import { hayOido, rutaOido } from './oido.mjs';
 import { connectPg, pgStore, sqliteStore } from './stores.mjs';
 
@@ -100,6 +100,7 @@ const app = createApp({
   extra: {
     '/api/voz': async c => c.body.estado ? c.json(c.res, 200, { motores: motores(true), oido: hayOido() }) : rutaVoz(true)(c),
     '/api/oido': rutaOido,
+    '/api/guia': rutaGuia(),
     '/api/copiar': async ({ res, json }) => await backup('manual') ? json(res, 200, { lastCopy }) : json(res, 500, { error: 'No se pudo copiar: ' + copyError }),
     '/api/restaurar': async ({ res, body, core, json, fail, checkDump, onChange }) => {
       if (body.file && !copyList().includes(body.file)) throw fail(404, 'No está esa copia');

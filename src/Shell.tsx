@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import {
   Layers, LayoutGrid, CalendarDays, Users, Rocket, Target, LogOut, Bell, SlidersHorizontal, History as HistoryIcon, BookOpen, Sun, CalendarRange, MessageCircle, Wallet,
-  Smartphone, Server, MailOpen, MapPin, Swords, Lightbulb, GitBranch, DoorOpen, Tag, Search, Menu, X, CornerDownLeft, ChevronDown, Mic,
+  Smartphone, Server, MailOpen, Compass, MapPin, Swords, Lightbulb, GitBranch, DoorOpen, Tag, Search, Menu, X, CornerDownLeft, ChevronDown, Mic,
 } from 'lucide-react';
 import { db, isCloud, PEOPLE, post, setPerson, usePerson, useTable, type Person } from './base';
 import { HEALTH, viewClient, type Agreement, type ClientRow, type Touch } from './negocio';
@@ -12,6 +12,7 @@ import { INV_HEALTH, viewInv, type Invitacion } from './invReglas';
 import { HEALTH as SYS_HEALTH, viewSys, type Sistema, type SysPago } from './sistemaReglas';
 
 const Voz = lazy(() => import('./Voz'));
+const Guia = lazy(() => import('./Guia'));
 export type Tab = 'hoy' | 'semana' | 'sistemas' | 'invitaciones' | 'mensajes' | 'plata' | 'servicios' | 'preventa' | 'buscar' | 'competencia' | 'onboarding' | 'notas' | 'estrategia' | 'tasks' | 'calendar' | 'clients' | 'portales' | 'history' | 'guide' | 'skills' | 'notifications' | 'settings' | 'content';
 type Item = { key: Tab; label: string; icon: ComponentType<{ size?: number }>; words?: string };
 
@@ -56,7 +57,7 @@ export function Logo() { return <span className="logo"><b>MYB</b> Digitals</span
 export function Shell({ tab, go, unread, children }: { tab: Tab; go: (t: string) => void; unread: number; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(false);
-  const [voz, setVoz] = useState(false);
+  const [voz, setVoz] = useState(false), [guia, setGuia] = useState(false);
   const title = ALL_TABS.find(t => t.key === tab)?.label || '';
   const pick = (t: Tab) => { go(t); setOpen(false); };
   const me = usePerson();
@@ -115,6 +116,8 @@ export function Shell({ tab, go, unread, children }: { tab: Tab; go: (t: string)
         {MOBILE.map(k => { const i = ALL_TABS.find(t => t.key === k)!; return <button key={k} className={tab === k ? 'on' : ''} onClick={() => pick(k)}><i.icon size={21} /><span>{i.label}</span>{!!count[k] && <em />}</button>; })}
         <button className={open ? 'on' : ''} onClick={() => setOpen(true)}><Menu size={21} /><span>Más</span></button>
       </nav>
+      {!voz && !guia && <button className="fab-guia" onClick={() => setGuia(true)} title="Qué conviene hacer ahora"><Compass size={20} /><span>Qué hago</span></button>}
+      {guia && <Suspense fallback={null}><Guia onClose={() => setGuia(false)} go={go} /></Suspense>}
       {!voz && <button className="fab-voz" onClick={() => setVoz(true)} title="Ctrl Espacio"><Mic size={20} /><span>Hablar</span></button>}
       {voz && <Suspense fallback={null}><Voz onClose={() => setVoz(false)} /></Suspense>}
       {search && <Palette onClose={() => setSearch(false)} go={pick} />}
