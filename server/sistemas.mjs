@@ -139,13 +139,17 @@ function tooMany(ip) {
   return ++h.n > 120;
 }
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET', 'access-control-max-age': '86400' };
-export async function publicState(core, req, res, key) {
+function gate(req, res) {
   const head = { 'content-type': 'application/json', 'x-content-type-options': 'nosniff', ...CORS };
   const out = (code, data, cache = 'no-store') => { res.writeHead(code, { ...head, 'cache-control': cache }); res.end(JSON.stringify(data)); };
-  if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
-  if (req.method !== 'GET') return out(405, { error: 'No permitido' });
+  if (req.method === 'OPTIONS') { res.writeHead(204, CORS); res.end(); return null; }
+  if (req.method !== 'GET') { out(405, { error: 'No permitido' }); return null; }
   const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'x').split(',')[0].trim();
-  if (tooMany(ip)) return out(429, { error: 'Demasiados pedidos' });
+  if (tooMany(ip)) { out(429, { error: 'Demasiados pedidos' }); return null; }
+  return out;
+}
+export async function publicState(core, req, res, key) {
+  const out = gate(req, res); if (!out) return;
   if (!/^[A-Za-z0-9_-]{32}$/.test(key)) return out(404, { activo: null });
   const find = t => core.run({ table: t, op: 'select', filters: [['eq', 'service_key', key]] }).then(r => r.rows[0]);
   const s = await find(SYS), i = s ? null : await find(INV);
@@ -153,4 +157,17 @@ export async function publicState(core, req, res, key) {
   const on = s ? s.status === 'activo' || s.status === 'prueba' : i.status === 'activa';
   const def = s ? 'Este servicio está pausado. Comunicate con MYB Digitals.' : 'Esta invitación ya no está disponible.';
   return out(200, { activo: on, mensaje: on ? '' : (s || i).status_msg || def }, 'public, max-age=60');
+}
+
+/** La invitación de la web pregunta por su nombre en el link (…/i/<slug>): no hace falta pegar ningún código. */
+export const slugOf = url => { try { const p = new URL(url).pathname.split('/').filter(Boolean); const i = p.indexOf('i'); return i >= 0 && p[i + 1] ? p[i + 1].toLowerCase() : ''; } catch { return ''; } };
+export async function publicInvitation(core, req, res, slug) {
+  const out = gate(req, res); if (!out) return;
+  slug = String(slug || '').toLowerCase();
+  if (!/^[a-z0-9-]{1,80}$/.test(slug)) return out(404, { activo: null });
+  const all = (await core.run({ table: INV, op: 'select' })).rows.filter(i => slugOf(i.url) === slug);
+  const i = all.sort((a, b) => Number(b.created_at) - Number(a.created_at))[0];
+  if (!i) return out(404, { activo: null });
+  const on = i.status === 'activa';
+  return out(200, { activo: on, mensaje: on ? '' : i.status_msg || 'Esta invitación ya no está disponible.' }, 'public, max-age=60');
 }

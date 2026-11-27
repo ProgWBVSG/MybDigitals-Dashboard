@@ -8,12 +8,15 @@ import { ACCOUNTS } from './plataTxt';
 import { addDays, both, fDate, purse, splitIncome, waNumber, when, type Fund, type Movement } from './negocio';
 import { Bar, DateIn, Empty, Field, Modal, Num, Seg } from './ui';
 import { useSub } from './rutas';
-import { Corte } from './Sistemas';
 import { safeUrl, type SysLog } from './sistemaReglas';
 import { daysFrom, DURATIONS, EVENTS, INV_HEALTH, STYLES, viewInv, type Invitacion, type InvView } from './invReglas';
 import './sistemas.css';
 
 const T = 'invitaciones';
+const WEB = 'https://www.mybinvite.com/i/';
+/** Acepta el link entero o sólo el nombre del link (sofi-y-juan). */
+const fullUrl = (raw: string) => { const t = raw.trim(); return /^[a-z0-9-]+$/i.test(t) ? WEB + t.toLowerCase() : t; };
+const slugOf = (url: string) => { try { const p = new URL(url).pathname.split('/').filter(Boolean); const k = p.indexOf('i'); return k >= 0 ? p[k + 1] || '' : ''; } catch { return ''; } };
 const ICON: Record<string, typeof Heart> = { 'Casamiento': Heart, 'XV': Crown, 'Cumpleaños': Cake, 'Bautismo': Baby, 'Bar Mitzvá': Star, 'Egresados': GraduationCap, 'Empresa': Building2 };
 const who = (by: string) => PEOPLE[by as 'benja'] || '';
 type Filter = 'todas' | 'baja_ya' | 'deben' | 'proximas' | 'baja';
@@ -133,7 +136,7 @@ function Detail({ v, onBack, onEdit, onCobrar }: { v: InvView; onBack: () => voi
           </section>
         </div>
         <div className="col">
-          <Corte s={i} table={T} text="Pegalo en la invitación: al darla de baja, se corta sola." />
+          <section className="pn"><h2>En la web</h2><p className="help">{slugOf(link) ? `Conectada por su link: al darla de baja deja de verse en un minuto.` : 'Cargá su link en Datos para que la baja la apague en la web.'}</p></section>
           <section className="pn"><h2>Registro</h2>
             {log.length === 0 ? <p className="help">Sin cambios todavía.</p> : log.slice(0, 30).map(l => <div className="nt" key={l.id}><p>{l.detail}</p><small>{when(l.at)}, {fDate(l.at)}{l.by ? `, ${who(l.by)}` : ''}</small></div>)}
           </section>
@@ -196,7 +199,7 @@ function InvModal({ value, onClose, onSaved }: { value: Partial<Invitacion>; onC
   const set = (p: Partial<Invitacion>) => setD(x => ({ ...x, ...p }));
   const ends = dur != null && d.event_date ? endOf(d.event_date, dur) : d.ends_at ?? null;
   const styles = [...new Set([...STYLES, ...inv.rows.map(i => i.style).filter(Boolean)])];
-  const link = (d.url || '').trim(), bad = !!link && !safeUrl(link);
+  const link = fullUrl(d.url || ''), bad = !!link && !safeUrl(link);
   const save = async (e: React.FormEvent) => {
     e.preventDefault(); if (!d.name?.trim() || bad) return;
     setBusy(true);
@@ -222,7 +225,7 @@ function InvModal({ value, onClose, onSaved }: { value: Partial<Invitacion>; onC
     <div className="g3"><Field label="Contacto"><input className="input" value={d.contact?.name || ''} onChange={e => set({ contact: { ...d.contact, name: e.target.value } })} /></Field>
       <Field label="WhatsApp"><input className="input" inputMode="tel" placeholder="351 555 1234" value={d.contact?.whatsapp || ''} onChange={e => set({ contact: { ...d.contact, whatsapp: e.target.value } })} /></Field>
       <Field label="Email"><input className="input" type="email" value={d.contact?.email || ''} onChange={e => set({ contact: { ...d.contact, email: e.target.value } })} /></Field></div>
-    <Field label="Link de la invitación" help={bad ? 'No es una dirección web válida' : undefined}><input className={`input${bad ? ' bad' : ''}`} placeholder="mybdigitals.com/i/sofi-y-juan" value={d.url || ''} onChange={e => set({ url: e.target.value })} /></Field>
+    <Field label="Link de la invitación" help={bad ? 'No es una dirección web válida' : link && link !== (d.url || '').trim() ? link : 'El link entero o sólo su nombre, ej. sofi-y-juan'}><input className={`input${bad ? ' bad' : ''}`} placeholder="sofi-y-juan" value={d.url || ''} onChange={e => set({ url: e.target.value })} /></Field>
     <div className="x-modal-f in"><button type="button" className="btn btn-ghost" onClick={onClose}>Cancelar</button><button className="btn btn-primary" disabled={busy || bad}>{busy ? 'Guardando…' : 'Guardar'}</button></div>
   </form></Modal>;
 }

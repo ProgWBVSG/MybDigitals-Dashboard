@@ -2,7 +2,7 @@
 import { createHash, randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { checkDump, createCore } from './core.mjs';
-import { changeState, LOG, prepare, publicState } from './sistemas.mjs';
+import { changeState, LOG, prepare, publicInvitation, publicState } from './sistemas.mjs';
 
 const scrypt = promisify(scryptCb);
 export const USERS = { benja: 'Benjamín', mati: 'Matías' };
@@ -69,6 +69,7 @@ export function createApp({ store, files, cloud = false, setupCode = '', maxFile
     await init();
     // Lo único público: la app de cada negocio pregunta si su servicio sigue activo
     if (path.startsWith('/api/servicio/')) return publicState(core, req, res, path.slice(14));
+    if (path === '/api/invitacion-estado') return publicInvitation(core, req, res, new URL(req.url, 'http://x').searchParams.get('slug'));
     const isFile = path.startsWith('/api/archivos/');
     // Una página ajena no puede mandar este encabezado: evita que otra web use la base con tu sesión
     if (!(isFile && req.method === 'GET') && req.headers['x-myb'] !== '1') throw fail(403, 'No permitido');
