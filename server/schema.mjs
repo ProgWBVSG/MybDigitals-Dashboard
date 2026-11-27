@@ -60,6 +60,7 @@ export const DEFAULTS = {
   voz_registro: () => ({ ...text('texto', 'by'), ...arr('resumen', 'vuelta', 'links'), at: now(), deshecho: false }),
   // Sistemas que les vendemos a los negocios (el estado y la llave los pone el servidor: ver sistemas.mjs)
   sistemas: () => ({ ...text('name', 'rubro', 'city', 'plan', 'notes', 'status_reason', 'status_msg', 'status_by'), client_id: null, owner: { name: '', whatsapp: '', email: '' }, price: 0, currency: 'ARS', bill_day: 10, bill_from: new Date().toISOString().slice(0, 7), grace_days: 5, status: 'activo', status_at: now(), ended_at: null, ...arr('links', 'fields', 'tags'), service_key: randomBytes(24).toString('base64url') }),
+  invitaciones: () => ({ ...text('name', 'event', 'style', 'url', 'notes', 'status_reason', 'status_msg', 'status_by'), contact: { name: '', whatsapp: '', email: '' }, client_id: null, event_date: null, ends_at: null, price: 60, currency: 'USD', pagos: [], status: 'activa', status_at: now(), ended_at: null, service_key: randomBytes(24).toString('base64url') }),
   sistema_pagos: () => ({ sistema_id: null, period: '', amount: 0, currency: 'ARS', paid_at: now(), ...text('method', 'note', 'by'), movement_id: null }),
   sistema_notas: () => ({ sistema_id: null, text: '', pinned: false, by: '' }),
   sistema_registro: () => ({ sistema_id: null, ...text('sistema', 'action', 'detail', 'by'), at: now() }),
@@ -67,12 +68,12 @@ export const DEFAULTS = {
 };
 
 /** Tablas donde las fechas se guardan como número. En el resto, como texto. */
-export const NUMERIC_DATES = new Set(['app_settings', 'sistemas', 'sistema_pagos', 'sistema_notas', 'sistema_registro', 'client_notes', 'reminders', 'history', 'guide_topics', 'competitors', 'notes', 'whiteboards', 'node_events', 'strategy_docs', 'client_portals', 'portal_updates', 'portal_tickets', 'portal_views', 'proposal_views', 'prospects', 'agreements', 'movements', 'funds', 'bills', 'objectives', 'plan_items', 'plan_days', 'plan_weeks', 'touches', 'message_rules', 'voz_memoria', 'voz_registro']);
+export const NUMERIC_DATES = new Set(['app_settings', 'sistemas', 'invitaciones', 'sistema_pagos', 'sistema_notas', 'sistema_registro', 'client_notes', 'reminders', 'history', 'guide_topics', 'competitors', 'notes', 'whiteboards', 'node_events', 'strategy_docs', 'client_portals', 'portal_updates', 'portal_tickets', 'portal_views', 'proposal_views', 'prospects', 'agreements', 'movements', 'funds', 'bills', 'objectives', 'plan_items', 'plan_days', 'plan_weeks', 'touches', 'message_rules', 'voz_memoria', 'voz_registro']);
 
 /** Al borrar una fila: [tabla hija, columna, qué hacer]. */
 export const ON_DELETE = {
   sistemas: [['sistema_pagos', 'sistema_id', 'borrar'], ['sistema_notas', 'sistema_id', 'borrar']], // el registro queda siempre
-  clients: [['sistemas', 'client_id', 'vaciar'], ['client_projects', 'client_id', 'borrar'], ['client_notes', 'client_id', 'borrar'], ['onboardings', 'client_id', 'borrar'], ['client_portals', 'client_id', 'borrar'], ['history', 'client_id', 'vaciar'], ['prospects', 'client_id', 'vaciar'], ['tasks', 'client_id', 'vaciar'], ['content_accounts', 'client_id', 'vaciar'], ['competitors', 'client_id', 'vaciar'], ['whiteboards', 'client_id', 'vaciar'], ['strategy_docs', 'client_id', 'vaciar'], ['agreements', 'client_id', 'borrar'], ['touches', 'client_id', 'borrar'], ['voz_memoria', 'cliente_id', 'borrar'], ['movements', 'client_id', 'vaciar'], ['plan_items', 'client_id', 'vaciar']],
+  clients: [['sistemas', 'client_id', 'vaciar'], ['invitaciones', 'client_id', 'vaciar'], ['client_projects', 'client_id', 'borrar'], ['client_notes', 'client_id', 'borrar'], ['onboardings', 'client_id', 'borrar'], ['client_portals', 'client_id', 'borrar'], ['history', 'client_id', 'vaciar'], ['prospects', 'client_id', 'vaciar'], ['tasks', 'client_id', 'vaciar'], ['content_accounts', 'client_id', 'vaciar'], ['competitors', 'client_id', 'vaciar'], ['whiteboards', 'client_id', 'vaciar'], ['strategy_docs', 'client_id', 'vaciar'], ['agreements', 'client_id', 'borrar'], ['touches', 'client_id', 'borrar'], ['voz_memoria', 'cliente_id', 'borrar'], ['movements', 'client_id', 'vaciar'], ['plan_items', 'client_id', 'vaciar']],
   agreements: [['movements', 'agreement_id', 'vaciar'], ['touches', 'agreement_id', 'vaciar'], ['plan_items', 'agreement_id', 'vaciar']],
   prospects: [['touches', 'prospect_id', 'borrar']],
   services: [['agreements', 'service_id', 'vaciar']],

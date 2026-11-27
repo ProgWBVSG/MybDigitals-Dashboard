@@ -96,6 +96,17 @@ ok((await db1({ table: 'sistemas', op: 'delete', filters: [['eq', 'id', sy.id]] 
 const reg = (await db1({ table: 'sistema_registro' })).d.rows;
 ok(reg.length === 5 && reg.every(r => r.by === 'benja') && reg.some(r => r.action === 'borrado'), 'registro completo y con quién');
 ok((await db1({ table: 'sistema_pagos' })).d.count === 0, 'se fueron sus pagos');
+// Invitaciones: mismo candado, corte y registro
+const iv = (await db1({ table: 'invitaciones', op: 'insert', body: { name: 'Sofi y Juan', status: 'baja', pagos: [{ id: 'x', amount: 999 }] } })).d.rows[0];
+ok(iv.status === 'activa' && iv.pagos.length === 0 && iv.price === 60 && iv.currency === 'USD', 'invitación nueva');
+ok((await db1({ table: 'invitaciones', op: 'update', body: { status: 'baja' }, filters: [['eq', 'id', iv.id]] })).s === 403, 'la baja no va por la base');
+ok((await db1({ table: 'invitaciones', op: 'update', body: { pagos: [{ id: 'p', amount: -5 }] }, filters: [['eq', 'id', iv.id]] })).s === 400, 'pago negativo');
+ok((await db1({ table: 'invitaciones', op: 'update', body: { pagos: [{ id: 'p', amount: 30, at: 1 }] }, filters: [['eq', 'id', iv.id]] })).s === 200, 'seña');
+ok((await pub(iv.service_key)).d.activo === true, 'invitación online');
+ok((await go('/api/sistema-estado', { id: iv.id, table: 'invitaciones', status: 'baja' }, e.cookie)).s === 200, 'baja sin motivo');
+p1 = await pub(iv.service_key); ok(p1.d.activo === false && p1.d.mensaje === 'Esta invitación ya no está disponible.', 'invitación cortada');
+const ri = (await db1({ table: 'sistema_registro', filters: [['eq', 'sistema_id', iv.id]] })).d.rows.map(r => r.detail).join('|');
+ok(ri.includes('Alta') && ri.includes('Pago de US$30') && ri.includes('Activa a de baja'), 'registro de la invitación');
 await go('/api/salir', {}, e.cookie); ok((await go('/api/yo', undefined, e.cookie)).d.user === null, 'sale');
 let last; for (let i = 0; i < 12; i++) last = await go('/api/entrar', { user: 'mati', pass: 'x' }); ok(last.s === 429, 'frena intentos');
 srv.close();

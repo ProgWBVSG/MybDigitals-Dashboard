@@ -162,17 +162,17 @@ function Detail({ v, onBack, onEdit, onCobrar }: { v: SysView; onBack: () => voi
   );
 }
 
-function Corte({ s }: { s: Sistema }) {
+export function Corte({ s, table = 'sistemas', text = 'Pegalo en su panel y su app: al suspenderlo, se cortan solos.' }: { s: { id: string; service_key: string }; table?: string; text?: string }) {
   const [show, setShow] = useState(false);
   const origin = isCloud() ? location.origin : 'https://DIRECCION-DEL-DASHBOARD';
   const rotate = async () => {
     if (!confirm('¿Cambiar la llave? El código que ya está pegado en su app deja de funcionar y hay que pegar el nuevo.')) return;
-    const { error } = await post('sistema-estado', { id: s.id, rotate: true });
-    if (error) toast(error.message, 'error'); else { toast('Llave nueva'); reload('sistemas'); reload('sistema_registro'); }
+    const { error } = await post('sistema-estado', { id: s.id, rotate: true, table });
+    if (error) toast(error.message, 'error'); else { toast('Llave nueva'); reload(table); reload('sistema_registro'); }
   };
   return <section className="pn">
     <div className="pn-h"><h2>Corte automático</h2><button className="btn btn-ghost btn-sm" onClick={() => setShow(x => !x)}>{show ? 'Ocultar' : 'Ver código'}</button></div>
-    <p className="help">Pegalo en su panel y su app: al suspenderlo, se cortan solos.{!isCloud() && ' Funciona cuando el dashboard esté en internet.'}</p>
+    <p className="help">{text}{!isCloud() && ' Funciona cuando el dashboard esté en internet.'}</p>
     {show && <>
       <pre className="sy-code">{snippet(origin, s.service_key)}</pre>
       <div className="row"><button className="btn btn-secondary btn-sm" onClick={async () => toast(await copyText(snippet(origin, s.service_key)) ? 'Código copiado' : 'No se pudo copiar', 'success')}><Copy size={14} /> Copiar</button><button className="btn btn-ghost btn-sm" onClick={rotate}><KeyRound size={14} /> Cambiar llave</button></div>

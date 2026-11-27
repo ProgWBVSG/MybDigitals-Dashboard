@@ -1,17 +1,18 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import {
   Layers, LayoutGrid, CalendarDays, Users, Rocket, Target, LogOut, Bell, SlidersHorizontal, History as HistoryIcon, BookOpen, Sun, CalendarRange, MessageCircle, Wallet,
-  Smartphone, Server, MapPin, Swords, Lightbulb, GitBranch, DoorOpen, Tag, Search, Menu, X, CornerDownLeft, ChevronDown, Mic,
+  Smartphone, Server, MailOpen, MapPin, Swords, Lightbulb, GitBranch, DoorOpen, Tag, Search, Menu, X, CornerDownLeft, ChevronDown, Mic,
 } from 'lucide-react';
 import { db, isCloud, PEOPLE, post, setPerson, usePerson, useTable, type Person } from './base';
 import { HEALTH, viewClient, type Agreement, type ClientRow, type Touch } from './negocio';
 import { useQueue } from './Mensajes';
 import { norm } from './sheetImport';
 import { priceText, type SvcPrice } from './services';
+import { INV_HEALTH, viewInv, type Invitacion } from './invReglas';
 import { HEALTH as SYS_HEALTH, viewSys, type Sistema, type SysPago } from './sistemaReglas';
 
 const Voz = lazy(() => import('./Voz'));
-export type Tab = 'hoy' | 'semana' | 'sistemas' | 'mensajes' | 'plata' | 'servicios' | 'preventa' | 'buscar' | 'competencia' | 'onboarding' | 'notas' | 'estrategia' | 'tasks' | 'calendar' | 'clients' | 'portales' | 'history' | 'guide' | 'skills' | 'notifications' | 'settings' | 'content';
+export type Tab = 'hoy' | 'semana' | 'sistemas' | 'invitaciones' | 'mensajes' | 'plata' | 'servicios' | 'preventa' | 'buscar' | 'competencia' | 'onboarding' | 'notas' | 'estrategia' | 'tasks' | 'calendar' | 'clients' | 'portales' | 'history' | 'guide' | 'skills' | 'notifications' | 'settings' | 'content';
 type Item = { key: Tab; label: string; icon: ComponentType<{ size?: number }>; words?: string };
 
 // Arriba lo de todos los días. El resto se abre cuando hace falta.
@@ -20,6 +21,7 @@ export const MAIN: Item[] = [
   { key: 'semana', label: 'Semana', icon: CalendarRange, words: 'planificar objetivos repaso calendario metas' },
   { key: 'clients', label: 'Clientes', icon: Users, words: 'crm acuerdos contratos cobros fases' },
   { key: 'sistemas', label: 'Sistemas', icon: Server, words: 'barberia peluqueria restaurante boliche cafeteria abonos suscripciones suspender baja cortar panel' },
+  { key: 'invitaciones', label: 'Invitaciones', icon: MailOpen, words: 'casamiento boda quince xv evento cumpleanos baja' },
   { key: 'mensajes', label: 'Mensajes', icon: MessageCircle, words: 'whatsapp automaticos' },
   { key: 'plata', label: 'Plata', icon: Wallet, words: 'ingresos gastos inversion caja sobres pagos metricas balance' },
   { key: 'servicios', label: 'Servicios', icon: Tag, words: 'precios catalogo excel presupuesto' },
@@ -66,7 +68,9 @@ export function Shell({ tab, go, unread, children }: { tab: Tab; go: (t: string)
   const hot = useMemo(() => clients.filter(c => HEALTH[viewClient(c, ags, touches, 1).health].hot).length, [clients, ags, touches]);
   const sys = useTable<Sistema>('sistemas').rows, sysPay = useTable<SysPago>('sistema_pagos').rows;
   const sysHot = useMemo(() => sys.filter(s => SYS_HEALTH[viewSys(s, sysPay).health].hot).length, [sys, sysPay]);
-  const count: Partial<Record<Tab, number>> = { clients: hot, sistemas: sysHot, mensajes: queue.filter(q => q.hot).length, notifications: unread };
+  const invs = useTable<Invitacion>('invitaciones').rows;
+  const invHot = useMemo(() => invs.filter(i => INV_HEALTH[viewInv(i).health].hot).length, [invs]);
+  const count: Partial<Record<Tab, number>> = { clients: hot, sistemas: sysHot, invitaciones: invHot, mensajes: queue.filter(q => q.hot).length, notifications: unread };
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -129,7 +133,7 @@ function Palette({ onClose, go }: { onClose: () => void; go: (t: Tab) => void })
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [s, c, y] = await Promise.all([db.from('services').select('id,name,area,prices,includes'), db.from('clients').select('id,name,status'), db.from('sistemas').select('id,name,rubro,city')]);
+      const [s, c, y, iv] = await Promise.all([db.from('services').select('id,name,area,prices,includes'), db.from('clients').select('id,name,status'), db.from('sistemas').select('id,name,rubro,city'), db.from('invitaciones').select('id,name,event,style')]);
       if (!alive) return;
       setData([
         ...(s.data || []).map((x: any) => ({
@@ -137,6 +141,7 @@ function Palette({ onClose, go }: { onClose: () => void; go: (t: Tab) => void })
           sub: ((x.prices || []) as SvcPrice[]).filter(p => p.amount > 0).slice(0, 2).map(p => priceText(p) + (p.period === 'mes' ? ' por mes' : '')).join(', ') || 'Sin precio',
           run: () => { sessionStorage.setItem('myb_open_service', x.id); go('servicios'); window.dispatchEvent(new Event('myb-open-service')); },
         })),
+        ...(iv.data || []).map((x: any) => ({ id: 'i' + x.id, label: x.name as string, icon: MailOpen, sub: x.event || 'Invitación', text: norm([x.name, x.event, x.style].join(' ')), run: () => go(('invitaciones/' + x.id) as Tab) })),
         ...(y.data || []).map((x: any) => ({ id: 'y' + x.id, label: x.name as string, icon: Server, sub: x.rubro || 'Sistema', text: norm([x.name, x.rubro, x.city].join(' ')), run: () => go(('sistemas/' + x.id) as Tab) })),
         ...(c.data || []).map((x: any) => ({ id: 'c' + x.id, label: x.name as string, icon: Users, sub: 'Cliente', text: norm(x.name || ''), run: () => go(('clients/' + x.id) as Tab) })),
       ]);

@@ -20,6 +20,7 @@ const VIEWS = {
   semana: lazy(() => import('./Semana')),
   clients: lazy(() => import('./Clientes')),
   sistemas: lazy(() => import('./Sistemas')),
+  invitaciones: lazy(() => import('./Invitaciones')),
   mensajes: lazy(() => import('./Mensajes')),
   plata: lazy(() => import('./Plata')),
   servicios: lazy(() => import('./Servicios')),
