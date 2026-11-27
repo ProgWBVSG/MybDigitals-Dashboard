@@ -59,3 +59,15 @@
   .sy-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sy-add { grid-template-columns: minmax(0, 1fr) auto; } .sy-add input:first-child { grid-column: 1 / -1; }
 }
+
+.sy-rub { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.sy-rub button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px; border: 1px solid var(--border); border-radius: 12px; background: none; color: var(--text-secondary); font: inherit; font-size: 13.5px; cursor: pointer; min-height: 64px; text-align: center; overflow-wrap: anywhere; }
+.sy-rub button:hover { color: var(--text-primary); border-color: var(--border-light); }
+.sy-rub button.on { background: var(--text-primary); color: var(--bg-main); border-color: var(--text-primary); font-weight: 600; }
+.sy-rub + .input { margin-top: 8px; }
+.sy-cat { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; margin-bottom: 8px; }
+.sy-cat button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.sy-cat button b { font-weight: 600; font-size: 14.5px; } .sy-cat button span { font-size: 13px; color: var(--text-muted); }
+.sy-cat button.on { border-color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--text-primary); }
+.sy-plans { flex-wrap: wrap; margin-bottom: 8px; }
+@media (max-width: 560px) { .sy-rub { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

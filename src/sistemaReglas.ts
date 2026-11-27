@@ -15,7 +15,18 @@ export interface SysNota extends Row { sistema_id: string; text: string; pinned:
 export interface SysLog extends Row { sistema_id: string | null; sistema: string; action: string; detail: string; by: string; at: number }
 
 export const STATUS: Record<SysStatus, string> = { prueba: 'En prueba', activo: 'Activo', suspendido: 'Suspendido', baja: 'De baja' };
-export const RUBROS = ['Barbería', 'Peluquería', 'Restaurante', 'Cafetería', 'Boliche', 'Bar', 'Gimnasio', 'Estética', 'Comercio'];
+/** Rubros con el área de Servicios donde están sus precios y lo que solemos instalarles. */
+export const RUBROS: { name: string; area: string; plans: string[] }[] = [
+  { name: 'Barbería', area: 'Belleza', plans: ['Agenda y turnos', 'Tarjeta de sellos', 'Panel del dueño'] },
+  { name: 'Peluquería', area: 'Belleza', plans: ['Agenda y turnos', 'Tarjeta de sellos', 'Panel del dueño'] },
+  { name: 'Estética', area: 'Belleza', plans: ['Agenda y turnos', 'Tarjeta de sellos'] },
+  { name: 'Restaurante', area: 'Gastronomía y noche', plans: ['Carta digital', 'Carta 3D', 'Cocina', 'Panel del dueño'] },
+  { name: 'Cafetería', area: 'Gastronomía y noche', plans: ['Menú digital', 'Tarjeta de sellos', 'Barra'] },
+  { name: 'Boliche', area: 'Gastronomía y noche', plans: ['Barra sin fila', 'Entradas', 'Panel del dueño'] },
+  { name: 'Bar', area: 'Gastronomía y noche', plans: ['Barra sin fila', 'Carta digital'] },
+  { name: 'Gimnasio', area: 'Deportes', plans: ['App del gimnasio', 'Cuotas', 'Rutinas'] },
+  { name: 'Comercio', area: 'Comercios', plans: ['Tarjeta de sellos', 'Catálogo'] },
+];
 
 const p2 = (n: number) => String(n).padStart(2, '0');
 export const periodOf = (t: number) => { const d = new Date(t); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}`; };

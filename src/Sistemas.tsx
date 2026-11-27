@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Copy, ExternalLink, KeyRound, MessageCircle, Pencil, Pin, Plus, Search, Trash2, Undo2, X } from 'lucide-react';
+import { ArrowLeft, Coffee, Copy, Dumbbell, Martini, Music, Scissors, Sparkles, Store, UtensilsCrossed, Shapes, ExternalLink, KeyRound, MessageCircle, Pencil, Pin, Plus, Search, Trash2, Undo2, X } from 'lucide-react';
 import { deleteOp, insertOp, isCloud, PEOPLE, post, reload, saveAll, useTable } from './base';
 import { toast } from './hooks';
 import { norm } from './sheetImport';
-import { money, type SvcCurrency } from './services';
+import { money, type Service, type SvcCurrency } from './services';
 import { ACCOUNTS } from './plataTxt';
 import { both, fDate, purse, splitIncome, waNumber, when, type ClientRow, type Fund, type Movement } from './negocio';
 import { copyText, DateIn, Empty, Field, Modal, Num, Seg } from './ui';
@@ -239,6 +239,40 @@ function CobroModal({ s, onClose }: { s: Sistema; onClose: () => void }) {
   </form></Modal>;
 }
 
+// ─── Rubro y sistema: se eligen tocando, con precios del catálogo de Servicios ───
+const ICON: Record<string, typeof Scissors> = { 'Barbería': Scissors, 'Peluquería': Scissors, 'Estética': Sparkles, 'Restaurante': UtensilsCrossed, 'Cafetería': Coffee, 'Boliche': Music, 'Bar': Martini, 'Gimnasio': Dumbbell, 'Comercio': Store };
+type Setter = (p: Partial<Sistema>) => void;
+function RubroPicker({ d, set, isNew }: { d: Partial<Sistema>; set: Setter; isNew: boolean }) {
+  const sys = useTable<Sistema>('sistemas').rows;
+  const mine = [...new Set(sys.map(s => s.rubro).filter(r => r && !RUBROS.some(x => x.name === r)))];
+  const names = [...RUBROS.map(r => r.name), ...mine];
+  const [other, setOther] = useState(!!d.rubro && !names.includes(d.rubro));
+  const pick = (name: string) => {
+    setOther(false);
+    // Uno nuevo copia precio y sistema del último negocio del mismo rubro
+    const prev = isNew && !d.price ? sys.filter(s => s.rubro === name && s.price > 0).sort((a, b) => Number(b.created_at) - Number(a.created_at))[0] : null;
+    set({ rubro: name, ...(prev ? { price: prev.price, currency: prev.currency, plan: d.plan || prev.plan } : {}) });
+  };
+  return <div className="f" role="group" aria-label="Rubro"><span>Rubro</span>
+    <div className="sy-rub">{names.map(n => { const I = ICON[n] || Shapes; return <button type="button" key={n} className={d.rubro === n && !other ? 'on' : ''} aria-pressed={d.rubro === n && !other} onClick={() => pick(n)}><I size={18} />{n}</button>; })}
+      <button type="button" className={other ? 'on' : ''} aria-pressed={other} onClick={() => { setOther(true); set({ rubro: '' }); }}><Plus size={18} />Otro</button></div>
+    {other && <input className="input" autoFocus placeholder="Ej. Lavadero" aria-label="Otro rubro" value={d.rubro || ''} onChange={e => set({ rubro: e.target.value })} />}
+  </div>;
+}
+function PlanPicker({ d, set }: { d: Partial<Sistema>; set: Setter }) {
+  const services = useTable<Service & { id: string }>('services').rows;
+  const r = RUBROS.find(x => x.name === d.rubro);
+  const monthly = (s: Service) => s.prices?.find(p => p.period === 'mes' && p.amount > 0 && !p.optional);
+  const catalog = services.filter(s => s.status !== 'pausado' && s.status !== 'idea' && monthly(s) && (!r || s.area === r.area || s.area === 'Todo rubro'));
+  const parts = (d.plan || '').split(' + ').map(x => x.trim()).filter(Boolean);
+  const toggle = (p: string) => set({ plan: (parts.includes(p) ? parts.filter(x => x !== p) : [...parts, p]).join(' + ') });
+  return <div className="f" role="group" aria-label="Sistema"><span>Qué sistema tiene</span>
+    {catalog.length > 0 && <div className="sy-cat">{catalog.map(s => { const m = monthly(s)!, on = d.plan === s.name; return <button type="button" key={s.id} className={on ? 'on' : ''} aria-pressed={on} onClick={() => set({ plan: s.name, price: m.amount, currency: m.currency })}><b>{s.name}</b><span>{money(m.amount, m.currency)} por mes</span></button>; })}</div>}
+    {r && <div className="chips sy-plans">{r.plans.map(p => <button type="button" key={p} className={parts.includes(p) ? 'on' : ''} aria-pressed={parts.includes(p)} onClick={() => toggle(p)}>{p}</button>)}</div>}
+    <input className="input" aria-label="Sistema" placeholder={r ? 'Tocá arriba o escribilo' : 'Elegí el rubro o escribilo'} value={d.plan || ''} onChange={e => set({ plan: e.target.value })} />
+  </div>;
+}
+
 // ─── Alta y datos ───
 function SysModal({ value, onClose, onSaved }: { value: Partial<Sistema>; onClose: () => void; onSaved: (id: string | null) => void }) {
   const sys = useTable<Sistema>('sistemas'), clients = useTable<ClientRow>('clients').rows;
@@ -261,9 +295,10 @@ function SysModal({ value, onClose, onSaved }: { value: Partial<Sistema>; onClos
     setBusy(false); if (n) { reload('sistema_registro'); onSaved(n.id); }
   };
   return <Modal title={value.id ? `Datos de ${value.name}` : 'Nuevo sistema'} onClose={onClose} wide><form className="ff" onSubmit={save}>
-    <div className="g2"><Field label="Nombre del negocio"><input className="input" required autoFocus maxLength={120} value={d.name || ''} onChange={e => set({ name: e.target.value })} /></Field>
-      <Field label="Rubro"><input className="input" list="sy-rubros" value={d.rubro || ''} placeholder="Barbería" onChange={e => set({ rubro: e.target.value })} /><datalist id="sy-rubros">{RUBROS.map(r => <option key={r} value={r} />)}</datalist></Field></div>
-    <div className="g2"><Field label="Ciudad"><input className="input" value={d.city || ''} onChange={e => set({ city: e.target.value })} /></Field><Field label="Plan o qué tiene"><input className="input" value={d.plan || ''} placeholder="Agenda + tarjeta de sellos" onChange={e => set({ plan: e.target.value })} /></Field></div>
+    <RubroPicker d={d} set={set} isNew={!value.id} />
+    <div className="g2"><Field label="Nombre del negocio"><input className="input" required maxLength={120} value={d.name || ''} onChange={e => set({ name: e.target.value })} /></Field>
+      <Field label="Ciudad"><input className="input" value={d.city || ''} onChange={e => set({ city: e.target.value })} /></Field></div>
+    <PlanPicker d={d} set={set} />
     <div className="g2"><Field label="Abono por mes"><Num label="Abono por mes" prefix={d.currency === 'USD' ? 'US$' : '$'} value={d.price || 0} onChange={n => set({ price: n })} /></Field>
       <Field label="Moneda"><Seg label="Moneda" value={d.currency || 'ARS'} options={[['ARS', 'Pesos'], ['USD', 'Dólares']]} onChange={c => set({ currency: c })} /></Field></div>
     <div className="g3"><Field label="Día de cobro"><input className="input" type="number" min={1} max={28} value={d.bill_day || ''} onChange={e => set({ bill_day: Number(e.target.value) })} /></Field>
